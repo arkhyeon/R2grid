@@ -7,8 +7,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
-    "preview": "vite preview",
-    "clm30": "cd \"../02 CLM30\" && node node_modules/vite/bin/vite.js --config ../clm-datagrid/clm30/vite.config.mjs --host"
+    "preview": "vite preview"
   },
   "dependencies": {
     "react": "^19.0.0",
