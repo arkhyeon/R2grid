@@ -1,0 +1,997 @@
+// 바디: 세로 스크롤 뷰포트 안에 좌고정 / 중앙(가로 스크롤) / 우고정 컨테이너 + 전체폭(디테일) 행
+// - 세로/가로 가상화, 1000만 px 초과 시 높이 스트레칭(브라우저 div 높이 한계 회피)
+// - 상단/하단 고정행(floating), 그룹/트리 셀, 행 드래그, SSRM 블록 로드
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { clamp, cx, resolveClassRules, resolveClassValue, toText } from '../core/utils.js';
+import { Checkbox, Icon } from './common.jsx';
+import { EditorHost } from './editors.jsx';
+import { stableElement } from './renderComponent.js';
+import { PopupLayer } from './popup.jsx';
+
+const MAX_DIV_HEIGHT = 10_000_000;
+const GROUP_INDENT = 28;
+
+const rowKey = node => (node.rowPinned ? `${node.rowPinned[0]}-${node.rowIndex}` : String(node.rowIndex));
+
+// ── 내장 셀 렌더러 ──────────────────────────────────────────
+function CheckboxCellRenderer({ core, node, column, value }) {
+  const editable = core.isCellEditable(column, node);
+  return (
+    <div className="ag-cell-wrapper ag-checkbox-cell" role="presentation">
+      <Checkbox
+        checked={value == null ? false : !!value}
+        disabled={!editable}
+        onToggle={() => core.writeCell(node, column, !value, 'edit')}
+      />
+    </div>
+  );
+}
+
+// agGroupCellRenderer: 마스터/디테일 펼침 + 행그룹/트리 들여쓰기·펼침·자식수
+function GroupCellRenderer({ core, node, column, params, extra }) {
+  const text = params.valueFormatted ?? params.value;
+  const innerRenderer = extra?.innerRenderer;
+  const inner = innerRenderer
+    ? stableElement(core, `inner:${column.colId}`, innerRenderer, params)
+    : text == null
+      ? ''
+      : toText(text);
+  const grouping = !!core.groupMode && column.autoType === 'group';
+  const expandable = node.master || (node.group && !!node.childrenAll?.length);
+  const level = grouping ? node.uiLevel ?? node.level ?? 0 : 0;
+  const leafIndent = grouping && !expandable ? GROUP_INDENT : 0;
+  const toggle = e => {
+    e.stopPropagation();
+    node.setExpanded(!node.expanded);
+  };
+  const count = grouping && node.group && !extra?.suppressCount ? node.allChildrenCount ?? node.childrenAfterFilter?.length : null;
+  const legacyCb = extra?.checkbox && core.rsOpts?.legacy;
+  return (
+    <span
+      className={cx(
+        'ag-cell-wrapper',
+        expandable && 'ag-cell-expandable ag-row-group',
+        grouping && `ag-row-group-indent-${level}`,
+        leafIndent && 'ag-row-group-leaf-indent',
+      )}
+      style={grouping ? { paddingLeft: level * GROUP_INDENT + leafIndent } : undefined}
+      role="presentation"
+    >
+      {expandable && (
+        <>
+          <span className={cx('ag-group-expanded', !node.expanded && 'ag-hidden')} onClick={toggle}>
+            <Icon name="tree-open" />
+          </span>
+          <span className={cx('ag-group-contracted', node.expanded && 'ag-hidden')} onClick={toggle}>
+            <Icon name="tree-closed" />
+          </span>
+        </>
+      )}
+      {legacyCb && (
+        <span className="ag-group-checkbox">
+          <Checkbox
+            checked={node.group ? core.getGroupSelectionState(node) : node.selected}
+            onToggle={e => core.handleCheckboxClick(node, e)}
+          />
+        </span>
+      )}
+      <span className="ag-group-value">{inner}</span>
+      {count != null && <span className="ag-group-child-count">({count})</span>}
+    </span>
+  );
+}
+
+function SkeletonCell() {
+  return (
+    <div className="ag-skeleton-container">
+      <div className="ag-skeleton-effect" />
+    </div>
+  );
+}
+
+function isEditableEl(t) {
+  return t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+}
+
+// ── 셀 ─────────────────────────────────────────────────────
+function Cell({ core, node, col, handlers, isFirst, isLast }) {
+  const cellRef = useRef(null);
+  const g = core.gos;
+  const cd = col.colDef;
+  const ced = core.getEditingCell(node, col);
+  const isEditing = !!ced;
+  const value = core.getCellValue(node, col);
+  const formatted = col.autoType && col.autoType !== 'group' ? null : core.formatValue(node, col, value);
+  const base = {
+    value,
+    valueFormatted: formatted,
+    data: node.data,
+    node,
+    colDef: cd,
+    column: col,
+    rowIndex: node.rowIndex,
+    api: core.api,
+    context: g.context,
+  };
+  const focused = core.isCellFocused(node, col.colId);
+  const range = core.ranges.length && !node.rowPinned ? core.cellRangeInfo(node.rowIndex, col.colId) : null;
+  const flash = core.getFlash(node.id, col.colId);
+  const userCls = node.stub ? '' : cx(resolveClassValue(cd.cellClass, base), resolveClassRules(cd.cellClassRules, base));
+  const userStyle = node.stub ? null : typeof cd.cellStyle === 'function' ? cd.cellStyle(base) : cd.cellStyle;
+  let flashCls = null;
+  if (flash) {
+    const prefix = flash.cls === 'highlight' ? 'ag-cell-highlight' : 'ag-cell-data-changed';
+    flashCls = flash.phase === 'on' ? prefix : `${prefix}-animation`;
+  }
+
+  let content;
+  if (isEditing && !ced.editor.popup) {
+    content = <EditorHost core={core} ed={ced} getCellEl={() => cellRef.current} />;
+  } else if (node.stub) {
+    const lcr = g.loadingCellRenderer;
+    if (col.autoType) content = null;
+    else if (lcr) {
+      const impl = typeof lcr === 'string' ? g.components?.[lcr] : lcr;
+      content = impl ? stableElement(core, 'loadingCell', impl, { ...base, ...(g.loadingCellRendererParams || {}) }) : null;
+    } else content = <SkeletonCell />;
+  } else if (col.autoType === 'selection') {
+    const rs = core.rsOpts;
+    const groupDesc = node.group && core.isGroupSelectsDescendants();
+    const show =
+      !node.rowPinned &&
+      (typeof rs?.checkboxes === 'function'
+        ? !!rs.checkboxes({ ...base })
+        : !(rs?.hideDisabledCheckboxes && !node.selectable && !groupDesc));
+    content = show ? (
+      <div className="ag-cell-wrapper" role="presentation">
+        <div className="ag-selection-checkbox" role="presentation">
+          <Checkbox
+            checked={groupDesc ? core.getGroupSelectionState(node) : node.selected}
+            disabled={!groupDesc && !node.selectable}
+            ariaLabel="Press Space to toggle row selection"
+            onToggle={e => core.handleCheckboxClick(node, e)}
+          />
+        </div>
+      </div>
+    ) : null;
+  } else if (col.autoType === 'rowNumbers') {
+    content = node.rowPinned ? null : node.rowIndex + 1;
+  } else {
+    let comp = cd.cellRenderer;
+    let rendererParams = cd.cellRendererParams;
+    if (typeof cd.cellRendererSelector === 'function') {
+      const sel = cd.cellRendererSelector(base);
+      if (sel) {
+        comp = sel.component ?? comp;
+        rendererParams = sel.params ?? rendererParams;
+      }
+    }
+    if (!comp && col.dataType === 'boolean') comp = 'agCheckboxCellRenderer';
+    const extra = typeof rendererParams === 'function' ? rendererParams(base) : rendererParams;
+    if (comp === 'agCheckboxCellRenderer') {
+      content = <CheckboxCellRenderer core={core} node={node} column={col} value={value} />;
+    } else if (comp === 'agGroupCellRenderer' || comp === 'group') {
+      content = <GroupCellRenderer core={core} node={node} column={col} params={{ ...base, ...(extra || {}) }} extra={extra} />;
+    } else if (comp && comp !== 'agAnimateShowChangeCellRenderer' && comp !== 'agAnimateSlideCellRenderer') {
+      const impl = typeof comp === 'string' ? g.components?.[comp] ?? g.frameworkComponents?.[comp] : comp;
+      if (impl) {
+        const params = {
+          ...base,
+          ...(extra || {}),
+          getValue: () => core.getCellValue(node, col),
+          setValue: v => node.setDataValue(col, v),
+          formatValue: v => core.formatValue(node, col, v) ?? v,
+          refreshCell: () => core.notify(),
+          registerRowDragger: () => {},
+          setTooltip: () => {},
+          eGridCell: cellRef.current,
+          eParentOfValue: cellRef.current,
+        };
+        content = stableElement(core, typeof comp === 'string' ? `comp:${comp}` : `cell:${col.colId}`, impl, params);
+      } else {
+        content = formatted != null ? toText(formatted) : value == null ? '' : String(value);
+      }
+    } else {
+      const v = formatted != null ? formatted : value;
+      content = v == null ? '' : typeof v === 'object' && !(v instanceof Date) ? String(v) : toText(v);
+    }
+    // 레거시 colDef.checkboxSelection (rowSelection 문자열 모드)
+    const legacyCb = core.rsOpts?.legacy && cd.checkboxSelection && !node.rowPinned;
+    if (legacyCb && (typeof cd.checkboxSelection !== 'function' || cd.checkboxSelection(base))) {
+      content = (
+        <div className="ag-cell-wrapper" role="presentation">
+          <div className="ag-selection-checkbox" role="presentation">
+            <Checkbox
+              checked={node.group && core.isGroupSelectsDescendants() ? core.getGroupSelectionState(node) : node.selected}
+              disabled={!node.selectable}
+              onToggle={e => core.handleCheckboxClick(node, e)}
+            />
+          </div>
+          <span className="ag-cell-value">{content}</span>
+        </div>
+      );
+    }
+    // 행 드래그 핸들 (colDef.rowDrag)
+    if (core.showRowDragHandle(node, col)) {
+      content = (
+        <div className="ag-cell-wrapper" role="presentation">
+          <div
+            className="ag-drag-handle ag-row-drag"
+            draggable={false}
+            onPointerDown={e => handlers.dragHandleDown(node, col, e)}
+          >
+            <Icon name="grip" />
+          </div>
+          <span className="ag-cell-value">{content}</span>
+        </div>
+      );
+    }
+    if (isEditing && ced.editor.popup) {
+      content = (
+        <>
+          {content}
+          <EditorHost core={core} ed={ced} getCellEl={() => cellRef.current} />
+        </>
+      );
+    }
+  }
+
+  let tooltip;
+  if (!col.autoType && !node.stub && (cd.tooltipField || cd.tooltipValueGetter)) {
+    const t = core.getCellTooltip(node, col);
+    if (t != null && t !== '') tooltip = String(t);
+  }
+
+  return (
+    <div
+      ref={cellRef}
+      className={cx(
+        'ag-cell',
+        isEditing
+          ? ced.editor.popup
+            ? 'ag-cell-popup-editing ag-cell-not-inline-editing'
+            : 'ag-cell-inline-editing'
+          : 'ag-cell-not-inline-editing',
+        cd.autoHeight ? 'ag-cell-auto-height' : 'ag-cell-normal-height',
+        'ag-cell-value',
+        focused && 'ag-cell-focus',
+        range && 'ag-cell-range-selected',
+        range && !range.single && `ag-cell-range-selected-${Math.min(range.count, 4)}`,
+        range?.single && 'ag-cell-range-single-cell',
+        range?.top && 'ag-cell-range-top',
+        range?.bottom && 'ag-cell-range-bottom',
+        range?.left && 'ag-cell-range-left',
+        range?.right && 'ag-cell-range-right',
+        flashCls,
+        cd.wrapText && 'ag-cell-wrap-text',
+        isFirst && 'ag-column-first',
+        isLast && 'ag-column-last',
+        col.autoType === 'selection' && 'ag-selection-column ag-cell-selection',
+        node.stub && 'ag-cell-loading',
+        userCls,
+      )}
+      role="gridcell"
+      col-id={col.colId}
+      aria-colindex={core.displayedIndex.get(col.colId) + 1}
+      tabIndex={-1}
+      style={{
+        left: col.left,
+        width: col.actualWidth,
+        ...(flash && flash.phase === 'fade' ? { transition: `background-color ${flash.fadeMs}ms` } : null),
+        ...userStyle,
+      }}
+      title={g.enableBrowserTooltips ? tooltip : undefined}
+      data-ag-tooltip={g.enableBrowserTooltips ? undefined : tooltip}
+      onPointerDown={e => handlers.cellPointerDown(node, col, e)}
+      onClick={e => handlers.cellClick(node, col, e)}
+      onDoubleClick={e => handlers.cellDblClick(node, col, e)}
+      onContextMenu={e => handlers.cellContextMenu(node, col, e)}
+    >
+      {content}
+    </div>
+  );
+}
+
+function rowProps(core, node, rowCount) {
+  const g = core.gos;
+  const p = { data: node.data, node, rowIndex: node.rowIndex, api: core.api, context: g.context };
+  const editing = core.editing?.node === node;
+  const focusRow = core.focus && core.focus.rowIndex === node.rowIndex && (core.focus.rowPinned || null) === (node.rowPinned || null);
+  const level = node.uiLevel ?? node.level ?? 0;
+  const className = cx(
+    'ag-row',
+    node.rowIndex % 2 === 0 ? 'ag-row-even' : 'ag-row-odd',
+    `ag-row-level-${level}`,
+    'ag-row-position-absolute',
+    !node.rowPinned && node.rowIndex === 0 && 'ag-row-first',
+    !node.rowPinned && node.rowIndex === rowCount - 1 && 'ag-row-last',
+    node.rowPinned && 'ag-row-pinned',
+    node.group && 'ag-row-group',
+    node.stub && 'ag-row-loading',
+    node.selected && 'ag-row-selected',
+    focusRow ? 'ag-row-focus' : 'ag-row-no-focus',
+    editing ? 'ag-row-editing ag-row-inline-editing' : 'ag-row-not-inline-editing',
+    (node.master || (node.group && node.childrenAll?.length)) && (node.expanded ? 'ag-row-group-expanded' : 'ag-row-group-contracted'),
+    node.__dragging && 'ag-row-dragging',
+    core.hoveredRowIndex === rowKey(node) && 'ag-row-hover',
+    resolveClassValue(g.rowClass, p),
+    typeof g.getRowClass === 'function' ? resolveClassValue(g.getRowClass(p), p) : '',
+    node.stub ? '' : resolveClassRules(g.rowClassRules, p),
+  );
+  const style = node.stub
+    ? {}
+    : {
+        ...(g.rowStyle || {}),
+        ...(typeof g.getRowStyle === 'function' ? g.getRowStyle(p) || {} : {}),
+      };
+  return { className, style };
+}
+
+function Row({ core, node, cols, top, height, rp, handlers }) {
+  const transform = !core.gos.suppressRowTransform;
+  return (
+    <div
+      className={rp.className}
+      role="row"
+      row-index={rowKey(node)}
+      row-id={node.id}
+      aria-rowindex={node.rowPinned ? undefined : node.rowIndex + 2}
+      aria-selected={node.selectable && !node.rowPinned ? node.selected : undefined}
+      style={{ ...(transform ? { transform: `translateY(${top}px)` } : { top }), height, ...rp.style }}
+      onClick={e => handlers.rowClick(node, e)}
+      onDoubleClick={e => handlers.rowDblClick(node, e)}
+    >
+      {cols.map((col, i) => (
+        <Cell
+          key={col.colId}
+          core={core}
+          node={node}
+          col={col}
+          handlers={handlers}
+          isFirst={i === 0 && col === core.displayedColumns[0]}
+          isLast={col === core.displayedColumns[core.displayedColumns.length - 1]}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── 마스터/디테일 전체폭 행 ─────────────────────────────────
+function DetailRow({ core, node, top, height }) {
+  const master = node.parent;
+  const g = core.gos;
+  const p = g.detailCellRendererParams || {};
+  const Grid = core.__AgGridReact;
+  const [rows, setRows] = useState(null);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (typeof p.getDetailRowData === 'function') {
+      p.getDetailRowData({
+        node: master,
+        data: master.data,
+        successCallback: data => setRows(data),
+        api: core.api,
+        context: g.context,
+      });
+    }
+  }, [master, master.data]);
+  useLayoutEffect(() => {
+    if (!g.detailRowAutoHeight) return undefined;
+    const el = ref.current?.firstElementChild;
+    if (!el) return undefined;
+    const ro = new ResizeObserver(() => {
+      if (core.setAutoRowHeight(node, Math.ceil(el.offsetHeight) + 2)) core.onRowHeightChanged();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  let body;
+  const custom = g.detailCellRenderer;
+  if (custom) {
+    const impl = typeof custom === 'string' ? g.components?.[custom] : custom;
+    body = stableElement(core, 'detailRenderer', impl, {
+      ...p,
+      data: master.data,
+      node: master,
+      api: core.api,
+      context: g.context,
+    });
+  } else if (Grid) {
+    const dgo = p.detailGridOptions || {};
+    body = (
+      <div className={cx('ag-details-row', g.detailRowAutoHeight ? 'ag-details-row-auto-height' : 'ag-details-row-fixed-height')}>
+        <div className="ag-details-grid" style={{ height: g.detailRowAutoHeight ? undefined : '100%' }}>
+          <Grid
+            {...dgo}
+            rowData={rows ?? undefined}
+            domLayout={g.detailRowAutoHeight ? 'autoHeight' : dgo.domLayout}
+            onGridReady={e => {
+              core.api.addDetailGridInfo(`detail_${master.id}`, { id: `detail_${master.id}`, api: e.api });
+              dgo.onGridReady?.(e);
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div
+      className="ag-row ag-full-width-row ag-row-level-1 ag-row-position-absolute ag-details-row-wrapper"
+      role="row"
+      row-index={node.rowIndex}
+      row-id={node.id}
+      style={{ transform: `translateY(${top}px)`, height: g.detailRowAutoHeight ? undefined : height, minHeight: g.detailRowAutoHeight ? height : undefined }}
+      ref={ref}
+    >
+      {body}
+    </div>
+  );
+}
+
+// ── 바디 ───────────────────────────────────────────────────
+export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) {
+  const bodyVpRef = useRef(null);
+  const centerVpRef = useRef(null);
+  const hScrollRef = useRef(null);
+  const floatTopRef = useRef(null);
+  const floatBottomRef = useRef(null);
+  const [scroll, setScroll] = useState({ top: 0, left: 0 });
+  const [size, setSize] = useState({ h: 0, w: 0, cw: 0, sbw: 0 });
+  const [dragGhost, setDragGhost] = useState(null);
+  const rafRef = useRef(0);
+  const metrics = useRef({ ratio: 1 });
+  const g = core.gos;
+  const autoLayout = g.domLayout === 'autoHeight' || g.domLayout === 'print';
+
+  const schedule = () => {
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0;
+      const top = bodyVpRef.current?.scrollTop ?? 0;
+      const left = hScrollRef.current?.scrollLeft ?? 0;
+      setScroll(p => (p.top === top && p.left === left ? p : { top, left }));
+    });
+  };
+
+  const syncLeft = left => {
+    if (centerVpRef.current) centerVpRef.current.scrollLeft = left;
+    if (headerVpRef.current) headerVpRef.current.scrollLeft = left;
+    if (floatTopRef.current) floatTopRef.current.scrollLeft = left;
+    if (floatBottomRef.current) floatBottomRef.current.scrollLeft = left;
+  };
+
+  // 크기 측정
+  useLayoutEffect(() => {
+    const el = bodyVpRef.current;
+    const cvp = centerVpRef.current;
+    if (!el) return undefined;
+    const measure = () => {
+      const h = el.clientHeight;
+      const w = el.clientWidth;
+      const sbw = el.offsetWidth - el.clientWidth;
+      const cw = cvp ? cvp.clientWidth : w;
+      setSize(p => (p.h === h && p.w === w && p.cw === cw && p.sbw === sbw ? p : { h, w, cw, sbw }));
+      onScrollbarWidth?.(sbw);
+      core.setViewportSize(w, h);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    if (cvp) ro.observe(cvp);
+    return () => {
+      ro.disconnect();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  // core 가 사용할 스크롤 API
+  useLayoutEffect(() => {
+    core.viewport = {
+      getScrollTop: () => (bodyVpRef.current?.scrollTop ?? 0) * metrics.current.ratio,
+      setScrollTop: v => {
+        if (bodyVpRef.current) bodyVpRef.current.scrollTop = v / metrics.current.ratio;
+      },
+      getClientHeight: () => bodyVpRef.current?.clientHeight ?? 0,
+      getScrollLeft: () => hScrollRef.current?.scrollLeft ?? 0,
+      setScrollLeft: v => {
+        const hs = hScrollRef.current;
+        if (!hs) return;
+        hs.scrollLeft = v;
+        syncLeft(hs.scrollLeft);
+        schedule();
+      },
+      getCenterWidth: () => centerVpRef.current?.clientWidth ?? 0,
+    };
+    return () => {
+      core.viewport = null;
+    };
+  }, []);
+
+  // 가로 휠/쉬프트휠 → 가짜 가로 스크롤바로 전달
+  useEffect(() => {
+    const el = bodyVpRef.current;
+    if (!el) return undefined;
+    const onWheel = ev => {
+      if (ev.target instanceof Element && ev.target.closest('.ag-root') !== focusSinkRef.current) return;
+      let dx = ev.deltaX;
+      if (!dx && ev.shiftKey) dx = ev.deltaY;
+      if (!dx) return;
+      const hs = hScrollRef.current;
+      if (!hs) return;
+      const before = hs.scrollLeft;
+      hs.scrollLeft += dx;
+      if (hs.scrollLeft !== before) ev.preventDefault();
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
+  const onHScroll = e => {
+    const left = e.currentTarget.scrollLeft;
+    syncLeft(left);
+    schedule();
+    core.dispatch('bodyScroll', { direction: 'horizontal', left, top: core.viewport?.getScrollTop() ?? 0 });
+  };
+  const onCenterScroll = e => {
+    const left = e.currentTarget.scrollLeft;
+    const hs = hScrollRef.current;
+    if (hs && hs.scrollLeft !== left) hs.scrollLeft = left;
+  };
+  const onBodyScroll = () => {
+    schedule();
+    core.dispatch('bodyScroll', { direction: 'vertical', top: core.viewport?.getScrollTop() ?? 0, left: hScrollRef.current?.scrollLeft ?? 0 });
+  };
+
+  // ── 범위 드래그 (+ 가장자리 자동 스크롤) ──
+  const locateCell = (x, y) => {
+    const vp = bodyVpRef.current;
+    if (!vp) return null;
+    const r = vp.getBoundingClientRect();
+    const cxp = Math.min(Math.max(x, r.left + 1), r.left + vp.clientWidth - 2);
+    const cyp = Math.min(Math.max(y, r.top + 1), r.top + vp.clientHeight - 2);
+    const el = document.elementFromPoint(cxp, cyp);
+    const cell = el?.closest?.('.ag-cell[col-id]');
+    if (!cell || cell.closest('.ag-root') !== focusSinkRef.current) return null;
+    const row = cell.closest('[row-index]');
+    if (!row) return null;
+    const rowIndex = Number(row.getAttribute('row-index'));
+    if (Number.isNaN(rowIndex)) return null;
+    const colId = cell.getAttribute('col-id');
+    const col = core.getColumn(colId);
+    if (!col || col.isAuto) return null;
+    return { rowIndex, colId };
+  };
+
+  // 포인터가 가장자리 근처면 스크롤 (드래그 공통)
+  const edgeScroll = (x, y) => {
+    const vp = bodyVpRef.current;
+    const hs = hScrollRef.current;
+    if (!vp) return false;
+    const r = vp.getBoundingClientRect();
+    let scrolled = false;
+    if (y < r.top + 8) {
+      vp.scrollTop -= 30;
+      scrolled = true;
+    } else if (y > r.top + vp.clientHeight - 8) {
+      vp.scrollTop += 30;
+      scrolled = true;
+    }
+    if (hs) {
+      const cr = centerVpRef.current?.getBoundingClientRect();
+      if (cr && x < cr.left + 8 && hs.scrollLeft > 0) {
+        hs.scrollLeft -= 30;
+        scrolled = true;
+      } else if (cr && x > cr.right - 8) {
+        hs.scrollLeft += 30;
+        scrolled = true;
+      }
+    }
+    return scrolled;
+  };
+
+  const startRangeDrag = () => {
+    let lastX = 0;
+    let lastY = 0;
+    let moved = false;
+    const onMove = ev => {
+      moved = true;
+      lastX = ev.clientX;
+      lastY = ev.clientY;
+      const c = locateCell(lastX, lastY);
+      if (c) core.rangeExtend(c.rowIndex, c.colId);
+    };
+    const timer = setInterval(() => {
+      if (!moved) return;
+      if (edgeScroll(lastX, lastY)) {
+        const c = locateCell(lastX, lastY);
+        if (c) core.rangeExtend(c.rowIndex, c.colId);
+      }
+    }, 50);
+    const onUp = () => {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+      clearInterval(timer);
+      core.rangeEnd();
+    };
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+  };
+
+  // ── 행 드래그 ──
+  const overIndexAt = y => {
+    const vp = bodyVpRef.current;
+    const r = vp.getBoundingClientRect();
+    const yIn = clamp(y - r.top, 0, Math.max(0, vp.clientHeight - 1));
+    const virt = vp.scrollTop * metrics.current.ratio + yIn;
+    const count = core.getRowCountInPage();
+    if (!count) return { index: -1, y: virt };
+    return { index: core.pageFirstRow + core.indexAtPixel(virt), y: virt };
+  };
+  const startRowDrag = (node, col, e) => {
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let dragging = false;
+    let lastX = startX;
+    let lastY = startY;
+    let left = false;
+    const rootRect = () => core.eRoot?.getBoundingClientRect();
+    const onMove = ev => {
+      lastX = ev.clientX;
+      lastY = ev.clientY;
+      if (!dragging) {
+        if (Math.abs(ev.clientX - startX) < 4 && Math.abs(ev.clientY - startY) < 4) return;
+        dragging = true;
+        document.body.classList.add('ag-dnd-dragging');
+        const text = core.rowDragStart(node, ev, col);
+        setDragGhost({ text, x: ev.clientX, y: ev.clientY });
+      }
+      setDragGhost(gh => gh && { ...gh, x: ev.clientX, y: ev.clientY });
+      const rr = rootRect();
+      const outside = rr && (ev.clientX < rr.left || ev.clientX > rr.right || ev.clientY < rr.top || ev.clientY > rr.bottom);
+      if (outside) {
+        if (!left) core.rowDragLeave(ev);
+        left = true;
+        return;
+      }
+      left = false;
+      const o = overIndexAt(ev.clientY);
+      if (o.index >= 0) core.rowDragMove(o.index, o.y, ev);
+    };
+    const timer = setInterval(() => {
+      if (!dragging || left) return;
+      if (edgeScroll(lastX, lastY)) {
+        const o = overIndexAt(lastY);
+        if (o.index >= 0) core.rowDragMove(o.index, o.y, { clientX: lastX, clientY: lastY });
+      }
+    }, 50);
+    const finish = ev => {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', finish);
+      document.removeEventListener('pointercancel', finish);
+      clearInterval(timer);
+      if (!dragging) return;
+      document.body.classList.remove('ag-dnd-dragging');
+      setDragGhost(null);
+      const o = overIndexAt(ev.clientY);
+      core.rowDragEnd(ev, o.index, o.y, ev.type === 'pointercancel');
+      core.__suppressRowClick = true;
+      setTimeout(() => {
+        core.__suppressRowClick = false;
+      }, 0);
+    };
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', finish);
+    document.addEventListener('pointercancel', finish);
+  };
+
+  const focusSink = target => {
+    if (isEditableEl(target)) return;
+    const sink = focusSinkRef.current;
+    if (sink && document.activeElement !== sink) sink.focus({ preventScroll: true });
+  };
+
+  const handlers = {
+    dragHandleDown(node, col, e) {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      e.preventDefault();
+      focusSink(e.target);
+      startRowDrag(node, col, e);
+    },
+    cellPointerDown(node, col, e) {
+      if (e.button !== 0) return;
+      const ced = core.getEditingCell(node, col);
+      if (ced) return;
+      if (core.editing) core.stopEditing(false);
+      core.dispatch('cellMouseDown', { ...core.cellEventParams(node, col, e) });
+      if (col.autoType === 'rowNumbers' || node.stub) return;
+      focusSink(e.target);
+      const pinned = node.rowPinned || null;
+      // 행 전체 드래그: 범위선택 대신 드래그 시작 (클릭은 그대로 동작)
+      if (g.rowDragEntireRow && !pinned && !g.suppressRowDrag && !isEditableEl(e.target)) {
+        core.setFocusedCell(node.rowIndex, col.colId);
+        startRowDrag(node, col, e);
+        return;
+      }
+      const extend = !pinned && e.shiftKey && core.ranges.length && core.cellSelectionOpts;
+      if (!extend) core.setFocusedCell(node.rowIndex, col.colId, { rowPinned: pinned });
+      if (!pinned && core.cellSelectionOpts && !col.isAuto) {
+        core.rangeStart(node.rowIndex, col.colId, { shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey });
+        startRangeDrag();
+      } else if (pinned && core.ranges.length) {
+        core.clearRanges();
+      }
+    },
+    cellClick(node, col, e) {
+      if (node.stub) return;
+      if (col.autoType === 'rowNumbers' && !node.rowPinned) core.selectRowAsRange(node.rowIndex, e.shiftKey);
+      else if (!core.isCellFocused(node, col.colId)) {
+        if (!(e.shiftKey && core.ranges.length && !node.rowPinned)) core.setFocusedCell(node.rowIndex, col.colId, { rowPinned: node.rowPinned || null });
+      }
+      focusSink(e.target);
+      core.dispatch('cellClicked', { ...core.cellEventParams(node, col, e) });
+      const single = g.singleClickEdit || col.colDef.singleClickEdit;
+      if (single && !g.suppressClickEdit && !core.getEditingCell(node, col) && core.isCellEditable(col, node)) {
+        core.startEdit(node, col, null);
+      }
+    },
+    cellDblClick(node, col, e) {
+      if (node.stub) return;
+      core.dispatch('cellDoubleClicked', { ...core.cellEventParams(node, col, e) });
+      if (core.getEditingCell(node, col)) return;
+      if (!g.suppressClickEdit && !g.singleClickEdit && core.isCellEditable(col, node)) core.startEdit(node, col, null);
+      else if (node.group && col.autoType === 'group' && !g.suppressGroupDoubleClickExpand && node.childrenAll?.length) {
+        node.setExpanded(!node.expanded);
+      }
+    },
+    cellContextMenu(node, col, e) {
+      if (g.allowContextMenuWithControlKey && (e.ctrlKey || e.metaKey)) return;
+      e.stopPropagation();
+      if (node.stub) {
+        e.preventDefault();
+        return;
+      }
+      core.dispatch('cellContextMenu', { ...core.cellEventParams(node, col, e) });
+      if (!node.rowPinned && core.cellSelectionOpts && !col.isAuto && !core.cellRangeInfo(node.rowIndex, col.colId)) {
+        core.setSingleRange(node.rowIndex, col.colId);
+      }
+      if (!core.isCellFocused(node, col.colId)) core.setFocusedCell(node.rowIndex, col.colId, { rowPinned: node.rowPinned || null });
+      if (core.openContextMenu({ node, column: col, x: e.clientX, y: e.clientY, event: e })) e.preventDefault();
+    },
+    rowClick(node, e) {
+      if (node.stub || core.__suppressRowClick) return;
+      if (core.editing && core.editing.node === node && e.target instanceof Element && e.target.closest('.ag-cell-inline-editing')) return;
+      core.dispatch('rowClicked', { node, data: node.data, rowIndex: node.rowIndex, rowPinned: node.rowPinned, event: e });
+      core.handleRowClickSelection(node, e);
+    },
+    rowDblClick(node, e) {
+      if (node.stub) return;
+      core.dispatch('rowDoubleClicked', { node, data: node.data, rowIndex: node.rowIndex, rowPinned: node.rowPinned, event: e });
+    },
+  };
+
+  // 호버: 같은 row-index 의 모든 섹션에 ag-row-hover 를 DOM 으로 직접 토글 (재렌더 없음)
+  const setHover = key => {
+    if (key === core.hoveredRowIndex) return;
+    const root = focusSinkRef.current;
+    if (!root) return;
+    const sel = k => root.querySelectorAll(`.ag-row[row-index="${k}"]`);
+    if (core.hoveredRowIndex != null) sel(core.hoveredRowIndex).forEach(el => el.classList.remove('ag-row-hover'));
+    core.hoveredRowIndex = key;
+    if (key != null) {
+      sel(key).forEach(el => {
+        if (el.closest('.ag-root') === root && !el.classList.contains('ag-full-width-row')) el.classList.add('ag-row-hover');
+      });
+    }
+  };
+  const onMouseOver = e => {
+    const t = e.target instanceof Element ? e.target : null;
+    if (!t || t.closest('.ag-root') !== focusSinkRef.current) return;
+    const row = t.closest('.ag-row[row-index]');
+    setHover(row && !row.classList.contains('ag-full-width-row') ? row.getAttribute('row-index') : null);
+  };
+  const onMouseLeave = () => setHover(null);
+
+  // ── 렌더 범위 계산 ──
+  const rowCount = core.getRowCountInPage();
+  const realH = core.pageHeight;
+  const vh = size.h;
+  const stretched = !autoLayout && realH > MAX_DIV_HEIGHT;
+  const containerH = stretched ? MAX_DIV_HEIGHT : realH;
+  const ratio = stretched && containerH > vh ? (realH - vh) / (containerH - vh) : 1;
+  metrics.current.ratio = ratio;
+  const physTop = scroll.top;
+  const virtTop = physTop * ratio;
+  const offset = virtTop - physTop;
+  const buffer = g.rowBuffer ?? 10;
+  let first = 0;
+  let last = rowCount - 1;
+  if (!autoLayout && rowCount) {
+    first = Math.max(0, core.indexAtPixel(virtTop) - buffer);
+    last = Math.min(rowCount - 1, core.indexAtPixel(virtTop + (vh || 600)) + buffer);
+  }
+  core.renderedRange = rowCount
+    ? { first: core.pageFirstRow + first, last: core.pageFirstRow + last }
+    : { first: -1, last: -1 };
+
+  const cw = size.cw || core.bodyWidth || 1200;
+  const sl = scroll.left;
+  let center = core.displayedCenter;
+  if (!g.suppressColumnVirtualisation) {
+    center = center.filter(c => c.left + c.actualWidth >= sl - 200 && c.left <= sl + cw + 200);
+    if (core.editing) {
+      for (const ced of core.editing.cells.values()) {
+        const ec = ced.column;
+        if (!ec.pinned && !center.includes(ec) && core.displayedCenter.includes(ec)) center = [...center, ec];
+      }
+    }
+  }
+
+  const leftRows = [];
+  const centerRows = [];
+  const rightRows = [];
+  const fullRows = [];
+  const total = core.displayedNodes.length;
+  const pushRow = i => {
+    const node = core.getPageNode(i);
+    if (!node) return;
+    const top = core.rowTopAt(i) - offset;
+    const h = core.rowHeightAt(i);
+    if (node.detail) {
+      fullRows.push(<DetailRow key={node.id} core={core} node={node} top={top} height={h} />);
+      return;
+    }
+    const rp = rowProps(core, node, total);
+    const key = node.__redraw ? `${node.id}:${node.__redraw}` : node.id;
+    const common = { core, node, top, height: h, rp, handlers };
+    if (core.displayedLeft.length) leftRows.push(<Row key={key} cols={core.displayedLeft} {...common} />);
+    centerRows.push(<Row key={key} cols={center} {...common} />);
+    if (core.displayedRight.length) rightRows.push(<Row key={key} cols={core.displayedRight} {...common} />);
+  };
+  for (let i = first; i <= last; i++) pushRow(i);
+  const edNode = core.editing?.node;
+  if (edNode && edNode.rowIndex != null && !edNode.rowPinned) {
+    const ei = edNode.rowIndex - core.pageFirstRow;
+    if (ei >= 0 && ei < rowCount && (ei < first || ei > last)) pushRow(ei);
+  }
+
+  // 고정 행
+  const topH = core.pinnedTop.length ? core.pinnedTotalHeight('top') : 0;
+  const bottomH = core.pinnedBottom.length ? core.pinnedTotalHeight('bottom') : 0;
+  const pinnedRows = (list, cols) =>
+    list.map(node => (
+      <Row key={node.id} core={core} node={node} cols={cols} top={node.rowTop} height={node.rowHeight} rp={rowProps(core, node, total)} handlers={handlers} />
+    ));
+  const floating = (pos, height, ref) => {
+    const list = pos === 'top' ? core.pinnedTop : core.pinnedBottom;
+    if (!height) return null;
+    return (
+      <div className={`ag-floating-${pos}`} role="presentation" style={{ height, minHeight: height }} onMouseOver={onMouseOver} onMouseLeave={onMouseLeave}>
+        <div
+          className={cx(`ag-pinned-left-floating-${pos}`, !core.leftWidth && 'ag-hidden')}
+          role="rowgroup"
+          style={{ width: core.leftWidth, minWidth: core.leftWidth, maxWidth: core.leftWidth }}
+        >
+          {pinnedRows(list, core.displayedLeft)}
+        </div>
+        <div ref={ref} className={`ag-floating-${pos}-viewport`} role="presentation">
+          <div className={`ag-floating-${pos}-container`} role="rowgroup" style={{ width: core.centerWidth }}>
+            {pinnedRows(list, center)}
+          </div>
+        </div>
+        <div
+          className={cx(`ag-pinned-right-floating-${pos}`, !core.rightWidth && 'ag-hidden')}
+          role="rowgroup"
+          style={{ width: core.rightWidth, minWidth: core.rightWidth, maxWidth: core.rightWidth }}
+        >
+          {pinnedRows(list, core.displayedRight)}
+        </div>
+        {size.sbw > 0 && <div className="ag-floating-scrollbar-spacer" style={{ width: size.sbw, minWidth: size.sbw }} />}
+      </div>
+    );
+  };
+
+  // autoHeight 컬럼: 렌더 후 내용 높이 측정 → 행 높이 반영
+  useLayoutEffect(() => {
+    const autoCols = core.displayedColumns.filter(c => c.colDef.autoHeight);
+    if (!autoCols.length) return;
+    const vp = bodyVpRef.current;
+    if (!vp) return;
+    const def = core.getDefaultRowHeight();
+    let changed = false;
+    for (let i = first; i <= last; i++) {
+      const node = core.getPageNode(i);
+      if (!node || node.detail || node.stub) continue;
+      let max = 0;
+      for (const c of autoCols) {
+        const cell = vp.querySelector(`.ag-row[row-index="${node.rowIndex}"] .ag-cell[col-id="${CSS.escape(c.colId)}"]`);
+        if (cell) max = Math.max(max, cell.offsetHeight);
+      }
+      if (max && core.setAutoRowHeight(node, Math.max(def, Math.ceil(max)))) changed = true;
+    }
+    if (changed) core.onRowHeightChanged();
+  });
+
+  // SSRM: 화면에 걸린 블록 요청
+  useEffect(() => {
+    if (core.isSsrm() && core.renderedRange.first >= 0) core.ssrmEnsureRows(core.renderedRange.first, core.renderedRange.last);
+  });
+
+  // 가로 위치를 새로 생긴 floating 컨테이너에도 적용
+  useLayoutEffect(() => {
+    const left = hScrollRef.current?.scrollLeft ?? 0;
+    if (floatTopRef.current) floatTopRef.current.scrollLeft = left;
+    if (floatBottomRef.current) floatBottomRef.current.scrollLeft = left;
+  }, [topH > 0, bottomH > 0]);
+
+  const hScrollVisible = core.centerWidth > (size.cw || 0) + 1;
+
+  return (
+    <>
+      {floating('top', topH, floatTopRef)}
+      <div className={cx('ag-body', autoLayout ? 'ag-layout-auto-height' : 'ag-layout-normal')} role="presentation">
+        <div
+          ref={bodyVpRef}
+          className={cx('ag-body-viewport', autoLayout ? 'ag-layout-auto-height' : 'ag-layout-normal', 'ag-row-no-animation')}
+          role="presentation"
+          onScroll={onBodyScroll}
+          onMouseOver={onMouseOver}
+          onMouseLeave={onMouseLeave}
+          onContextMenu={e => {
+            if (e.target instanceof Element && e.target.closest('.ag-root') !== focusSinkRef.current) return;
+            if (g.allowContextMenuWithControlKey && (e.ctrlKey || e.metaKey)) return;
+            if (core.openContextMenu({ node: null, column: null, x: e.clientX, y: e.clientY, event: e })) e.preventDefault();
+          }}
+        >
+          <div
+            className={cx('ag-pinned-left-cols-container', !core.leftWidth && 'ag-hidden')}
+            role="rowgroup"
+            style={{ width: core.leftWidth, minWidth: core.leftWidth, maxWidth: core.leftWidth, height: containerH }}
+          >
+            {leftRows}
+          </div>
+          <div ref={centerVpRef} className="ag-center-cols-viewport" role="presentation" style={{ height: containerH }} onScroll={onCenterScroll}>
+            <div className="ag-center-cols-container" role="rowgroup" style={{ width: core.centerWidth, height: containerH }}>
+              {centerRows}
+            </div>
+          </div>
+          <div
+            className={cx('ag-pinned-right-cols-container', !core.rightWidth && 'ag-hidden')}
+            role="rowgroup"
+            style={{ width: core.rightWidth, minWidth: core.rightWidth, maxWidth: core.rightWidth, height: containerH }}
+          >
+            {rightRows}
+          </div>
+          {fullRows.length > 0 && (
+            <div className="ag-full-width-container" role="rowgroup" style={{ height: containerH }}>
+              {fullRows}
+            </div>
+          )}
+        </div>
+      </div>
+      {floating('bottom', bottomH, floatBottomRef)}
+      <div className={cx('ag-body-horizontal-scroll', !hScrollVisible && 'ag-scrollbar-invisible ag-hidden')} aria-hidden="true">
+        <div className="ag-horizontal-left-spacer" style={{ width: core.leftWidth, minWidth: core.leftWidth }} />
+        <div ref={hScrollRef} className="ag-body-horizontal-scroll-viewport" onScroll={onHScroll}>
+          <div className="ag-body-horizontal-scroll-container" style={{ width: core.centerWidth }} />
+        </div>
+        <div className="ag-horizontal-right-spacer" style={{ width: core.rightWidth + size.sbw, minWidth: core.rightWidth + size.sbw }} />
+      </div>
+      {dragGhost &&
+        createPortal(
+          <PopupLayer core={core}>
+            <div className="ag-dnd-ghost ag-unselectable" style={{ position: 'fixed', left: dragGhost.x + 12, top: dragGhost.y + 12 }}>
+              <span className="ag-dnd-ghost-icon">
+                <Icon name="grip" />
+              </span>
+              <div className="ag-dnd-ghost-label">{dragGhost.text}</div>
+            </div>
+          </PopupLayer>,
+          document.body,
+        )}
+    </>
+  );
+}

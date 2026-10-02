@@ -1,0 +1,203 @@
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  margin: 0;
+}
+body {
+  font-family: 'Malgun Gothic', -apple-system, sans-serif;
+  background: #f0f2f5;
+  color: #181d1f;
+}
+html[data-theme='dark'] body {
+  background: #1e1e1e;
+  color: #e6e6e6;
+}
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+header h1 {
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.controls button,
+.controls input {
+  padding: 5px 10px;
+  border: 1px solid #c4ccd6;
+  border-radius: 6px;
+  background: #fff;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.controls input {
+  width: 200px;
+  cursor: text;
+}
+html[data-theme='dark'] .controls button,
+html[data-theme='dark'] .controls input {
+  background: #2b2b2b;
+  border-color: #424242;
+}
+.controls button.on {
+  background: #2196f3;
+  border-color: #2196f3;
+  color: #fff;
+}
+.controls .sep {
+  width: 1px;
+  height: 20px;
+  background: #c4ccd6;
+  margin: 0 4px;
+}
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 12px;
+  height: 620px;
+}
+.grid-area {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  position: relative;
+}
+.log {
+  overflow: auto;
+  font-size: 11px;
+  background: #fff;
+  border: 1px solid #dde2eb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: Consolas, monospace;
+}
+html[data-theme='dark'] .log {
+  background: #262626;
+  border-color: #424242;
+}
+.log h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+}
+.p4-layout {
+  height: auto;
+  grid-template-rows: auto;
+  align-items: start;
+}
+.p4-layout .log {
+  position: sticky;
+  top: 8px;
+  max-height: 90vh;
+}
+.p4-section {
+  margin-bottom: 18px;
+}
+.p4-section h2 {
+  font-size: 14px;
+  margin: 0 0 4px;
+}
+.p4-section h3 {
+  font-size: 12px;
+  margin: 0 0 4px;
+  font-weight: 500;
+}
+.p4-note {
+  font-size: 11px;
+  opacity: 0.7;
+  margin: 0 0 6px;
+}
+.p4-row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.p4-btn {
+  margin: 6px 6px 0 0;
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid #c4ccd6;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+.md-area h2 {
+  font-size: 14px;
+  margin: 8px 0;
+}
+.mini-btn {
+  padding: 1px 8px;
+  font-size: 11px;
+  border: 1px solid #c62828;
+  color: #c62828;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  line-height: 18px;
+}
+.flex-cc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.h-100 {
+  height: 100%;
+}
+.clm-loader {
+  width: 32px;
+  aspect-ratio: 1;
+  border: 5.5px solid;
+  border-color: #fb5b5b rgba(251, 91, 91, 0.2) rgba(251, 91, 91, 0.2) #fb5b5b;
+  border-radius: 100%;
+  animation: clm-spin 1.3s infinite linear;
+}
+@keyframes clm-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+/* ── CLM Table.jsx / index.scss 의 ag-grid override 일부 재현 (클래스 호환성 검증용) ── */
+.clm-table-wrapper .ag-header-cell-label {
+  font-size: 12px;
+  justify-content: center !important;
+}
+.clm-table-wrapper .ag-header-row {
+  box-shadow: inset 0 3px 0 0 #9e9e9e;
+}
+.clm-table-wrapper .ag-header-row + .ag-header-row {
+  box-shadow: none;
+}
+.clm-table-wrapper .ag-row div {
+  font-size: 12px;
+}
+.clm-table-wrapper .ag-row-odd {
+  background: #f6f9fc;
+}
+html[data-theme='dark'] .clm-table-wrapper .ag-row-odd {
+  background: #303030;
+}
+html[data-theme='dark'] .clm-table-wrapper .ag-header-row {
+  background: #2b2b2b !important;
+}
+.ag-cell.cell-danger {
+  color: #c62828;
+  font-weight: 600;
+}
+.ag-cell.cell-warn {
+  color: #e65100;
+}
+html[data-theme='dark'] .ag-cell.cell-danger {
+  color: #ff7a7a;
+}
