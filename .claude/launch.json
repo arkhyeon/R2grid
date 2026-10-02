@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 5199
+    },
+    {
+      "name": "clm30-datagrid",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "clm30"],
+      "port": 5200
     }
   ]
 }
