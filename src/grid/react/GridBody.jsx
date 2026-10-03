@@ -95,7 +95,7 @@ function isEditableEl(t) {
 }
 
 // ── 셀 ─────────────────────────────────────────────────────
-function Cell({ core, node, col, handlers, isFirst, isLast }) {
+function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan }) {
   const cellRef = useRef(null);
   const g = core.gos;
   const cd = col.colDef;
@@ -240,6 +240,18 @@ function Cell({ core, node, col, handlers, isFirst, isLast }) {
     }
   }
 
+  // colDef.rowSpan: 아래 행까지 덮는 높이 (AG 동일하게 suppressRowTransform 과 함께 사용)
+  let spanHeight;
+  if (typeof cd.rowSpan === 'function' && !node.stub && !node.rowPinned) {
+    const n = Math.max(1, Number(cd.rowSpan({ ...base })) || 1);
+    if (n > 1) {
+      const i0 = node.rowIndex - core.pageFirstRow;
+      const max = Math.min(n, core.getRowCountInPage() - i0);
+      spanHeight = 0;
+      for (let k = 0; k < max; k++) spanHeight += core.rowHeightAt(i0 + k);
+    }
+  }
+
   let tooltip;
   if (!col.autoType && !node.stub && (cd.tooltipField || cd.tooltipValueGetter)) {
     const t = core.getCellTooltip(node, col);
@@ -276,15 +288,18 @@ function Cell({ core, node, col, handlers, isFirst, isLast }) {
         isLast && 'r2-column-last',
         col.autoType === 'selection' && 'r2-selection-column r2-cell-selection',
         node.stub && 'r2-cell-loading',
+        spanHeight && 'r2-cell-span',
         userCls,
       )}
       role="gridcell"
       col-id={col.colId}
       aria-colindex={core.displayedIndex.get(col.colId) + 1}
+      aria-colspan={colSpan > 1 ? colSpan : undefined}
       tabIndex={-1}
       style={{
         left: col.left,
-        width: col.actualWidth,
+        width: spanWidth ?? col.actualWidth,
+        ...(spanHeight ? { height: spanHeight, zIndex: 1 } : null),
         ...(flash && flash.phase === 'fade' ? { transition: `background-color ${flash.fadeMs}ms` } : null),
         ...userStyle,
       }}
@@ -341,7 +356,33 @@ function rowProps(core, node, rowCount) {
   return { className, style };
 }
 
-function Row({ core, node, cols, top, height, rp, handlers }) {
+// colDef.colSpan: 섹션(좌/중/우) 전체 컬럼 기준으로 병합 셀을 계산하고, 가상화로 보이는 컬럼에 걸친 셀만 렌더
+function spanCells(core, node, cols, sectionCols) {
+  if (!core.hasColSpan || !sectionCols) return cols.map(col => ({ col }));
+  const visible = new Set(cols);
+  const out = [];
+  for (let i = 0; i < sectionCols.length; ) {
+    const col = sectionCols[i];
+    let span = 1;
+    const cs = col.colDef.colSpan;
+    if (typeof cs === 'function' && !node.stub) {
+      const v = cs({ ...core.makeValueParams(node, col), rowIndex: node.rowIndex });
+      span = Math.max(1, Math.min(sectionCols.length - i, Number(v) || 1));
+    }
+    let width = 0;
+    let vis = false;
+    for (let k = 0; k < span; k++) {
+      const c = sectionCols[i + k];
+      width += c.actualWidth;
+      if (visible.has(c)) vis = true;
+    }
+    if (vis) out.push(span > 1 ? { col, span, width } : { col });
+    i += span;
+  }
+  return out;
+}
+
+function Row({ core, node, cols, sectionCols, top, height, rp, handlers }) {
   const transform = !core.gos.suppressRowTransform;
   return (
     <div
@@ -355,17 +396,54 @@ function Row({ core, node, cols, top, height, rp, handlers }) {
       onClick={e => handlers.rowClick(node, e)}
       onDoubleClick={e => handlers.rowDblClick(node, e)}
     >
-      {cols.map((col, i) => (
+      {spanCells(core, node, cols, sectionCols).map(({ col, span, width }, i) => (
         <Cell
           key={col.colId}
           core={core}
           node={node}
           col={col}
           handlers={handlers}
+          spanWidth={span ? width : undefined}
+          colSpan={span}
           isFirst={i === 0 && col === core.displayedColumns[0]}
           isLast={col === core.displayedColumns[core.displayedColumns.length - 1]}
         />
       ))}
+    </div>
+  );
+}
+
+// isFullWidthRow + fullWidthCellRenderer: 컬럼을 무시하고 행 전체 폭으로 렌더
+function FullWidthRow({ core, node, top, height, rp, handlers }) {
+  const g = core.gos;
+  const comp = g.fullWidthCellRenderer;
+  const impl = typeof comp === 'string' ? g.components?.[comp] : comp;
+  const params = typeof g.fullWidthCellRendererParams === 'function' ? g.fullWidthCellRendererParams({ node }) : g.fullWidthCellRendererParams;
+  const transform = !g.suppressRowTransform;
+  return (
+    <div
+      className={cx(rp.className, 'r2-full-width-row')}
+      role="row"
+      row-index={rowKey(node)}
+      row-id={node.id}
+      aria-rowindex={node.rowPinned ? undefined : node.rowIndex + 2}
+      style={{ ...(transform ? { transform: `translateY(${top}px)` } : { top }), height, ...rp.style }}
+      onClick={e => handlers.rowClick(node, e)}
+      onDoubleClick={e => handlers.rowDblClick(node, e)}
+    >
+      {impl
+        ? stableElement(core, 'fullWidth', impl, {
+            ...(params || {}),
+            node,
+            data: node.data,
+            value: undefined,
+            rowIndex: node.rowIndex,
+            pinned: null,
+            api: core.api,
+            context: g.context,
+            eGridCell: undefined,
+          })
+        : null}
     </div>
   );
 }
@@ -903,9 +981,13 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     const rp = rowProps(core, node, total);
     const key = node.__redraw ? `${node.id}:${node.__redraw}` : node.id;
     const common = { core, node, top, height: h, rp, handlers };
-    if (core.displayedLeft.length) leftRows.push(<Row key={key} cols={core.displayedLeft} {...common} />);
-    centerRows.push(<Row key={key} cols={center} {...common} />);
-    if (core.displayedRight.length) rightRows.push(<Row key={key} cols={core.displayedRight} {...common} />);
+    if (!node.group && !node.stub && typeof g.isFullWidthRow === 'function' && g.isFullWidthRow({ rowNode: node, api: core.api, context: g.context })) {
+      fullRows.push(<FullWidthRow key={key} {...common} />);
+      return;
+    }
+    if (core.displayedLeft.length) leftRows.push(<Row key={key} cols={core.displayedLeft} sectionCols={core.displayedLeft} {...common} />);
+    centerRows.push(<Row key={key} cols={center} sectionCols={core.displayedCenter} {...common} />);
+    if (core.displayedRight.length) rightRows.push(<Row key={key} cols={core.displayedRight} sectionCols={core.displayedRight} {...common} />);
   };
   for (let i = first; i <= last; i++) pushRow(i);
   const edNode = core.editing?.node;

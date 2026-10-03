@@ -739,6 +739,7 @@ export class GridCore {
     this.displayedRight = right;
     this.displayedColumns = [...left, ...center, ...right];
     this.displayedIndex = new Map(this.displayedColumns.map((c, i) => [c.colId, i]));
+    this.hasColSpan = this.displayedColumns.some(c => typeof c.colDef.colSpan === 'function');
   }
 
   setViewportSize(width, height) {

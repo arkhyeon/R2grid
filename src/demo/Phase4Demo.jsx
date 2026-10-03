@@ -439,9 +439,46 @@ function CustomFilterDemo({ log }) {
   );
 }
 
+// ── colSpan / rowSpan / full-width 행 ──
+function SpanDemo() {
+  const [rows] = useState(() =>
+    Array.from({ length: 30 }, (_, i) =>
+      i % 10 === 9
+        ? { banner: `── ${Math.floor(i / 10) + 1}구간 소계 ──` }
+        : { region: i < 4 ? '서울' : i < 6 ? '부산' : '대구', sec: i % 3 === 0 ? 'TOTAL' : `S${i}`, a: i, b: i * 2, c: i * 3 },
+    ),
+  );
+  return (
+    <Table
+      id="SpanTable"
+      rowData={rows}
+      suppressRowTransform
+      columnDefs={useMemo(
+        () => [
+          { field: 'region', headerName: '지역', rowSpan: p => (p.data?.region === '서울' && p.node.rowIndex === 0 ? 4 : p.data?.region === '부산' && p.node.rowIndex === 4 ? 2 : 1) },
+          { field: 'sec', headerName: '구분', colSpan: p => (p.data?.sec === 'TOTAL' ? 2 : 1) },
+          { field: 'a', headerName: 'A' },
+          { field: 'b', headerName: 'B' },
+          { field: 'c', headerName: 'C' },
+        ],
+        [],
+      )}
+      isFullWidthRow={p => !!p.rowNode.data?.banner}
+      fullWidthCellRenderer={p => <div className="demo-banner" style={{ padding: '0 12px', lineHeight: '30px', fontWeight: 600 }}>{p.data.banner}</div>}
+      onGridReady={e => {
+        window.__spanApi = e.api;
+      }}
+      height="260px"
+    />
+  );
+}
+
 export default function Phase4Demo({ log }) {
   return (
     <div className="p4">
+      <Section title="colSpan / rowSpan / full-width 행" note="sec=TOTAL 이면 2칸 병합, 서울 4행·부산 2행 rowSpan(suppressRowTransform), 10행마다 isFullWidthRow 배너">
+        <SpanDemo />
+      </Section>
       <Section title="커스텀 필터 + 행그룹 페이지네이션" note="reactive: model/onModelChange + useGridFilter · ?legacyFilter 로 imperative(forwardRef) · 그룹 4개, pageSize 3">
         <CustomFilterDemo log={log} />
       </Section>
