@@ -2,6 +2,7 @@
 // GridCore.prototype 에 합쳐지는 mixin. (this = GridCore)
 import { RowNode } from './RowNode.js';
 import { getFieldValue, toText } from './utils.js';
+import { localeText } from './locale.js';
 
 export const AUTO_GROUP_COL_ID = 'ag-Grid-AutoColumn';
 
@@ -247,9 +248,45 @@ export const groupingMethods = {
     this.groupsDirty = false;
   },
 
-  aggregateNode(n, aggCols) {
+  // 합계 행 위치: groupTotalRow / grandTotalRow (레거시 groupIncludeFooter / groupIncludeTotalFooter)
+  groupTotalPosition(node) {
+    const g = this.gos;
+    const v = g.groupTotalRow ?? (g.groupIncludeFooter ? 'bottom' : undefined);
+    if (typeof v === 'function') return v({ node, api: this.api, context: g.context });
+    return v;
+  },
+
+  grandTotalPosition() {
+    const g = this.gos;
+    return g.grandTotalRow ?? (g.groupIncludeTotalFooter ? 'bottom' : undefined);
+  },
+
+  // 합계(footer) 노드: 그룹 노드와 같은 aggData/key 를 갖는 별도 행 (id: rowGroupFooter_<그룹 id>)
+  getFooterNode(group) {
+    if (!this.footerCache) this.footerCache = new Map();
+    const id = `rowGroupFooter_${group ? group.id : 'ROOT_NODE_ID'}`;
+    let f = this.footerCache.get(id);
+    if (!f) {
+      f = new RowNode(this, undefined, id);
+      this.footerCache.set(id, f);
+    }
+    f.group = true;
+    f.footer = true;
+    f.sibling = group;
+    f.key = group ? group.key : null;
+    f.level = group ? group.level : -1;
+    f.parent = group ? group.parent : null;
+    f.rowGroupColumn = group ? group.rowGroupColumn : null;
+    f.groupValue = group ? group.groupValue : null;
+    f.childrenAll = null;
+    f.selectable = false;
+    f.allChildrenCount = group ? group.allChildrenCount : null;
+    return f;
+  },
+
+  aggregateNode(n, aggCols, recurse = true) {
     if (!n.group || !n.childrenAfterFilter) return;
-    for (const c of n.childrenAfterFilter) this.aggregateNode(c, aggCols);
+    if (recurse) for (const c of n.childrenAfterFilter) this.aggregateNode(c, aggCols);
     if (!aggCols.length) {
       n.aggData = null;
       return;
@@ -257,7 +294,10 @@ export const groupingMethods = {
     const agg = {};
     for (const col of aggCols) {
       const af = col.colDef.aggFunc;
-      const values = n.childrenAfterFilter.map(ch => this.getCellValue(ch, col));
+      // 자식 그룹은 표시값(합계행 때문에 비울 수 있음)이 아닌 aggData 를 직접 사용
+      const values = n.childrenAfterFilter.map(ch =>
+        ch.group && ch.aggData && col.colId in ch.aggData ? ch.aggData[col.colId] : this.getCellValue(ch, col),
+      );
       let fn = typeof af === 'function' ? af : this.gos.aggFuncs?.[af] || BUILTIN_AGG[af];
       if (af === 'count') {
         agg[col.colId] = n.childrenAfterFilter.reduce((s, ch) => s + (ch.group && ch.aggData ? ch.aggData[col.colId] || 0 : 1), 0);
@@ -329,10 +369,34 @@ export const groupingMethods = {
     const flatten = list => {
       for (const n of list) {
         out.push(n);
-        if (n.group && n.expanded && n.childrenAfterSort) flatten(n.childrenAfterSort);
+        n.__footerShown = false;
+        if (n.group && n.expanded && n.childrenAfterSort) {
+          flatten(n.childrenAfterSort);
+          if (this.groupTotalPosition(n) === 'bottom') {
+            const f = this.getFooterNode(n);
+            f.aggData = n.aggData;
+            out.push(f);
+            n.__footerShown = true;
+          }
+        }
       }
     };
     flatten(sortedTop);
+    // 총합계 행
+    const grandPos = this.grandTotalPosition();
+    this.grandTotalPinned = null;
+    if (grandPos) {
+      const root = this.getFooterNode(null);
+      root.childrenAfterFilter = top;
+      this.aggregateNode(root, aggCols, false);
+      root.allChildrenCount = top.reduce((s, n) => s + (n.group ? n.allChildrenCount || 0 : 1), 0);
+      if (grandPos === 'top') out.unshift(root);
+      else if (grandPos === 'bottom') out.push(root);
+      else if (grandPos === 'pinnedTop' || grandPos === 'pinnedBottom') {
+        root.rowPinned = grandPos === 'pinnedTop' ? 'top' : 'bottom';
+        this.grandTotalPinned = root;
+      }
+    }
     for (const n of this.rootNodes) {
       n.rowIndex = null;
       n.displayed = false;
@@ -343,11 +407,19 @@ export const groupingMethods = {
         n.displayed = false;
       }
     }
+    if (this.footerCache) {
+      for (const n of this.footerCache.values()) {
+        if (n.rowPinned) continue;
+        n.rowIndex = null;
+        n.displayed = false;
+      }
+    }
     for (let i = 0; i < out.length; i++) {
       out[i].rowIndex = i;
       out[i].displayed = true;
-      out[i].uiLevel = out[i].level;
+      out[i].uiLevel = Math.max(0, out[i].level);
     }
+    this.mergePinnedRows?.();
     this.groupSortedTop = sortedTop;
     this.filteredNodes = passed;
     this.sortedNodes = out;
@@ -356,6 +428,10 @@ export const groupingMethods = {
 
   // 자동 그룹 컬럼 값: 그룹=키, 트리 리프=키, 그룹핑 리프=autoGroupColumnDef.field
   getAutoGroupValue(node, col) {
+    if (node.footer) {
+      const total = localeText(this, 'footerTotal', 'Total');
+      return node.sibling ? `${total} ${node.key ?? ''}` : total;
+    }
     if (node.group || this.groupMode === 'tree') return node.key;
     const cd = col.colDef;
     if (typeof cd.valueGetter === 'function') return cd.valueGetter(this.makeValueParams(node, col));

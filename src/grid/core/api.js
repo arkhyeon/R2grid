@@ -417,6 +417,13 @@ export function createApi(core) {
     // ── Server-Side Row Model ──
     refreshServerSide: params => core.refreshServerSide(params || {}),
     retryServerSideLoads: () => core.retryServerSideLoads(),
+    // ── Infinite 행 모델 ──
+    purgeInfiniteCache: () => core.purgeInfiniteCache(),
+    refreshInfiniteCache: () => core.refreshInfiniteCache(),
+    getInfiniteRowCount: () => (core.isInfinite() ? core.ssrm?.rowCount : undefined),
+    isLastRowIndexKnown: () => (core.isSsrm() ? !!core.ssrm?.lastRowKnown : undefined),
+    setRowCount: (count, lastRowIndexKnown) => core.setInfiniteRowCount(count, lastRowIndexKnown),
+    getCacheBlockState: () => core.getCacheBlockState(),
     getServerSideGroupLevelState: () =>
       core.ssrm ? [{ route: [], rowCount: core.ssrm.rowCount, lastRowIndexKnown: core.ssrm.lastRowKnown }] : [],
     applyServerSideTransaction: () => undefined,
@@ -430,5 +437,7 @@ export function createApi(core) {
     // ── 기타 ──
     getLocaleText: key => localeText(core, key),
   };
+  // alignedGrids 등 그리드 간 연동용 (열거되지 않는 내부 참조)
+  Object.defineProperty(api, '__r2core', { value: core, enumerable: false });
   return api;
 }

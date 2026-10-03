@@ -13,8 +13,28 @@ export const pinnedMethods = {
         n.selectable = false;
         return n;
       });
-    this.pinnedTop = mk(this.gos.pinnedTopRowData, 'top');
-    this.pinnedBottom = mk(this.gos.pinnedBottomRowData, 'bottom');
+    this.pinnedTopUser = mk(this.gos.pinnedTopRowData, 'top');
+    this.pinnedBottomUser = mk(this.gos.pinnedBottomRowData, 'bottom');
+    this.mergePinnedRows();
+  },
+
+  // 사용자 고정 행 + grandTotalRow: 'pinnedTop' | 'pinnedBottom'
+  mergePinnedRows() {
+    const grand = this.isGroupMode?.() ? this.grandTotalPinned : null;
+    const top = [...(this.pinnedTopUser || [])];
+    const bottom = [...(this.pinnedBottomUser || [])];
+    if (grand?.rowPinned === 'top') top.push(grand);
+    if (grand?.rowPinned === 'bottom') bottom.push(grand);
+    top.forEach((n, i) => {
+      n.rowIndex = i;
+      n.displayed = true;
+    });
+    bottom.forEach((n, i) => {
+      n.rowIndex = i;
+      n.displayed = true;
+    });
+    this.pinnedTop = top;
+    this.pinnedBottom = bottom;
   },
 
   pinnedRowHeight(node) {

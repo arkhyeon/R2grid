@@ -203,6 +203,42 @@ export class GridCore {
     const handler = this.gos[eventPropName(type)];
     if (typeof handler === 'function') handler(event);
     this.events.dispatch(event);
+    if (this.gos.alignedGrids && !this.__aligning) this.syncAlignedGrids(type, params);
+  }
+
+  // alignedGrids: [gridRef | api] 또는 () => [...] — 컬럼 폭/순서/표시/고정/그룹 열림 + 가로 스크롤 동기화 (AG 동일)
+  getAlignedCores() {
+    const ag = this.gos.alignedGrids;
+    const list = typeof ag === 'function' ? ag() : ag;
+    if (!Array.isArray(list)) return [];
+    return list
+      .map(x => x?.api?.__r2core ?? x?.current?.api?.__r2core ?? x?.__r2core ?? null)
+      .filter(c => c && c !== this && !c.destroyed);
+  }
+
+  syncAlignedGrids(type, params) {
+    const COLUMN_EVENTS = new Set(['columnResized', 'columnMoved', 'columnVisible', 'columnPinned', 'columnGroupOpened', 'displayedColumnsChanged']);
+    const scroll = type === 'bodyScroll' && params.direction === 'horizontal';
+    if (!scroll && !COLUMN_EVENTS.has(type)) return;
+    const others = this.getAlignedCores();
+    if (!others.length) return;
+    const state = scroll
+      ? null
+      : this.getColumnState().map(s => ({ colId: s.colId, width: s.width, hide: s.hide, pinned: s.pinned, flex: s.flex }));
+    const groups = scroll ? null : this.getColumnGroupState();
+    for (const o of others) {
+      o.__aligning = true;
+      try {
+        if (scroll) {
+          if (o.viewport && o.viewport.getScrollLeft() !== params.left) o.viewport.setScrollLeft(params.left);
+        } else {
+          o.applyColumnState({ state, applyOrder: true });
+          o.setColumnGroupState(groups);
+        }
+      } finally {
+        o.__aligning = false;
+      }
+    }
   }
 
   // ── 옵션 ─────────────────────────────────────────────────
@@ -315,7 +351,7 @@ export class GridCore {
       groupRefresh = true;
     }
 
-    if (changed('rowModelType') || changed('serverSideDatasource')) {
+    if (changed('rowModelType') || changed('serverSideDatasource') || changed('datasource')) {
       if (this.isSsrm()) {
         this.ssrmReset('datasource');
         this.notify();
@@ -351,7 +387,17 @@ export class GridCore {
         refresh = true;
       }
       if (changed('paginationPageSize')) this.pageSizeOverride = null;
-      if (groupRefresh || changed('groupSelectsChildren')) refresh = true;
+      if (
+        groupRefresh ||
+        changed('groupSelectsChildren') ||
+        changed('groupTotalRow') ||
+        changed('grandTotalRow') ||
+        changed('groupIncludeFooter') ||
+        changed('groupIncludeTotalFooter') ||
+        changed('paginateChildRows')
+      ) {
+        refresh = true;
+      }
       if (refresh) {
         this.refreshModel({ newPageSize: changed('paginationPageSize') });
         if (changed('quickFilterText')) this.dispatch('filterChanged', { source: 'quickFilter', columns: [] });
@@ -1005,7 +1051,12 @@ export class GridCore {
     if (node.stub) return undefined;
     if (column.autoType === 'group') return this.getAutoGroupValue(node, column);
     // 그룹 노드: 집계값 우선 (트리데이터의 데이터 보유 부모도 동일)
-    if (node.group && node.aggData && column.colId in node.aggData) return node.aggData[column.colId];
+    if (node.group && node.aggData && column.colId in node.aggData) {
+      // 합계 행이 아래에 따로 보이면 펼친 그룹 행은 집계값을 비움 (AG 동일)
+      if (node.__footerShown && node.expanded && !node.footer) return undefined;
+      return node.aggData[column.colId];
+    }
+    if (node.footer) return undefined;
     if (node.group && node.data === undefined) return undefined;
     const cd = column.colDef;
     if (cd.valueGetter) {
@@ -1020,6 +1071,7 @@ export class GridCore {
   formatValue(node, column, value) {
     const cd = column.colDef;
     if (column.autoType === 'group' && node.group) {
+      if (node.footer) return null;
       if (node.key == null && this.groupMode === 'group') return localeText(this, 'blanks');
       // 그룹 행 키는 그룹 기준 컬럼의 valueFormatter 로 표시
       const rgc = node.rowGroupColumn;
@@ -1354,6 +1406,10 @@ export class GridCore {
       if (!skipFilter) this.applyFilters();
       this.applySort();
       this.buildDisplayed();
+      if (this.grandTotalPinned) {
+        this.grandTotalPinned = null;
+        this.mergePinnedRows();
+      }
     }
     if (resetPage) this.currentPage = 0;
     this.updatePagination();
@@ -2146,6 +2202,7 @@ export class GridCore {
 
   // ── 포커스 ───────────────────────────────────────────────
   setFocusedCell(rowIndex, colKey, opts = {}) {
+    if (this.gos.suppressCellFocus) return; // 셀 포커스/키보드 셀 이동 비활성 (AG 동일)
     const col = this.getColumn(colKey);
     const rowPinned = opts.rowPinned || null;
     const limit = rowPinned === 'top' ? this.pinnedTop.length : rowPinned === 'bottom' ? this.pinnedBottom.length : this.displayedNodes.length;

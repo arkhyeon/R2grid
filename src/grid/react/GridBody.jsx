@@ -45,7 +45,7 @@ function GroupCellRenderer({ core, node, column, params, extra }) {
     e.stopPropagation();
     node.setExpanded(!node.expanded);
   };
-  const count = grouping && node.group && !extra?.suppressCount ? node.allChildrenCount ?? node.childrenAfterFilter?.length : null;
+  const count = grouping && node.group && !node.footer && !extra?.suppressCount ? node.allChildrenCount ?? node.childrenAfterFilter?.length : null;
   const legacyCb = extra?.checkbox && core.rsOpts?.legacy;
   return (
     <span
@@ -335,7 +335,8 @@ function rowProps(core, node, rowCount) {
     !node.rowPinned && node.rowIndex === 0 && 'r2-row-first',
     !node.rowPinned && node.rowIndex === rowCount - 1 && 'r2-row-last',
     node.rowPinned && 'r2-row-pinned',
-    node.group && 'r2-row-group',
+    node.group && !node.footer && 'r2-row-group',
+    node.footer && 'r2-row-footer',
     node.stub && 'r2-row-loading',
     node.selected && 'r2-row-selected',
     focusRow ? 'r2-row-focus' : 'r2-row-no-focus',

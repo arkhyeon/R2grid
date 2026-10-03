@@ -546,6 +546,11 @@
   border-right-color: var(--r2-range-selection-border-color);
 }
 
+/* 그룹/총합계 행 */
+.r2-row-footer {
+  font-weight: 600;
+}
+
 /* rowSpan 셀: 아래 행을 덮도록 배경 지정 */
 .r2-cell.r2-cell-span {
   background-color: var(--r2-background-color);

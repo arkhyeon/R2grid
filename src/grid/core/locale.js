@@ -91,6 +91,8 @@ export const AG_GRID_LOCALE_KR = {
   pageSizeSelectorLabel: '페이지 크기:',
   pageLastRowUnknown: '?',
 
+  footerTotal: '합계',
+
   // 상태 표시줄
   totalAndFilteredRows: '행',
   totalRows: '총 행',
