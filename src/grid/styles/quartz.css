@@ -959,6 +959,48 @@
 }
 
 /* ── 페이지 패널 ──────────────────────────────────────── */
+.r2-status-bar {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  column-gap: calc(var(--r2-spacing) * 3);
+  min-height: calc(var(--r2-spacing) * 6);
+  padding: 0 calc(var(--r2-spacing) * 2);
+  border-top: solid 1px var(--r2-border-color);
+  color: color-mix(in srgb, transparent, var(--r2-text-color) 70%);
+  font-size: calc(var(--r2-font-size) - 1px);
+}
+.r2-status-bar-left,
+.r2-status-bar-center,
+.r2-status-bar-right {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--r2-spacing) * 2);
+}
+.r2-status-bar-left,
+.r2-status-bar-right {
+  flex-wrap: wrap;
+}
+.r2-status-bar-center {
+  justify-content: center;
+}
+.r2-status-panel {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--r2-spacing) * 2);
+}
+.r2-status-panel:empty {
+  display: none;
+}
+.r2-status-name-value {
+  white-space: nowrap;
+}
+.r2-status-name-value-value {
+  font-weight: 500;
+  color: var(--r2-text-color);
+}
 .r2-paging-panel {
   display: flex;
   flex: none;
@@ -1142,6 +1184,44 @@
 }
 .r2-cell-editor .r2-input-field-input:not(.r2-checkbox-input):focus {
   box-shadow: none;
+}
+
+/* 플로팅 필터 */
+.r2-header-row-column-filter {
+  border-top: solid 1px var(--r2-header-row-border, var(--r2-border-color));
+}
+.r2-floating-filter {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--r2-spacing) * 0.5);
+  padding: 0 calc(var(--r2-spacing) * 1);
+}
+.r2-floating-filter-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.r2-floating-filter-input .r2-input-field-input:not(.r2-checkbox-input) {
+  min-height: calc(var(--r2-spacing) * 3.5);
+  height: calc(var(--r2-spacing) * 3.5);
+}
+.r2-floating-filter-input .r2-disabled .r2-input-field-input {
+  opacity: 0.6;
+}
+.r2-floating-filter-button-button {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--r2-border-radius);
+}
+.r2-floating-filter-button-button:hover {
+  background-color: var(--r2-icon-button-hover-color);
+}
+.r2-floating-filter-button-button.r2-filter-active {
+  color: var(--r2-accent-color);
 }
 
 /* 필터 */

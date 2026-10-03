@@ -366,6 +366,7 @@ export function createApi(core) {
     refreshToolPanel: () => core.notify(),
     getToolPanelInstance: id => core.toolPanelInstances?.get(id),
     getSideBar: () => core.sideBarDef,
+    getStatusPanel: key => core.getStatusPanel(key),
 
     // ── 내보내기 ──
     exportDataAsCsv: params => exportDataAsCsv(core, params),

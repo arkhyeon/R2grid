@@ -90,6 +90,101 @@ function ToolPanelWrapper({ hidden, tp, children }) {
   );
 }
 
+// ── 상태 표시줄 (statusBar) ───────────────────────────────
+const STATUS_PANEL_CLASS = {
+  agTotalAndFilteredRowCountComponent: 'r2-status-panel-total-and-filtered-row-count',
+  agTotalRowCountComponent: 'r2-status-panel-total-row-count',
+  agFilteredRowCountComponent: 'r2-status-panel-filtered-row-count',
+  agSelectedRowCountComponent: 'r2-status-panel-selected-row-count',
+  agAggregationComponent: 'r2-status-panel-aggregations',
+};
+
+function NameValue({ name, value, className }) {
+  return (
+    <div className={cx('r2-status-name-value', className)}>
+      <span>{name}</span>:&nbsp;<span className="r2-status-name-value-value">{value}</span>
+    </div>
+  );
+}
+
+function BuiltinStatusPanel({ core, def }) {
+  const t = k => localeText(core, k);
+  const fmt = n => (typeof n === 'number' ? n.toLocaleString(undefined, { maximumFractionDigits: 4 }) : n);
+  const p = def.statusPanelParams || {};
+  const c = core.getStatusCounts();
+  switch (def.statusPanel) {
+    case 'agTotalAndFilteredRowCountComponent':
+      return <NameValue name={t('totalAndFilteredRows')} value={c.filtered === c.total ? fmt(c.total) : `${fmt(c.filtered)} ${t('of')} ${fmt(c.total)}`} />;
+    case 'agTotalRowCountComponent':
+      return <NameValue name={t('totalRows')} value={fmt(c.total)} />;
+    case 'agFilteredRowCountComponent':
+      return c.filtered === c.total ? null : <NameValue name={t('filteredRows')} value={fmt(c.filtered)} />;
+    case 'agSelectedRowCountComponent':
+      return c.selected ? <NameValue name={t('selectedRows')} value={fmt(c.selected)} /> : null;
+    case 'agAggregationComponent': {
+      const agg = core.getStatusAggregation();
+      if (!agg) return null;
+      const funcs = p.aggFuncs || ['count', 'sum', 'min', 'max', 'avg'];
+      const vf = p.valueFormatter;
+      return funcs
+        .filter(f => (f === 'count' ? agg.count > 1 : agg.numCount > 0))
+        .map(f => {
+          const v = agg[f];
+          return (
+            <NameValue
+              key={f}
+              className={`r2-status-name-value-${f}`}
+              name={t(f)}
+              value={typeof vf === 'function' ? vf({ value: v, key: f, api: core.api, context: core.gos.context }) : fmt(v)}
+            />
+          );
+        });
+    }
+    default:
+      return null;
+  }
+}
+
+export function StatusBar({ core }) {
+  const sb = core.gos.statusBar;
+  const panels = sb?.statusPanels;
+  if (!Array.isArray(panels) || !panels.length) return null;
+  const groups = { left: [], center: [], right: [] };
+  panels.forEach((def, i) => {
+    const align = def.align === 'left' || def.align === 'center' ? def.align : 'right';
+    groups[align].push({ def, i });
+  });
+  const renderPanel = ({ def, i }) => {
+    const key = def.key ?? `${def.statusPanel}-${i}`;
+    const builtin = typeof def.statusPanel === 'string' && STATUS_PANEL_CLASS[def.statusPanel];
+    let content;
+    if (builtin) content = <BuiltinStatusPanel core={core} def={def} />;
+    else {
+      const impl = typeof def.statusPanel === 'string' ? core.gos.components?.[def.statusPanel] : def.statusPanel;
+      content = impl
+        ? stableElement(core, `status:${key}`, impl, {
+            ...(def.statusPanelParams || {}),
+            api: core.api,
+            context: core.gos.context,
+            ref: inst => core.registerStatusPanel(key, inst),
+          })
+        : null;
+    }
+    return (
+      <div key={key} className={cx('r2-status-panel', builtin || 'r2-status-panel-custom')}>
+        {content}
+      </div>
+    );
+  };
+  return (
+    <div className="r2-status-bar">
+      <div className="r2-status-bar-left">{groups.left.map(renderPanel)}</div>
+      <div className="r2-status-bar-center">{groups.center.map(renderPanel)}</div>
+      <div className="r2-status-bar-right">{groups.right.map(renderPanel)}</div>
+    </div>
+  );
+}
+
 // ── 오버레이 ───────────────────────────────────────────────
 export function Overlay({ core, type }) {
   if (!type) return null;

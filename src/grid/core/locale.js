@@ -90,6 +90,17 @@ export const AG_GRID_LOCALE_KR = {
   previous: '이전',
   pageSizeSelectorLabel: '페이지 크기:',
   pageLastRowUnknown: '?',
+
+  // 상태 표시줄
+  totalAndFilteredRows: '행',
+  totalRows: '총 행',
+  filteredRows: '필터링됨',
+  selectedRows: '선택됨',
+  sum: '합계',
+  min: '최소',
+  max: '최대',
+  count: '개수',
+  avg: '평균',
 };
 
 export function localeText(core, key, defaultValue) {

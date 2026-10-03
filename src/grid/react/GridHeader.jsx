@@ -5,6 +5,7 @@ import { cx, resolveClassValue } from '../core/utils.js';
 import { Checkbox, Icon } from './common.jsx';
 import { stableElement } from './renderComponent.js';
 import { PopupLayer } from './popup.jsx';
+import { FloatingFilterCell } from './filters.jsx';
 
 function groupSegments(cols, level) {
   const segs = [];
@@ -119,7 +120,8 @@ function HeaderCell({ core, col, height, multiSortActive, drag }) {
   };
 
   const showMenuBtn = !isSelection && !col.autoType && !cd.suppressHeaderMenuButton && !cd.suppressMenu;
-  const showFilterBtn = !legacy && !!cd.filter && !cd.suppressHeaderFilterButton && !col.autoType;
+  // 플로팅 필터가 있으면 필터 버튼은 플로팅 필터 쪽에 (AG 동일)
+  const showFilterBtn = !legacy && !!cd.filter && !cd.floatingFilter && !cd.suppressHeaderFilterButton && !col.autoType;
   const toggleMenu = e => {
     e.stopPropagation();
     if (menuOpen) core.closePopup();
@@ -266,7 +268,7 @@ function HeaderCell({ core, col, height, multiSortActive, drag }) {
   );
 }
 
-function HeaderRows({ core, cols, width, headerHeight, groupHeaderHeight, drag }) {
+function HeaderRows({ core, cols, width, headerHeight, groupHeaderHeight, floatingHeight, drag }) {
   const depth = core.headerGroupDepth;
   const multi = core.allColumns.filter(c => c.sort).length > 1;
   const rows = [];
@@ -299,6 +301,21 @@ function HeaderRows({ core, cols, width, headerHeight, groupHeaderHeight, drag }
       ))}
     </div>,
   );
+  if (floatingHeight) {
+    rows.push(
+      <div
+        key="ff"
+        className="r2-header-row r2-header-row-column-filter"
+        role="row"
+        aria-rowindex={depth + 2}
+        style={{ top: depth * groupHeaderHeight + headerHeight, height: floatingHeight, width }}
+      >
+        {cols.map(col => (
+          <FloatingFilterCell key={col.colId} core={core} col={col} height={floatingHeight} />
+        ))}
+      </div>,
+    );
+  }
   return rows;
 }
 
@@ -380,21 +397,22 @@ function useColumnDrag(core) {
 
 export function GridHeader({ core, headerHeight, groupHeaderHeight, scrollbarWidth, registerHeaderViewport }) {
   const depth = core.headerGroupDepth;
-  const total = depth * groupHeaderHeight + headerHeight;
+  const floatingHeight = core.getFloatingFiltersHeight(headerHeight);
+  const total = depth * groupHeaderHeight + headerHeight + floatingHeight;
   const [drag, ghost] = useColumnDrag(core);
   if (core.gos.headerHeight === 0) return null;
   return (
     <div className="r2-header r2-pivot-off r2-header-allow-overflow" role="presentation" style={{ height: total, minHeight: total }}>
       <div className={cx('r2-pinned-left-header', !core.leftWidth && 'r2-hidden')} role="rowgroup" style={{ width: core.leftWidth, minWidth: core.leftWidth, maxWidth: core.leftWidth }}>
-        <HeaderRows core={core} cols={core.displayedLeft} width={core.leftWidth} headerHeight={headerHeight} groupHeaderHeight={groupHeaderHeight} drag={drag} />
+        <HeaderRows core={core} cols={core.displayedLeft} width={core.leftWidth} headerHeight={headerHeight} groupHeaderHeight={groupHeaderHeight} floatingHeight={floatingHeight} drag={drag} />
       </div>
       <div className="r2-header-viewport" role="presentation" ref={registerHeaderViewport}>
         <div className="r2-header-container" role="rowgroup" style={{ width: core.centerWidth }}>
-          <HeaderRows core={core} cols={core.displayedCenter} width={core.centerWidth} headerHeight={headerHeight} groupHeaderHeight={groupHeaderHeight} drag={drag} />
+          <HeaderRows core={core} cols={core.displayedCenter} width={core.centerWidth} headerHeight={headerHeight} groupHeaderHeight={groupHeaderHeight} floatingHeight={floatingHeight} drag={drag} />
         </div>
       </div>
       <div className={cx('r2-pinned-right-header', !core.rightWidth && 'r2-hidden')} role="rowgroup" style={{ width: core.rightWidth, minWidth: core.rightWidth, maxWidth: core.rightWidth }}>
-        <HeaderRows core={core} cols={core.displayedRight} width={core.rightWidth} headerHeight={headerHeight} groupHeaderHeight={groupHeaderHeight} drag={drag} />
+        <HeaderRows core={core} cols={core.displayedRight} width={core.rightWidth} headerHeight={headerHeight} groupHeaderHeight={groupHeaderHeight} floatingHeight={floatingHeight} drag={drag} />
       </div>
       {scrollbarWidth > 0 && <div className="r2-header-scrollbar-spacer" style={{ width: scrollbarWidth, minWidth: scrollbarWidth }} />}
       {ghost}

@@ -26,6 +26,7 @@ import { undoMethods } from './undo.js';
 import { pinnedMethods } from './pinned.js';
 import { customFilterMethods } from './customFilter.js';
 import { fillHandleMethods } from './fillHandle.js';
+import { statusBarMethods } from './statusBar.js';
 
 export const DEFAULT_ROW_HEIGHT = 42;
 export const DEFAULT_HEADER_HEIGHT = 48;
@@ -3012,6 +3013,12 @@ export class GridCore {
     else this.openToolPanel(id, 'sideBarButtonClicked');
   }
 
+  // 플로팅 필터 행 높이 (표시 컬럼 중 floatingFilter 가 하나라도 있으면)
+  getFloatingFiltersHeight(headerHeight) {
+    const has = this.displayedColumns.some(c => !c.isAuto && c.colDef.floatingFilter && c.colDef.filter);
+    return has ? this.gos.floatingFiltersHeight ?? headerHeight : 0;
+  }
+
   // ── 팝업(메뉴/필터) ────────────────────────────────────────
   // popupParent 지정 시 팝업(메뉴/필터/팝업 에디터/툴팁/드래그 고스트)을 그 요소에 붙인다
   getPopupParent() {
@@ -3330,4 +3337,4 @@ export class GridCore {
 }
 
 // 기능별 mixin 결합 (그룹핑 / SSRM / 행드래그 / undo / 고정행)
-Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods);
+Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods, statusBarMethods);

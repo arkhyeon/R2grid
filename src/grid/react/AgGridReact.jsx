@@ -14,7 +14,7 @@ import { copySelectionToEvent } from '../core/clipboard.js';
 import { cx } from '../core/utils.js';
 import { GridHeader } from './GridHeader.jsx';
 import { GridBody } from './GridBody.jsx';
-import { Overlay, PagingPanel, SideBar, useTooltip } from './chrome.jsx';
+import { Overlay, PagingPanel, SideBar, StatusBar, useTooltip } from './chrome.jsx';
 import { Popups } from './menus.jsx';
 import { CustomFilterHost } from './filters.jsx';
 import '../styles/quartz.css';
@@ -38,7 +38,8 @@ function GridView({ core }) {
 
   const headerHeight = g.headerHeight ?? DEFAULT_HEADER_HEIGHT;
   const groupHeaderHeight = g.groupHeaderHeight ?? headerHeight;
-  const headerTotal = g.headerHeight === 0 ? 0 : core.headerGroupDepth * groupHeaderHeight + headerHeight;
+  const headerTotal =
+    g.headerHeight === 0 ? 0 : core.headerGroupDepth * groupHeaderHeight + headerHeight + core.getFloatingFiltersHeight(headerHeight);
   const rowHeight = core.getDefaultRowHeight();
   const autoLayout = g.domLayout === 'autoHeight' || g.domLayout === 'print';
   const overlay = core.getOverlayType();
@@ -142,6 +143,7 @@ function GridView({ core }) {
         </div>
         {core.sideBarPosition !== 'left' && <SideBar core={core} />}
       </div>
+      <StatusBar core={core} />
       <PagingPanel core={core} />
       <Popups core={core} />
       <CustomFilterHost core={core} />

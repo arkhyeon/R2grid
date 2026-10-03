@@ -11,7 +11,7 @@ import {
   resolveFilterKind,
 } from '../core/filterService.js';
 import { cx } from '../core/utils.js';
-import { Checkbox } from './common.jsx';
+import { Checkbox, Icon } from './common.jsx';
 import { stableElement } from './renderComponent.js';
 
 // ── 사용자 필터 컴포넌트 ─────────────────────────────────────
@@ -504,6 +504,174 @@ export function FiltersToolPanel({ core }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ── 플로팅 필터 (colDef.floatingFilter) ───────────────────────
+const READONLY_TYPES = new Set(['inRange', 'blank', 'notBlank']);
+
+function describeCondition(core, c) {
+  if (c.type === 'blank' || c.type === 'notBlank') return localeText(core, c.type);
+  if (c.type === 'inRange') {
+    const from = c.dateFrom ? String(c.dateFrom).slice(0, 10) : c.filter;
+    const to = c.dateTo ? String(c.dateTo).slice(0, 10) : c.filterTo;
+    return `${from ?? ''}-${to ?? ''}`;
+  }
+  if (c.dateFrom) return String(c.dateFrom).slice(0, 10);
+  return c.filter == null ? '' : String(c.filter);
+}
+
+function describeModel(core, model) {
+  if (!model) return '';
+  if (Array.isArray(model.conditions)) {
+    const op = localeText(core, model.operator === 'OR' ? 'orCondition' : 'andCondition', model.operator || 'AND');
+    return model.conditions.map(c => describeCondition(core, c)).join(` ${op} `);
+  }
+  return describeCondition(core, model);
+}
+
+function ConditionFloatingInput({ core, column, kind }) {
+  const fp = column.colDef.filterParams || {};
+  const model = core.filterModels.get(column.colId) ?? null;
+  const editable = !model || (!Array.isArray(model.conditions) && !READONLY_TYPES.has(model.type));
+  const modelText = model && !Array.isArray(model.conditions) ? (kind === 'date' ? String(model.dateFrom || '').slice(0, 10) : model.filter ?? '') : '';
+  const [text, setText] = useState(String(modelText));
+  const timer = useRef(null);
+  const lastApplied = useRef(String(modelText));
+  // 바깥(팝업/api)에서 모델이 바뀌면 입력값 동기화
+  useEffect(() => {
+    if (String(modelText) !== lastApplied.current) {
+      lastApplied.current = String(modelText);
+      setText(String(modelText));
+    }
+  }, [modelText]);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const defaultType = fp.defaultOption || (kind === 'text' ? 'contains' : 'equals');
+  const apply = v => {
+    lastApplied.current = v;
+    if (v === '' || v == null) {
+      core.setColumnFilterModel(column, null);
+      return;
+    }
+    const type = model && !READONLY_TYPES.has(model.type) && !Array.isArray(model.conditions) ? model.type : defaultType;
+    if (kind === 'number') {
+      const n = Number(v);
+      if (Number.isNaN(n)) return;
+      core.setColumnFilterModel(column, { filterType: 'number', type, filter: n });
+    } else if (kind === 'date') {
+      core.setColumnFilterModel(column, { filterType: 'date', type, dateFrom: `${v} 00:00:00`, dateTo: null });
+    } else {
+      core.setColumnFilterModel(column, { filterType: 'text', type, filter: v });
+    }
+  };
+  const debounceMs = fp.debounceMs ?? (kind === 'date' ? 0 : 500);
+  const onChange = e => {
+    const v = e.target.value;
+    setText(v);
+    clearTimeout(timer.current);
+    if (debounceMs) timer.current = setTimeout(() => apply(v), debounceMs);
+    else apply(v);
+  };
+  if (!editable) {
+    return (
+      <div className="r2-floating-filter-input">
+        <div className="r2-input-field r2-text-field r2-disabled">
+          <input className="r2-input-field-input r2-text-field-input" disabled value={describeModel(core, model)} readOnly />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="r2-floating-filter-input">
+      <div className={cx('r2-input-field', kind === 'number' ? 'r2-number-field' : kind === 'date' ? 'r2-date-field' : 'r2-text-field')}>
+        <input
+          className={cx('r2-input-field-input', kind === 'number' ? 'r2-number-field-input' : kind === 'date' ? 'r2-date-field-input' : 'r2-text-field-input')}
+          type={kind === 'number' ? 'number' : kind === 'date' ? 'date' : 'text'}
+          value={text}
+          onChange={onChange}
+          onKeyDown={e => {
+            e.stopPropagation();
+            if (e.key === 'Enter') {
+              clearTimeout(timer.current);
+              apply(text);
+            }
+          }}
+          aria-label={`${core.getDisplayName(column)} Filter Input`}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ReadOnlyFloating({ text }) {
+  return (
+    <div className="r2-floating-filter-input">
+      <div className="r2-input-field r2-text-field r2-disabled">
+        <input className="r2-input-field-input r2-text-field-input" disabled value={text} readOnly />
+      </div>
+    </div>
+  );
+}
+
+export function FloatingFilterCell({ core, col, height }) {
+  const cd = col.colDef;
+  const kind = col.isAuto ? null : resolveFilterKind(cd, core.gos.components);
+  const enabled = !!kind && !!cd.floatingFilter;
+  let body = null;
+  if (enabled) {
+    const model = core.filterModels.get(col.colId) ?? null;
+    const ffc = cd.floatingFilterComponent;
+    const impl = typeof ffc === 'string' ? core.gos.components?.[ffc] : ffc;
+    if (impl) {
+      body = stableElement(core, `floatingFilter:${col.colId}`, impl, {
+        ...(cd.floatingFilterComponentParams || {}),
+        model,
+        onModelChange: m => core.setColumnFilterModel(col, m),
+        column: col,
+        filterParams: cd.filterParams,
+        currentParentModel: () => model,
+        parentFilterInstance: cb => core.api.getColumnFilterInstance(col).then(cb),
+        showParentFilter: () => core.openPopup({ type: 'filter', column: col, anchorColId: col.colId }),
+        api: core.api,
+        context: core.gos.context,
+      });
+    } else if (kind === 'set') {
+      const vals = model?.values;
+      const text = Array.isArray(vals) ? `(${vals.length}) ${vals.map(v => (v == null ? localeText(core, 'blanks', '(빈 값)') : v)).join(',')}` : '';
+      body = <ReadOnlyFloating text={text} />;
+    } else if (kind === 'custom') {
+      const e = core.customFilters?.get(col.colId);
+      const fn = e?.callbacks?.getModelAsString || e?.inst?.getModelAsString;
+      body = <ReadOnlyFloating text={model == null ? '' : typeof fn === 'function' ? fn(model) : ''} />;
+    } else {
+      body = <ConditionFloatingInput core={core} column={col} kind={kind} />;
+    }
+  }
+  const showButton = enabled && !cd.suppressFloatingFilterButton && !cd.floatingFilterComponentParams?.suppressFilterButton;
+  return (
+    <div
+      className="r2-header-cell r2-floating-filter r2-focus-managed"
+      role="gridcell"
+      col-id={col.colId}
+      style={{ left: col.left, width: col.actualWidth, height }}
+    >
+      {enabled && <div className="r2-floating-filter-body" role="presentation">{body}</div>}
+      {showButton && (
+        <div className="r2-floating-filter-button" role="presentation">
+          <button
+            type="button"
+            className={cx('r2-button r2-floating-filter-button-button', col.filterActive && 'r2-filter-active')}
+            aria-label="Open Filter Menu"
+            onClick={e => {
+              e.stopPropagation();
+              core.openPopup({ type: 'filter', column: col, anchorColId: col.colId });
+            }}
+          >
+            <Icon name={col.filterActive ? 'filter-active' : 'filter'} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
