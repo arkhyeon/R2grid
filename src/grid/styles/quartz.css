@@ -570,6 +570,46 @@
   color: var(--r2-find-active-match-color, #fff);
 }
 
+/* 통합 차트 */
+.r2-chart-window {
+  background-color: var(--r2-background-color);
+  border: var(--r2-menu-border, solid 1px var(--r2-border-color));
+  border-radius: var(--r2-border-radius);
+  box-shadow: var(--r2-menu-shadow);
+  overflow: hidden;
+}
+.r2-chart-wrapper {
+  height: 100%;
+  background-color: var(--r2-background-color);
+  color: var(--r2-text-color);
+}
+.r2-chart-title-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: move;
+  user-select: none;
+}
+.r2-chart-title-bar .r2-panel-title-bar-title {
+  flex: 1;
+}
+.r2-chart-title-bar select {
+  padding: 2px 4px;
+  border: var(--r2-input-border, solid 1px var(--r2-border-color));
+  border-radius: var(--r2-border-radius);
+  background-color: var(--r2-input-background-color, var(--r2-background-color));
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.r2-chart-body {
+  color: var(--r2-text-color);
+  background-color: var(--r2-background-color);
+}
+.r2-chart-svg {
+  display: block;
+}
+
 /* 고급 필터 */
 .r2-advanced-filter-header {
   flex: none;

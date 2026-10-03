@@ -18,6 +18,7 @@ import { Overlay, PagingPanel, RowGroupPanel, SideBar, StatusBar, useTooltip } f
 import { Popups } from './menus.jsx';
 import { CustomFilterHost } from './filters.jsx';
 import { AdvancedFilterBar } from './advancedFilter.jsx';
+import { ChartsHost } from './chart.jsx';
 import '../styles/quartz.css';
 
 function isEditableEl(t) {
@@ -151,6 +152,7 @@ function GridView({ core }) {
       <PagingPanel core={core} />
       <Popups core={core} />
       <CustomFilterHost core={core} />
+      <ChartsHost core={core} />
       {tooltip.node}
     </div>
   );

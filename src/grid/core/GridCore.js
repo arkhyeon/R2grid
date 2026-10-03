@@ -30,6 +30,7 @@ import { statusBarMethods } from './statusBar.js';
 import { findMethods } from './find.js';
 import { pivotMethods } from './pivot.js';
 import { advancedFilterMethods } from './advancedFilter.js';
+import { chartMethods } from './charts.js';
 
 export const DEFAULT_ROW_HEIGHT = 42;
 export const DEFAULT_HEADER_HEIGHT = 48;
@@ -3222,6 +3223,8 @@ export class GridCore {
     if (this.gos.suppressContextMenu) return false;
     const value = node && column ? this.getCellValue(node, column) : undefined;
     const defaultItems = ['copy', 'copyWithHeaders', 'paste', 'separator', 'export'];
+    // 통합 차트: 범위가 있으면 "범위 차트" (AG 동일)
+    if (this.gos.enableCharts && this.ranges.length) defaultItems.push('separator', 'chartRange');
     const getItems = this.gos.getContextMenuItems;
     const items = typeof getItems === 'function'
       ? getItems({ node: node ?? null, column: column ?? null, value, api: this.api, context: this.gos.context, defaultItems })
@@ -3514,4 +3517,4 @@ export class GridCore {
 }
 
 // 기능별 mixin 결합 (그룹핑 / SSRM / 행드래그 / undo / 고정행)
-Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods, statusBarMethods, findMethods, pivotMethods, advancedFilterMethods);
+Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods, statusBarMethods, findMethods, pivotMethods, advancedFilterMethods, chartMethods);

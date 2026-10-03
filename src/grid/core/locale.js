@@ -92,6 +92,7 @@ export const AG_GRID_LOCALE_KR = {
   pageLastRowUnknown: '?',
 
   footerTotal: '합계',
+  chartRange: '범위 차트',
   rowGroupColumnsEmptyMessage: '여기로 컬럼을 끌어 행 그룹 지정',
   pivotColumnsEmptyMessage: '여기로 컬럼을 끌어 피벗 지정',
 

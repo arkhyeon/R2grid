@@ -7,6 +7,7 @@ import { Checkbox, Icon } from './common.jsx';
 import { PopupLayer, useClickOutside, usePopupPosition, visibleClipOf } from './popup.jsx';
 import { FilterUI } from './filters.jsx';
 import { AdvancedFilterBuilderPopup } from './advancedFilter.jsx';
+import { CHART_TYPES } from '../core/charts.js';
 
 // ── 메뉴 아이템 정규화 ─────────────────────────────────────
 function builtinItem(core, key, params) {
@@ -68,6 +69,14 @@ function builtinItem(core, key, params) {
         : null;
     case 'columnChooser':
       return { name: t('columnChooser'), icon: 'columns', action: () => setTimeout(() => core.openPopup({ type: 'columnChooser' }), 0) };
+    case 'chartRange':
+      return core.gos.enableCharts && core.ranges.length
+        ? {
+            name: t('chartRange', '범위 차트'),
+            icon: 'chart',
+            subMenu: CHART_TYPES.map(([k, label]) => ({ name: label, action: () => core.createRangeChart({ chartType: k }) })),
+          }
+        : null;
     case 'separator':
       return 'separator';
     default:

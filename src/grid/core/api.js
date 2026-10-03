@@ -424,6 +424,24 @@ export function createApi(core) {
       api.setRowGroupColumns(core.rowGroupColumns().filter(c => !rm.includes(c)));
     },
 
+    // ── 통합 차트 ──
+    createRangeChart: params => core.createRangeChart(params),
+    getChartModels: () => core.getChartModels(),
+    getChartRef: id => core.getChartRef(id),
+    updateChart: params => core.updateChart(params),
+    getChartImageDataURL: params => core.getChartRef(params?.chartId)?.getImageDataURL?.(),
+    downloadChart: params => {
+      const ref = core.getChartRef(params?.chartId);
+      ref?.getImageDataURL?.().then(url => {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${params?.fileName || 'chart'}.png`;
+        a.click();
+      });
+    },
+    closeChartToolPanel: () => {},
+    openChartToolPanel: () => {},
+
     // ── 고급 필터 ──
     getAdvancedFilterModel: () => core.getAdvancedFilterModel(),
     setAdvancedFilterModel: model => core.setAdvancedFilterModel(model),
