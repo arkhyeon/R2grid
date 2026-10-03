@@ -266,6 +266,11 @@ export function createApi(core) {
     getColumnFilterInstance: key => {
       const col = core.getColumn(key);
       if (!col || !col.colDef.filter) return Promise.resolve(null);
+      if (core.isCustomFilter(col)) {
+        // 마운트 직후 ref 가 붙도록 다음 틱에 반환
+        core.getCustomFilterEntry(col, true);
+        return new Promise(res => setTimeout(() => res(core.getCustomFilterInstance(col)), 0));
+      }
       return Promise.resolve({
         getModel: () => core.getColumnFilterModel(col),
         setModel: model => {
@@ -337,7 +342,7 @@ export function createApi(core) {
     paginationGetPageSize: () => core.getPageSize(),
     paginationGetCurrentPage: () => core.currentPage,
     paginationGetTotalPages: () => core.totalPages,
-    paginationGetRowCount: () => core.sortedNodes.length,
+    paginationGetRowCount: () => core.paginationRowCount ?? core.displayedNodes.length,
     paginationGoToPage: page => core.paginationGoToPage(page),
     paginationGoToNextPage: () => core.paginationGoToPage(core.currentPage + 1),
     paginationGoToPreviousPage: () => core.paginationGoToPage(core.currentPage - 1),

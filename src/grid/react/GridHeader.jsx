@@ -372,7 +372,7 @@ function useColumnDrag(core) {
             <div className="r2-dnd-ghost-label">{g.name}</div>
           </div>
         </PopupLayer>,
-        document.body,
+        core.getPopupParent(),
       )
     : null;
   return [state, ghost];

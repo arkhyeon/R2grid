@@ -1,6 +1,7 @@
 // Phase 4 검증용: CLM30 실제 화면 설정을 그대로 본뜬 그리드들
 import React, { useMemo, useRef, useState } from 'react';
 import Table from './Table.jsx';
+import { useGridFilter } from '../grid/index.js';
 
 const Section = ({ title, children, note }) => (
   <section className="p4-section">
@@ -380,9 +381,70 @@ function ColumnGroupDemo({ log }) {
   );
 }
 
+// ── 커스텀 필터: reactive(useGridFilter) + imperative(forwardRef) ──
+function MinCountFilter({ model, onModelChange, getValue }) {
+  const doesFilterPass = React.useCallback(({ node }) => getValue(node) >= model, [model]);
+  useGridFilter({ doesFilterPass });
+  return (
+    <div className="demo-filter" style={{ padding: 8 }}>
+      <div>최소 건수</div>
+      {[null, 300, 600, 900].map(v => (
+        <label key={String(v)} style={{ display: 'block' }}>
+          <input type="radio" checked={model === v} onChange={() => onModelChange(v)} /> {v == null ? '전체' : `${v} 이상`}
+        </label>
+      ))}
+    </div>
+  );
+}
+const PrefixFilter = React.forwardRef(function PrefixFilter(props, ref) {
+  const [prefix, setPrefix] = useState('');
+  React.useImperativeHandle(ref, () => ({
+    isFilterActive: () => prefix !== '',
+    doesFilterPass: ({ node }) => String(props.valueGetter(node)).startsWith(prefix),
+    getModel: () => (prefix ? { prefix } : null),
+    setModel: m => setPrefix(m?.prefix ?? ''),
+  }));
+  React.useEffect(() => props.filterChangedCallback(), [prefix]);
+  return (
+    <div style={{ padding: 8 }}>
+      <input className="demo-prefix" placeholder="접두어" value={prefix} onChange={e => setPrefix(e.target.value)} />
+    </div>
+  );
+});
+function CustomFilterDemo({ log }) {
+  const [rows] = useState(() => Array.from({ length: 200 }, (_, i) => ({ name: `${['가', '나', '다'][i % 3]}작업${i}`, cnt: (i * 37) % 1000, grp: `그룹${i % 4}` })));
+  const [legacy] = useState(() => new URLSearchParams(location.search).has('legacyFilter'));
+  return (
+    <Table
+      id="CustomFilterTable"
+      rowData={rows}
+      columnDefs={useMemo(
+        () => [
+          { field: 'name', headerName: '이름(imperative)', filter: legacy ? PrefixFilter : 'agTextColumnFilter' },
+          { field: 'cnt', headerName: '건수(reactive)', filter: legacy ? 'agNumberColumnFilter' : 'minCountFilter' },
+          { field: 'grp', headerName: '그룹', rowGroup: true, hide: true },
+        ],
+        [legacy],
+      )}
+      components={{ minCountFilter: MinCountFilter }}
+      reactiveCustomComponents={!legacy}
+      pagination
+      paginationPageSize={3}
+      onFilterChanged={e => log(`filterChanged: ${JSON.stringify(e.api.getFilterModel())} → ${e.api.getDisplayedRowCount()}행`)}
+      onGridReady={e => {
+        window.__cfApi = e.api;
+      }}
+      height="300px"
+    />
+  );
+}
+
 export default function Phase4Demo({ log }) {
   return (
     <div className="p4">
+      <Section title="커스텀 필터 + 행그룹 페이지네이션" note="reactive: model/onModelChange + useGridFilter · ?legacyFilter 로 imperative(forwardRef) · 그룹 4개, pageSize 3">
+        <CustomFilterDemo log={log} />
+      </Section>
       <Section title="컬럼 그룹 접기 — WorkGroupList" note="columnGroupShow:'open' + marryChildren + column.originalParent.colGroupDef.field">
         <ColumnGroupDemo log={log} />
       </Section>

@@ -1,4 +1,5 @@
-// 최소 ZIP 작성기 (xlsx 용). 동기=STORE, 비동기=CompressionStream('deflate-raw') 사용 가능 시 압축.
+// 최소 ZIP 작성기 (xlsx 용). 동기=자체 deflate(deflate.js), 비동기=CompressionStream('deflate-raw').
+import { deflateRawSync } from './deflate.js';
 const CRC_TABLE = (() => {
   const t = new Uint32Array(256);
   for (let n = 0; n < 256; n++) {
@@ -104,13 +105,30 @@ const toChunks = content => {
   return [enc.encode(content)];
 };
 
+const concat = chunks => {
+  if (chunks.length === 1) return chunks[0];
+  const out = new Uint8Array(sizeOf(chunks));
+  let o = 0;
+  for (const c of chunks) {
+    out.set(c, o);
+    o += c.length;
+  }
+  return out;
+};
+
 // files: [{ name, content: string | Uint8Array | (string|Uint8Array)[] }]
-export function zipSync(files) {
+// 동기 경로도 자체 deflate 로 압축 (압축 이득이 없으면 STORE)
+export function zipSync(files, { compress = true } = {}) {
   return build(
     files.map(f => {
       const data = toChunks(f.content);
       const size = sizeOf(data);
-      return { name: f.name, data, crc: crc32(data), size, compSize: size, method: 0 };
+      const crc = crc32(data);
+      if (compress && size > 64) {
+        const comp = deflateRawSync(concat(data));
+        if (comp.length < size) return { name: f.name, data: [comp], crc, size, compSize: comp.length, method: 8 };
+      }
+      return { name: f.name, data, crc, size, compSize: size, method: 0 };
     }),
   );
 }

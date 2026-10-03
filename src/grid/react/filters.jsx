@@ -1,15 +1,93 @@
-// 필터 UI (Set / Text / Number / Date). 모델은 core.setColumnFilterModel 로 반영.
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+// 필터 UI (Set / Text / Number / Date / 사용자 컴포넌트). 모델은 core.setColumnFilterModel 로 반영.
+import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { localeText } from '../core/locale.js';
 import {
   DATE_FILTER_TYPES,
   NUMBER_FILTER_TYPES,
   TEXT_FILTER_TYPES,
   isModelActive,
+  resolveCustomFilterImpl,
   resolveFilterKind,
 } from '../core/filterService.js';
 import { cx } from '../core/utils.js';
 import { Checkbox } from './common.jsx';
+import { stableElement } from './renderComponent.js';
+
+// ── 사용자 필터 컴포넌트 ─────────────────────────────────────
+const FilterCompContext = createContext(null);
+
+// useGridFilter (ag-grid-react 호환): reactive 커스텀 필터가 doesFilterPass / afterGuiAttached 등 등록
+export function useGridFilter(callbacks) {
+  const ctx = useContext(FilterCompContext);
+  useLayoutEffect(() => {
+    ctx?.register(callbacks);
+  });
+}
+
+function CustomFilterInstance({ core, column }) {
+  const colId = column.colId;
+  const impl = resolveCustomFilterImpl(column.colDef, core.gos.components);
+  const register = useCallback(cbs => core.registerCustomFilterCallbacks(colId, cbs), [core, colId]);
+  const setInst = useCallback(inst => core.attachCustomFilterInstance(colId, inst), [core, colId]);
+  const ctx = useMemo(() => ({ register }), [register]);
+  if (!impl) return null;
+  const base = {
+    ...(column.colDef.filterParams || {}),
+    colDef: column.colDef,
+    column,
+    api: core.api,
+    context: core.gos.context,
+    getValue: (node, col) => core.getFilterValue(node, col ?? column),
+    doesRowPassOtherFilter: node => core.doesRowPassOtherFilters(node, column),
+  };
+  const props = core.isReactiveFilters()
+    ? {
+        ...base,
+        model: core.filterModels.get(colId) ?? null,
+        onModelChange: m => core.onCustomFilterModelChange(column, m),
+        onUiChange: () => {},
+      }
+    : {
+        ...base,
+        filterChangedCallback: () => core.onImperativeFilterChanged(column),
+        filterModifiedCallback: () => {},
+        valueGetter: node => core.getFilterValue(node, column),
+        ref: setInst,
+      };
+  return <FilterCompContext.Provider value={ctx}>{stableElement(core, `filter:${colId}`, impl, props)}</FilterCompContext.Provider>;
+}
+
+// 생성된 커스텀 필터 인스턴스들을 고정 DOM(entry.el) 에 portal 로 유지
+export function CustomFilterHost({ core }) {
+  if (!core.customFilters?.size) return null;
+  return [...core.customFilters.values()].map(e => {
+    const col = core.columnById.get(e.colId);
+    return col ? createPortal(<CustomFilterInstance core={core} column={col} />, e.el, e.colId) : null;
+  });
+}
+
+// 팝업/툴패널 안에 커스텀 필터 DOM 을 붙였다 떼는 자리
+function CustomFilterSlot({ core, column, onClose }) {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const e = core.getCustomFilterEntry(column, true);
+    const host = ref.current;
+    host.appendChild(e.el);
+    const t = setTimeout(() => {
+      const params = { hidePopup: () => onClose?.() };
+      if (e.inst?.afterGuiAttached) e.inst.afterGuiAttached(params);
+      else e.callbacks?.afterGuiAttached?.(params);
+    }, 0);
+    return () => {
+      clearTimeout(t);
+      if (e.el.parentNode === host) host.removeChild(e.el);
+      if (e.inst?.afterGuiDetached) e.inst.afterGuiDetached();
+      else e.callbacks?.afterGuiDetached?.();
+    };
+  }, [core, column]);
+  return <div ref={ref} className="r2-filter-wrapper r2-filter-custom" />;
+}
 
 const ITEM_H = 28;
 
@@ -371,8 +449,9 @@ function ConditionFilterUI({ core, column, kind, onClose }) {
 }
 
 export function FilterUI({ core, column, onClose }) {
-  const kind = resolveFilterKind(column.colDef);
+  const kind = resolveFilterKind(column.colDef, core.gos.components);
   if (!kind) return null;
+  if (kind === 'custom') return <CustomFilterSlot core={core} column={column} onClose={onClose} />;
   if (kind === 'set') return <SetFilterUI core={core} column={column} onClose={onClose} />;
   return <ConditionFilterUI core={core} column={column} kind={kind} onClose={onClose} />;
 }

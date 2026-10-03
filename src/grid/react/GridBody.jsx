@@ -990,7 +990,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
               <div className="r2-dnd-ghost-label">{dragGhost.text}</div>
             </div>
           </PopupLayer>,
-          document.body,
+          core.getPopupParent(),
         )}
     </>
   );

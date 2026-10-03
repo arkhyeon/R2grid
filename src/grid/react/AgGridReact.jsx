@@ -16,6 +16,7 @@ import { GridHeader } from './GridHeader.jsx';
 import { GridBody } from './GridBody.jsx';
 import { Overlay, PagingPanel, SideBar, useTooltip } from './chrome.jsx';
 import { Popups } from './menus.jsx';
+import { CustomFilterHost } from './filters.jsx';
 import '../styles/quartz.css';
 
 function isEditableEl(t) {
@@ -143,6 +144,7 @@ function GridView({ core }) {
       </div>
       <PagingPanel core={core} />
       <Popups core={core} />
+      <CustomFilterHost core={core} />
       {tooltip.node}
     </div>
   );

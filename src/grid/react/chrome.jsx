@@ -139,7 +139,7 @@ export function PagingPanel({ core }) {
   if (!g.pagination || g.suppressPaginationPanel) return null;
   const t = k => localeText(core, k);
   const size = core.getPageSize();
-  const total = core.sortedNodes.length;
+  const total = core.paginationRowCount ?? core.displayedNodes.length;
   const page = core.currentPage;
   const pages = core.totalPages;
   const startRow = total ? page * size + 1 : 0;
@@ -244,7 +244,7 @@ export function useTooltip(core) {
             {tip.text}
           </div>
         </PopupLayer>,
-        document.body,
+        core.getPopupParent(),
       )
     : null;
   return { onOver, onOut, node };

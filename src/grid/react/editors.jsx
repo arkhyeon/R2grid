@@ -484,6 +484,6 @@ function PopupEditor({ core, ed, getCellEl, children }) {
         {children}
       </div>
     </PopupLayer>,
-    document.body,
+    core.getPopupParent(),
   );
 }

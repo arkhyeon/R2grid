@@ -219,7 +219,7 @@ function SubMenu({ core, items, params, rect, onClose }) {
         <MenuList core={core} items={items} params={params} onClose={onClose} />
       </div>
     </PopupLayer>,
-    document.body,
+    core.getPopupParent(),
   );
 }
 
@@ -243,7 +243,7 @@ export function ContextMenuPopup({ core, popup }) {
         <MenuList core={core} items={popup.items} params={popup.params} onClose={close} />
       </div>
     </PopupLayer>,
-    document.body,
+    core.getPopupParent(),
   );
 }
 
@@ -398,7 +398,7 @@ export function ColumnMenuPopup({ core, popup }) {
         {body}
       </div>
     </PopupLayer>,
-    document.body,
+    core.getPopupParent(),
   );
 }
 
@@ -435,7 +435,7 @@ export function FilterPopup({ core, popup }) {
         <FilterUI core={core} column={column} onClose={close} />
       </div>
     </PopupLayer>,
-    document.body,
+    core.getPopupParent(),
   );
 }
 
@@ -468,7 +468,7 @@ export function ColumnChooserPopup({ core }) {
         <ColumnChooserList core={core} />
       </div>
     </PopupLayer>,
-    document.body,
+    core.getPopupParent(),
   );
 }
 

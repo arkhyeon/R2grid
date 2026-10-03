@@ -28,8 +28,8 @@ export const NUMBER_FILTER_TYPES = [
 ];
 export const DATE_FILTER_TYPES = ['equals', 'notEqual', 'lessThan', 'greaterThan', 'inRange', 'blank', 'notBlank'];
 
-// colDef.filter → 내부 필터 종류
-export function resolveFilterKind(colDef) {
+// colDef.filter → 내부 필터 종류. 사용자 컴포넌트(함수/클래스/components 등록명)는 'custom'
+export function resolveFilterKind(colDef, components) {
   const f = colDef.filter;
   if (!f) return null;
   if (f === true) return 'set'; // 엔터프라이즈 기본: Set 필터
@@ -39,9 +39,16 @@ export function resolveFilterKind(colDef) {
     if (f === 'agDateColumnFilter') return 'date';
     if (f === 'agSetColumnFilter') return 'set';
     if (f === 'agMultiColumnFilter') return 'set';
+    if (components && components[f]) return 'custom';
     return 'text';
   }
+  if (typeof f === 'function' || typeof f === 'object') return 'custom';
   return 'text';
+}
+
+export function resolveCustomFilterImpl(colDef, components) {
+  const f = colDef.filter;
+  return typeof f === 'string' ? components?.[f] : f;
 }
 
 export function defaultFilterType(kind) {
@@ -188,7 +195,7 @@ function evaluateCombined(model, single) {
 // 필터 1개를 RowNode 하나에 대해 평가하는 함수 생성 (반복 비용 최소화)
 export function createFilterPredicate(core, column, model) {
   const colDef = column.colDef;
-  const kind = model.filterType || resolveFilterKind(colDef) || 'text';
+  const kind = model.filterType || resolveFilterKind(colDef, core.gos.components) || 'text';
   const filterParams = colDef.filterParams || {};
   const valueOf = node => {
     if (colDef.filterValueGetter) {

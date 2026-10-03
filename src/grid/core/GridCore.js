@@ -5,7 +5,7 @@ import { RowNode } from './RowNode.js';
 import { Column, ColumnGroup, ROW_NUMBERS_COL_ID, SELECTION_COL_ID, normalizePinned } from './Column.js';
 import { getGlobalGridOptions } from './globals.js';
 import { resolveTheme } from './theme.js';
-import { createFilterPredicate, isModelActive, resolveFilterKind, setFilterKey } from './filterService.js';
+import { setFilterKey } from './filterService.js';
 import {
   clamp,
   defaultComparator,
@@ -24,6 +24,7 @@ import { ssrmMethods } from './ssrm.js';
 import { rowDragMethods } from './rowDrag.js';
 import { undoMethods } from './undo.js';
 import { pinnedMethods } from './pinned.js';
+import { customFilterMethods } from './customFilter.js';
 
 export const DEFAULT_ROW_HEIGHT = 42;
 export const DEFAULT_HEADER_HEIGHT = 48;
@@ -572,6 +573,13 @@ export class GridCore {
     // 사라진 컬럼의 필터 제거
     for (const colId of [...this.filterModels.keys()]) {
       if (!newById.has(colId)) this.filterModels.delete(colId);
+    }
+    // 사라졌거나 더 이상 커스텀 필터가 아닌 컬럼의 필터 인스턴스 제거
+    if (this.customFilters) {
+      for (const colId of [...this.customFilters.keys()]) {
+        const c = newById.get(colId);
+        if (!c || !this.isCustomFilter(c)) this.customFilters.delete(colId);
+      }
     }
     if (this.rootNodes.length) this.inferDataTypes();
     this.columnsVersion++;
@@ -1366,8 +1374,9 @@ export class GridCore {
     const preds = [];
     for (const [colId, model] of this.filterModels) {
       const col = this.columnById.get(colId);
-      if (!col || !isModelActive(model)) continue;
-      preds.push(createFilterPredicate(this, col, model));
+      if (!col || !this.isFilterModelActive(col, model)) continue;
+      const pred = this.makeColumnFilterPredicate(col, model);
+      if (pred) preds.push(pred);
     }
     const qt = this.gos.quickFilterText;
     if (qt && String(qt).trim()) {
@@ -1390,8 +1399,12 @@ export class GridCore {
     if (!this.groupMode) {
       this.filteredNodes = preds.length ? this.rootNodes.filter(n => preds.every(p => p(n))) : this.rootNodes;
     }
+    this.updateFilterActiveFlags();
+  }
+
+  updateFilterActiveFlags() {
     this.allColumns.forEach(c => {
-      c.filterActive = isModelActive(this.filterModels.get(c.colId));
+      c.filterActive = this.isFilterModelActive(c, this.filterModels.get(c.colId));
     });
   }
 
@@ -1441,89 +1454,90 @@ export class GridCore {
       this.sortedNodes = this.filteredNodes;
       return;
     }
-    const accented = !!this.gos.accentedSort;
-    const nodes = this.filteredNodes;
-    const n = nodes.length;
-    const k = sortCols.length;
-    // 빠른 경로: 단일 컬럼 + 기본 비교자 → 값 타입별 특화 정렬 (50만건 수십~백 ms)
-    if (k === 1 && !sortCols[0].colDef.comparator) {
-      const fast = this.fastSingleSort(nodes, sortCols[0], accented);
-      if (fast) {
-        this.sortedNodes = fast;
-        const post = this.gos.postSortRows;
-        if (typeof post === 'function') post({ nodes: this.sortedNodes, api: this.api, context: this.gos.context });
-        return;
-      }
-    }
-    const items = new Array(n);
-    for (let i = 0; i < n; i++) {
-      const node = nodes[i];
-      const vals = new Array(k);
-      for (let j = 0; j < k; j++) vals[j] = this.getCellValue(node, sortCols[j]);
-      items[i] = { node, i, vals };
-    }
-    items.sort((a, b) => {
-      for (let j = 0; j < k; j++) {
-        const c = sortCols[j];
-        const desc = c.sort === 'desc';
-        const cmp = c.colDef.comparator;
-        const r = cmp
-          ? cmp(a.vals[j], b.vals[j], a.node, b.node, desc)
-          : defaultComparator(a.vals[j], b.vals[j], accented);
-        if (r !== 0) return desc ? -r : r;
-      }
-      return a.i - b.i;
-    });
-    this.sortedNodes = items.map(x => x.node);
+    this.sortedNodes = this.keyedSort(this.filteredNodes, sortCols);
     const post = this.gos.postSortRows;
     if (typeof post === 'function') post({ nodes: this.sortedNodes, api: this.api, context: this.gos.context });
   }
 
-  // AG 기본 비교자와 같은 결과(null 은 오름차순 앞, 동률은 원래 순서 유지)를 내는 특화 정렬
-  fastSingleSort(nodes, col, accented) {
+  // AG 기본 비교자와 같은 결과(null 은 오름차순 앞, 동률은 원래 순서 유지)를 내는 키 정렬.
+  // 컬럼마다 값을 한 번만 읽어 타입별 키 배열로 만든다: 숫자 → Float64Array, 문자열 → 직접 비교,
+  // 그 외/colDef.comparator → 일반 비교자. 단일·다중 정렬 공통.
+  keyedSort(nodes, sortCols) {
     const n = nodes.length;
-    const desc = col.sort === 'desc';
-    const vals = new Array(n);
-    let allNum = true;
-    let allStr = true;
-    for (let i = 0; i < n; i++) {
-      const v = this.getCellValue(nodes[i], col);
-      vals[i] = v;
-      if (v == null) continue;
-      if (typeof v !== 'number') allNum = false;
-      if (typeof v !== 'string') allStr = false;
-    }
+    const accented = !!this.gos.accentedSort;
+    const NUM = 0;
+    const STR = 1;
+    const GEN = 2;
+    const specs = sortCols.map(col => {
+      const desc = col.sort === 'desc';
+      const cmp = col.colDef.comparator;
+      const vals = new Array(n);
+      let allNum = true;
+      let allStr = true;
+      for (let i = 0; i < n; i++) {
+        const v = this.getCellValue(nodes[i], col);
+        vals[i] = v;
+        if (v == null) continue;
+        if (typeof v !== 'number') allNum = false;
+        if (typeof v !== 'string') allStr = false;
+      }
+      const spec = { desc, dir: desc ? -1 : 1, cmp, vals, kind: GEN };
+      if (!cmp && allNum) {
+        spec.kind = NUM;
+        spec.keys = new Float64Array(n);
+        spec.nul = new Uint8Array(n);
+        for (let i = 0; i < n; i++) {
+          if (vals[i] == null) spec.nul[i] = 1;
+          else spec.keys[i] = vals[i];
+        }
+      } else if (!cmp && allStr && !accented) {
+        // 문자열 → 고유값 순위(정수)로 치환해 숫자 비교 (고유값이 행 수보다 충분히 적을 때 이득)
+        const uniq = new Map();
+        for (let i = 0; i < n; i++) if (vals[i] != null && !uniq.has(vals[i])) uniq.set(vals[i], 0);
+        if (uniq.size < n * 0.5) {
+          const sorted = [...uniq.keys()].sort((x, y) => (x < y ? -1 : x > y ? 1 : 0));
+          sorted.forEach((v, r) => uniq.set(v, r));
+          spec.kind = NUM;
+          spec.keys = new Float64Array(n);
+          spec.nul = new Uint8Array(n);
+          for (let i = 0; i < n; i++) {
+            if (vals[i] == null) spec.nul[i] = 1;
+            else spec.keys[i] = uniq.get(vals[i]);
+          }
+        } else spec.kind = STR;
+      }
+      return spec;
+    });
+    const k = specs.length;
     const idx = new Array(n);
     for (let i = 0; i < n; i++) idx[i] = i;
-    const dir = desc ? -1 : 1;
-    if (allNum) {
-      const keys = new Float64Array(n);
-      const nul = new Uint8Array(n);
-      for (let i = 0; i < n; i++) {
-        if (vals[i] == null) nul[i] = 1;
-        else keys[i] = vals[i];
-      }
-      idx.sort((a, b) => {
-        const na = nul[a];
-        const nb = nul[b];
-        if (na || nb) return na && nb ? a - b : (na ? -1 : 1) * dir;
-        const d = keys[a] - keys[b];
-        return d ? d * dir : a - b;
-      });
-    } else if (allStr && !accented) {
-      idx.sort((a, b) => {
-        const x = vals[a];
-        const y = vals[b];
-        if (x == null || y == null) {
-          if (x == null && y == null) return a - b;
-          return (x == null ? -1 : 1) * dir;
+    idx.sort((a, b) => {
+      for (let j = 0; j < k; j++) {
+        const s = specs[j];
+        if (s.kind === NUM) {
+          const na = s.nul[a];
+          const nb = s.nul[b];
+          if (na || nb) {
+            if (na && nb) continue;
+            return (na ? -1 : 1) * s.dir;
+          }
+          const d = s.keys[a] - s.keys[b];
+          if (d) return d > 0 ? s.dir : -s.dir;
+        } else if (s.kind === STR) {
+          const x = s.vals[a];
+          const y = s.vals[b];
+          if (x === y) continue;
+          if (x == null || y == null) return (x == null ? -1 : 1) * s.dir;
+          return (x < y ? -1 : 1) * s.dir;
+        } else {
+          const r = s.cmp
+            ? s.cmp(s.vals[a], s.vals[b], nodes[a], nodes[b], s.desc)
+            : defaultComparator(s.vals[a], s.vals[b], accented);
+          if (r) return s.desc ? -r : r;
         }
-        if (x === y) return a - b;
-        return (x < y ? -1 : 1) * dir;
-      });
-    } else {
-      return null;
-    }
+      }
+      return a - b;
+    });
     const out = new Array(n);
     for (let i = 0; i < n; i++) out[i] = nodes[idx[i]];
     return out;
@@ -1560,8 +1574,29 @@ export class GridCore {
     return this.pageSizeOverride ?? this.gos.paginationPageSize ?? 100;
   }
 
+  // 페이지 단위(행) 시작 rowIndex 목록. null 이면 표시 행 하나하나가 단위.
+  // AG 동일: paginateChildRows=false(기본) 면 그룹은 최상위 행, 마스터/디테일은 마스터 행 기준으로 자르고
+  // 펼친 자식·상세 행은 부모와 같은 페이지에 둔다.
+  getPageUnitStarts() {
+    if (this.gos.paginateChildRows) return null;
+    if (this.groupMode) {
+      const top = this.groupSortedTop || [];
+      if (top.length === this.displayedNodes.length) return null;
+      const out = [];
+      for (const n of top) if (n.displayed) out.push(n.rowIndex);
+      return out;
+    }
+    if (this.gos.masterDetail && this.sortedNodes.length !== this.displayedNodes.length) {
+      return this.sortedNodes.map(n => n.rowIndex);
+    }
+    return null;
+  }
+
   updatePagination() {
     const total = this.displayedNodes.length;
+    const units = this.getPageUnitStarts();
+    const unitCount = units ? units.length : total;
+    this.paginationRowCount = unitCount;
     if (!this.gos.pagination) {
       this.pageFirstRow = 0;
       this.pageLastRow = total;
@@ -1569,21 +1604,23 @@ export class GridCore {
       this.currentPage = 0;
       return;
     }
-    const masters = this.sortedNodes;
     const size = this.getPageSize();
-    this.totalPages = Math.ceil(masters.length / size);
+    this.totalPages = Math.ceil(unitCount / size);
     this.currentPage = clamp(this.currentPage, 0, Math.max(0, this.totalPages - 1));
-    if (!masters.length) {
+    if (!unitCount) {
       this.pageFirstRow = 0;
       this.pageLastRow = 0;
       return;
     }
-    const startNode = masters[this.currentPage * size];
-    const lastMaster = masters[Math.min(masters.length, (this.currentPage + 1) * size) - 1];
-    this.pageFirstRow = startNode.rowIndex;
-    let end = lastMaster.rowIndex + 1;
-    if (lastMaster.expanded && lastMaster.detailNode?.displayed) end = lastMaster.detailNode.rowIndex + 1;
-    this.pageLastRow = end;
+    const firstUnit = this.currentPage * size;
+    const nextUnit = (this.currentPage + 1) * size;
+    if (!units) {
+      this.pageFirstRow = firstUnit;
+      this.pageLastRow = Math.min(total, nextUnit);
+    } else {
+      this.pageFirstRow = units[firstUnit];
+      this.pageLastRow = nextUnit < units.length ? units[nextUnit] : total;
+    }
   }
 
   getDefaultRowHeight() {
@@ -1692,19 +1729,38 @@ export class GridCore {
   // ── 필터 api ─────────────────────────────────────────────
   getFilterModel() {
     const out = {};
-    for (const [k, v] of this.filterModels) if (isModelActive(v)) out[k] = v;
+    for (const [k, v] of this.filterModels) {
+      if (this.isFilterModelActive(this.columnById.get(k), v)) out[k] = v;
+    }
     return out;
   }
 
   setFilterModel(model) {
+    const prevCustom = [...this.filterModels.keys()].map(k => this.columnById.get(k)).filter(c => this.isCustomFilter(c));
     this.filterModels.clear();
+    let custom = false;
     if (model) {
       Object.keys(model).forEach(k => {
         const col = this.getColumn(k);
-        if (col && model[k]) this.filterModels.set(col.colId, model[k]);
+        if (!col || model[k] == null) return;
+        this.filterModels.set(col.colId, model[k]);
+        if (this.isCustomFilter(col)) {
+          custom = true;
+          this.applyCustomFilterModel(col, model[k]);
+        }
       });
     }
-    this.onFilterChanged('api');
+    // 빠진 커스텀 필터는 null 로 초기화
+    prevCustom.forEach(c => {
+      if (this.filterModels.has(c.colId)) return;
+      custom = true;
+      this.applyCustomFilterModel(c, null);
+    });
+    // 커스텀 필터는 컴포넌트가 새 모델로 렌더된 뒤 적용 (AG 도 비동기)
+    if (custom) {
+      this.notify();
+      this.scheduleFilterChanged('api', []);
+    } else this.onFilterChanged('api');
   }
 
   setColumnFilterModel(key, model, apply = true) {
@@ -1712,6 +1768,12 @@ export class GridCore {
     if (!col) return;
     if (model == null) this.filterModels.delete(col.colId);
     else this.filterModels.set(col.colId, model);
+    if (this.isCustomFilter(col)) {
+      this.applyCustomFilterModel(col, model ?? null);
+      this.notify();
+      if (apply) this.scheduleFilterChanged('columnFilter', [col]);
+      return;
+    }
     if (apply) this.onFilterChanged('columnFilter', [col]);
   }
 
@@ -1724,9 +1786,7 @@ export class GridCore {
   onFilterChanged(source = 'api', columns) {
     this.quickFilterVersion++;
     if (this.isSsrm()) {
-      this.allColumns.forEach(c => {
-        c.filterActive = isModelActive(this.filterModels.get(c.colId));
-      });
+      this.updateFilterActiveFlags();
       this.ssrmReset('filter');
     } else this.refreshModel({ resetPage: true });
     this.dispatch('filterChanged', {
@@ -1738,7 +1798,7 @@ export class GridCore {
   }
 
   isAnyFilterPresent() {
-    if ([...this.filterModels.values()].some(isModelActive)) return true;
+    for (const [k, v] of this.filterModels) if (this.isFilterModelActive(this.columnById.get(k), v)) return true;
     if (this.gos.quickFilterText && String(this.gos.quickFilterText).trim()) return true;
     const ext = this.gos.isExternalFilterPresent;
     return typeof ext === 'function' && !!ext({ api: this.api, context: this.gos.context });
@@ -2952,6 +3012,12 @@ export class GridCore {
   }
 
   // ── 팝업(메뉴/필터) ────────────────────────────────────────
+  // popupParent 지정 시 팝업(메뉴/필터/팝업 에디터/툴팁/드래그 고스트)을 그 요소에 붙인다
+  getPopupParent() {
+    const p = this.gos.popupParent;
+    return p && typeof p.appendChild === 'function' ? p : document.body;
+  }
+
   openPopup(popup) {
     this.popup = popup;
     this.notify();
@@ -3023,10 +3089,20 @@ export class GridCore {
   ensureIndexVisible(index, position) {
     if (index == null || index < 0 || index >= this.displayedNodes.length) return;
     if (this.gos.pagination && (index < this.pageFirstRow || index >= this.pageLastRow)) {
-      const node = this.displayedNodes[index];
-      const master = node.detail ? node.parent : node;
-      const mi = this.sortedNodes.indexOf(master);
-      if (mi >= 0) this.paginationGoToPage(Math.floor(mi / this.getPageSize()));
+      // index 가 속한 페이지 단위 찾기 (단위 시작 rowIndex 중 index 이하 최댓값)
+      const units = this.getPageUnitStarts();
+      let unit = index;
+      if (units) {
+        let lo = 0;
+        let hi = units.length - 1;
+        while (lo < hi) {
+          const mid = (lo + hi + 1) >> 1;
+          if (units[mid] <= index) lo = mid;
+          else hi = mid - 1;
+        }
+        unit = lo;
+      }
+      this.paginationGoToPage(Math.floor(unit / this.getPageSize()));
     }
     const vp = this.viewport;
     if (!vp) {
@@ -3253,4 +3329,4 @@ export class GridCore {
 }
 
 // 기능별 mixin 결합 (그룹핑 / SSRM / 행드래그 / undo / 고정행)
-Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods);
+Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods);
