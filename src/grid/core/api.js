@@ -424,6 +424,12 @@ export function createApi(core) {
       api.setRowGroupColumns(core.rowGroupColumns().filter(c => !rm.includes(c)));
     },
 
+    // ── 고급 필터 ──
+    getAdvancedFilterModel: () => core.getAdvancedFilterModel(),
+    setAdvancedFilterModel: model => core.setAdvancedFilterModel(model),
+    showAdvancedFilterBuilder: () => core.openPopup({ type: 'advancedFilterBuilder' }),
+    hideAdvancedFilterBuilder: () => core.popup?.type === 'advancedFilterBuilder' && core.closePopup(),
+
     // ── 피벗 ──
     isPivotMode: () => core.isPivotActive(),
     setPivotMode: on => core.setPivotMode(on),

@@ -6,6 +6,7 @@ import { cx } from '../core/utils.js';
 import { Checkbox, Icon } from './common.jsx';
 import { PopupLayer, useClickOutside, usePopupPosition, visibleClipOf } from './popup.jsx';
 import { FilterUI } from './filters.jsx';
+import { AdvancedFilterBuilderPopup } from './advancedFilter.jsx';
 
 // ── 메뉴 아이템 정규화 ─────────────────────────────────────
 function builtinItem(core, key, params) {
@@ -62,7 +63,7 @@ function builtinItem(core, key, params) {
     case 'sortUnSort':
       return col && col.sort ? { name: t('sortUnSort'), icon: 'none', action: () => core.setColumnSort(col, null, false, 'columnMenu') } : null;
     case 'columnFilter':
-      return col && col.colDef.filter
+      return col && col.colDef.filter && !core.isAdvancedFilterEnabled()
         ? { name: t('columnFilter'), icon: 'filter', action: () => setTimeout(() => core.openPopup({ type: 'filter', column: col, anchorColId: col.colId }), 0) }
         : null;
     case 'columnChooser':
@@ -332,7 +333,7 @@ export function ColumnMenuPopup({ core, popup }) {
   const legacy = core.gos.columnMenu === 'legacy';
   const ref = useRef(null);
   const tabs = (column.colDef.menuTabs || DEFAULT_LEGACY_TABS).filter(
-    t => t !== 'filterMenuTab' || !!column.colDef.filter,
+    t => t !== 'filterMenuTab' || (!!column.colDef.filter && !core.isAdvancedFilterEnabled()),
   );
   const [tab, setTab] = useState(() => popup.tab ?? (tabs[0] || 'generalMenuTab'));
   const close = () => {
@@ -484,5 +485,6 @@ export function Popups({ core }) {
   if (p.type === 'columnMenu') return <ColumnMenuPopup key={`colmenu-${p.column.colId}`} core={core} popup={p} />;
   if (p.type === 'filter') return <FilterPopup key={`filter-${p.column.colId}`} core={core} popup={p} />;
   if (p.type === 'columnChooser') return <ColumnChooserPopup core={core} />;
+  if (p.type === 'advancedFilterBuilder') return <AdvancedFilterBuilderPopup core={core} />;
   return null;
 }

@@ -29,6 +29,7 @@ import { fillHandleMethods } from './fillHandle.js';
 import { statusBarMethods } from './statusBar.js';
 import { findMethods } from './find.js';
 import { pivotMethods } from './pivot.js';
+import { advancedFilterMethods } from './advancedFilter.js';
 
 export const DEFAULT_ROW_HEIGHT = 42;
 export const DEFAULT_HEADER_HEIGHT = 48;
@@ -1480,7 +1481,13 @@ export class GridCore {
 
   applyFilters() {
     const preds = [];
-    for (const [colId, model] of this.filterModels) {
+    // 고급 필터가 켜지면 컬럼 필터 대신 고급 필터 모델만 적용 (AG 동일)
+    const advanced = this.isAdvancedFilterEnabled();
+    if (advanced && this.advancedFilterModel) {
+      const m = this.advancedFilterModel;
+      preds.push(node => this.advancedPasses(m, node));
+    }
+    for (const [colId, model] of advanced ? [] : this.filterModels) {
       const col = this.columnById.get(colId);
       if (!col || !this.isFilterModelActive(col, model)) continue;
       const pred = this.makeColumnFilterPredicate(col, model);
@@ -1906,6 +1913,7 @@ export class GridCore {
   }
 
   isAnyFilterPresent() {
+    if (this.isAdvancedFilterEnabled() && this.advancedFilterModel) return true;
     for (const [k, v] of this.filterModels) if (this.isFilterModelActive(this.columnById.get(k), v)) return true;
     if (this.gos.quickFilterText && String(this.gos.quickFilterText).trim()) return true;
     const ext = this.gos.isExternalFilterPresent;
@@ -3182,6 +3190,7 @@ export class GridCore {
 
   // 플로팅 필터 행 높이 (표시 컬럼 중 floatingFilter 가 하나라도 있으면)
   getFloatingFiltersHeight(headerHeight) {
+    if (this.isAdvancedFilterEnabled()) return 0;
     const has = this.displayedColumns.some(c => !c.isAuto && c.colDef.floatingFilter && c.colDef.filter);
     return has ? this.gos.floatingFiltersHeight ?? headerHeight : 0;
   }
@@ -3505,4 +3514,4 @@ export class GridCore {
 }
 
 // 기능별 mixin 결합 (그룹핑 / SSRM / 행드래그 / undo / 고정행)
-Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods, statusBarMethods, findMethods, pivotMethods);
+Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods, statusBarMethods, findMethods, pivotMethods, advancedFilterMethods);

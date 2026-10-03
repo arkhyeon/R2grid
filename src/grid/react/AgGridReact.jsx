@@ -17,6 +17,7 @@ import { GridBody } from './GridBody.jsx';
 import { Overlay, PagingPanel, RowGroupPanel, SideBar, StatusBar, useTooltip } from './chrome.jsx';
 import { Popups } from './menus.jsx';
 import { CustomFilterHost } from './filters.jsx';
+import { AdvancedFilterBar } from './advancedFilter.jsx';
 import '../styles/quartz.css';
 
 function isEditableEl(t) {
@@ -85,6 +86,7 @@ function GridView({ core }) {
       onMouseOut={tooltip.onOut}
     >
       <RowGroupPanel core={core} />
+      <AdvancedFilterBar core={core} />
       <div className={cx('r2-root-wrapper-body r2-focus-managed', autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal')} role="presentation">
         {core.sideBarPosition === 'left' && <SideBar core={core} />}
         <div

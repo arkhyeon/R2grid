@@ -122,7 +122,8 @@ function HeaderCell({ core, col, height, multiSortActive, drag }) {
 
   const showMenuBtn = !isSelection && !col.autoType && !cd.suppressHeaderMenuButton && !cd.suppressMenu;
   // 플로팅 필터가 있으면 필터 버튼은 플로팅 필터 쪽에 (AG 동일)
-  const showFilterBtn = !legacy && !!cd.filter && !cd.floatingFilter && !cd.suppressHeaderFilterButton && !col.autoType;
+  const showFilterBtn =
+    !legacy && !!cd.filter && !cd.floatingFilter && !cd.suppressHeaderFilterButton && !col.autoType && !core.isAdvancedFilterEnabled();
   const toggleMenu = e => {
     e.stopPropagation();
     if (menuOpen) core.closePopup();
