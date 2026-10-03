@@ -298,6 +298,7 @@ function FullRowDemo({ log }) {
         onRowValueChanged={({ data }) => log(`rowValueChanged: ${JSON.stringify(data)}`)}
         undoRedoCellEditing
         editType="fullRow"
+        autoSizeStrategy={{ type: 'fitCellContents' }}
         ref={ref}
         height="260px"
       />
@@ -311,9 +312,80 @@ function FullRowDemo({ log }) {
   );
 }
 
+// ── WorkGroupList: columnGroupShow + marryChildren + column.originalParent.colGroupDef ──
+const STAGE = { y: 'O', n: 'X' };
+const MODEL = { 1: '원본>임시영역>분리보관', 2: '원본>분리보관', 3: '원본' };
+const makeStageData = (column, data) => {
+  const myColumn = column.colId;
+  const parentColumn = column.originalParent.colGroupDef.field;
+  const stageData = data[parentColumn];
+  const stageNo = parentColumn.replace(/\D/g, '');
+  const ynKey = `stage_${stageNo}_yn`;
+  if (myColumn !== ynKey && stageData[ynKey] === 'n') return '';
+  const v = stageData[myColumn];
+  return myColumn.endsWith('_model') ? MODEL[v] : myColumn.endsWith('_yn') ? STAGE[v] : v;
+};
+const stageGroup = n => ({
+  headerName: `${n}단계`,
+  field: `stage${n}_info`,
+  marryChildren: true,
+  children: [
+    { headerName: '파기모델', field: `stage_${n}_model`, flex: 0.73, columnGroupShow: 'open', valueGetter: ({ column, data }) => makeStageData(column, data) },
+    { headerName: '사용', field: `stage_${n}_yn`, flex: 0.2, valueGetter: ({ column, data }) => makeStageData(column, data), cellStyle: { textAlign: 'center' } },
+    { headerName: '추출방식', field: `stage_${n}_extr`, flex: 0.4, columnGroupShow: 'open', valueGetter: ({ column, data }) => makeStageData(column, data) },
+    { headerName: '파기구분', field: `stage_${n}_type`, flex: 0.35, valueGetter: ({ column, data }) => makeStageData(column, data) },
+  ],
+});
+function ColumnGroupDemo({ log }) {
+  const [rows] = useState(() =>
+    Array.from({ length: 30 }, (_, i) => {
+      const r = { bs_cd_name: `업무${i + 1}`, bs_cd: `BS${String(i + 1).padStart(3, '0')}`, tbl_name: `TB_${i}` };
+      [1, 2].forEach(n => {
+        r[`stage${n}_info`] = {
+          [`stage_${n}_yn`]: (i + n) % 3 ? 'y' : 'n',
+          [`stage_${n}_model`]: (i % 3) + 1,
+          [`stage_${n}_extr`]: i % 2 ? '업무맵' : '계층쿼리',
+          [`stage_${n}_type`]: i % 2 ? '삭제' : '업데이트',
+        };
+      });
+      return r;
+    }),
+  );
+  const columnDefs = useMemo(
+    () => [
+      { headerName: '업무 코드명', field: 'bs_cd_name', flex: 0.5 },
+      { headerName: '업무 코드', field: 'bs_cd', flex: 0.4 },
+      { headerName: '테이블', field: 'tbl_name', flex: 0.7 },
+      stageGroup(1),
+      stageGroup(2),
+    ],
+    [],
+  );
+  return (
+    <Table
+      id="WorkGroupListTable"
+      rowNumbers
+      rowData={rows}
+      columnDefs={columnDefs}
+      rowSelection={{ mode: 'singleRow', checkboxes: false, enableClickSelection: true }}
+      suppressRowTransform
+      reactiveCustomComponents
+      onColumnGroupOpened={e => log(`columnGroupOpened: ${e.columnGroup.getGroupId()} open=${e.columnGroup.isExpanded()}`)}
+      onColumnMoved={e => log(`columnMoved: ${e.column?.getColId()} → ${e.toIndex}`)}
+      onGridReady={e => {
+        window.__wgApi = e.api;
+      }}
+      height="280px"
+    />
+  );
+}
+
 export default function Phase4Demo({ log }) {
   return (
     <div className="p4">
+      <Section title="컬럼 그룹 접기 — WorkGroupList" note="columnGroupShow:'open' + marryChildren + column.originalParent.colGroupDef.field">
+        <ColumnGroupDemo log={log} />
+      </Section>
       <Section title="트리 데이터 — UserGroupRole" note="treeData + getDataPath + aggFunc(함수/min) + groupDefaultExpanded=1">
         <TreeDemo log={log} />
       </Section>

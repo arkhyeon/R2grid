@@ -1,5 +1,5 @@
 // 그리드 주변 UI: 사이드바 / 오버레이 / 페이지 패널 / 툴팁
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { localeText } from '../core/locale.js';
 import { cx } from '../core/utils.js';
@@ -63,15 +63,29 @@ export function SideBar({ core }) {
         })}
       </div>
       {def.toolPanels.map(tp => (
-        <div
-          key={tp.id}
-          className={cx('ag-tool-panel-wrapper', open !== tp.id && 'ag-hidden')}
-          role="tabpanel"
-          style={{ width: tp.width, minWidth: tp.minWidth, maxWidth: tp.maxWidth }}
-        >
+        <ToolPanelWrapper key={tp.id} hidden={open !== tp.id} tp={tp}>
           {core.mountedPanels.has(tp.id) && <ToolPanelContent core={core} tp={tp} />}
-        </div>
+        </ToolPanelWrapper>
       ))}
+    </div>
+  );
+}
+
+// ag-hidden 은 classList 로만 토글 (AG 동일). className prop 으로 바꾸면 리렌더 시
+// 외부에서 붙인 클래스(CLM: ag-visible / ag-animation-slideOut)가 지워진다.
+function ToolPanelWrapper({ hidden, tp, children }) {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    ref.current?.classList.toggle('ag-hidden', hidden);
+  }, [hidden]);
+  return (
+    <div
+      ref={ref}
+      className="ag-tool-panel-wrapper ag-hidden"
+      role="tabpanel"
+      style={{ width: tp.width, minWidth: tp.minWidth, maxWidth: tp.maxWidth }}
+    >
+      {children}
     </div>
   );
 }

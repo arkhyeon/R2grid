@@ -41,6 +41,20 @@ function HeaderGroupCell({ core, seg, level, height }) {
           <span className="ag-header-group-text" role="presentation">
             {def.headerName ?? ''}
           </span>
+          {seg.group.expandable && (
+            <span
+              className={cx(
+                'ag-header-icon ag-header-expand-icon',
+                seg.group.expanded ? 'ag-header-expand-icon-expanded' : 'ag-header-expand-icon-collapsed',
+              )}
+              onClick={e => {
+                e.stopPropagation();
+                core.setColumnGroupOpened(seg.group, !seg.group.expanded, 'uiColumnExpanded');
+              }}
+            >
+              <Icon name={seg.group.expanded ? 'expanded' : 'contracted'} />
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -267,7 +281,7 @@ function HeaderRows({ core, cols, width, headerHeight, groupHeaderHeight, drag }
         style={{ top: level * groupHeaderHeight, height: groupHeaderHeight, width }}
       >
         {segs.map((seg, i) => (
-          <HeaderGroupCell key={seg.group ? seg.group.groupId : `pad${i}`} core={core} seg={seg} level={level} height={groupHeaderHeight} />
+          <HeaderGroupCell key={seg.group ? `${seg.group.groupId}#${i}` : `pad${i}`} core={core} seg={seg} level={level} height={groupHeaderHeight} />
         ))}
       </div>,
     );

@@ -19,6 +19,9 @@ const ICONS = {
   'small-up': 'M10 19l6-6 6 6',
   'small-right': 'M13 10l6 6-6 6',
   'small-left': 'M19 10l-6 6 6 6',
+  // 컬럼 그룹 열림/닫힘 (AG: columnGroupOpened=expanded, columnGroupClosed=contracted)
+  expanded: 'M19.5 9l-7 7 7 7',
+  contracted: 'M12.5 9l7 7-7 7',
   first: 'M22 9l-7 7 7 7M10 8v16',
   last: 'M10 9l7 7-7 7M22 8v16',
   previous: 'M19.5 9l-7 7 7 7',

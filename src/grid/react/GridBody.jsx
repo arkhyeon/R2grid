@@ -927,7 +927,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     if (floatBottomRef.current) floatBottomRef.current.scrollLeft = left;
   }, [topH > 0, bottomH > 0]);
 
-  const hScrollVisible = core.centerWidth > (size.cw || 0) + 1;
+  const hScrollVisible = !core.gos.suppressHorizontalScroll && core.centerWidth > (size.cw || 0) + 1;
 
   return (
     <>

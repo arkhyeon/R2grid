@@ -243,22 +243,14 @@ export function createApi(core) {
     autoSizeColumn: (key, skipHeader) => core.autoSizeColumns([key], skipHeader),
     autoSizeAllColumns: skipHeader => core.autoSizeColumns(null, skipHeader),
     sizeColumnsToFit: params => core.sizeColumnsToFit(params),
-    getColumnGroup: id => {
-      let found = null;
-      const walk = list =>
-        list.forEach(x => {
-          if (found) return;
-          if (x.groupId != null && x.groupId === id) found = x;
-          else if (x.children) walk(x.children);
-        });
-      walk(core.columnTree);
-      return found;
-    },
-    getProvidedColumnGroup: id => api.getColumnGroup(id),
+    getColumnGroup: id => core.getColumnGroup(id),
+    getProvidedColumnGroup: id => core.getColumnGroup(id),
     getAllDisplayedColumnGroups: () => core.columnTree,
-    getColumnGroupState: () => [],
-    setColumnGroupState: () => {},
-    setColumnGroupOpened: () => {},
+    getColumnGroupState: () => core.getColumnGroupState(),
+    setColumnGroupState: state => core.setColumnGroupState(state),
+    resetColumnGroupState: () =>
+      core.setColumnGroupState([...core.groupById.values()].map(g => ({ groupId: g.groupId, open: !!g.colGroupDef.openByDefault }))),
+    setColumnGroupOpened: (group, open) => core.setColumnGroupOpened(group, open),
     isPinning: () => core.displayedLeft.length > 0 || core.displayedRight.length > 0,
     isPinningLeft: () => core.displayedLeft.length > 0,
     isPinningRight: () => core.displayedRight.length > 0,

@@ -427,15 +427,23 @@ export class GridCore {
       return { ...merged, ...def };
     };
 
+    const prevGroups = this.groupById || new Map();
+    const newGroups = new Map();
     const walk = (list, chain, level) => {
       const out = [];
       list.forEach(def => {
         if (!def) return;
         if (Array.isArray(def.children)) {
           const groupId = def.groupId != null ? String(def.groupId) : `__group_${groupSeq++}`;
-          const group = new ColumnGroup(def, groupId, level);
+          const gdef = g.defaultColGroupDef ? { ...g.defaultColGroupDef, ...def } : def;
+          const group = new ColumnGroup(gdef, groupId, level);
+          // 같은 groupId 그룹의 열림 상태 유지 (AG 동일)
+          const prevGroup = prevGroups.get(groupId);
+          if (prevGroup && !initial) group.expanded = prevGroup.expanded;
           group.parent = chain.length ? chain[chain.length - 1] : null;
           group.children = walk(def.children, [...chain, group], level + 1);
+          group.computeExpandable();
+          newGroups.set(groupId, group);
           out.push(group);
           return;
         }
@@ -463,6 +471,7 @@ export class GridCore {
       return out;
     };
     this.columnTree = walk(defs, [], 0);
+    this.groupById = newGroups;
     this.headerGroupDepth = leaves.reduce((m, c) => Math.max(m, c.groupChain.length), 0);
 
     // 자동 컬럼: 행번호 → 선택 체크박스
@@ -611,8 +620,25 @@ export class GridCore {
   }
 
   // 표시 컬럼 분할 + flex 폭 계산 + left 오프셋
+  // columnGroupShow: 부모 그룹이 접기 가능할 때 'open' 자식은 열림에서만, 'closed' 자식은 닫힘에서만 표시
+  computeGroupShown(col) {
+    const chain = col.groupChain;
+    for (let i = 0; i < chain.length; i++) {
+      const group = chain[i];
+      if (!group.expandable) continue;
+      const child = chain[i + 1] || col;
+      const show = child.isColumn ? child.colDef.columnGroupShow : child.colGroupDef.columnGroupShow;
+      if (show === 'open' && !group.expanded) return false;
+      if (show === 'closed' && group.expanded) return false;
+    }
+    return true;
+  }
+
   layoutColumns() {
-    const visible = this.allColumns.filter(c => c.visible);
+    this.allColumns.forEach(c => {
+      c.groupShown = this.computeGroupShown(c);
+    });
+    const visible = this.allColumns.filter(c => c.visible && c.groupShown);
     const left = [];
     const center = [];
     const right = [];
@@ -712,6 +738,7 @@ export class GridCore {
     this.bodyWidth = width;
     this.bodyHeight = height;
     if (wChanged) this.layoutColumns();
+    if (wChanged && /^fit(GridWidth|ProvidedWidth)$/.test(this.gos.autoSizeStrategy?.type || '')) this.applyAutoSizeStrategy(false);
     if (hChanged && this.gos.pagination && this.gos.paginationAutoPageSize) {
       this.refreshModel({ newPageSize: true });
     }
@@ -804,7 +831,10 @@ export class GridCore {
     const lockedLeft = rest.filter(c => c.colDef.lockPosition === 'left' || c.colDef.lockPosition === true);
     const lockedRight = rest.filter(c => c.colDef.lockPosition === 'right');
     const middle = rest.filter(c => !lockedLeft.includes(c) && !lockedRight.includes(c));
-    this.allColumns = [...lockedLeft, ...middle, ...lockedRight];
+    const next = [...lockedLeft, ...middle, ...lockedRight];
+    // marryChildren 그룹은 자식이 연속해야 함 → 깨지는 이동은 무시 (AG 동일)
+    if (!this.isMarriedOrderValid(next)) return;
+    this.allColumns = next;
     this.afterColumnLayoutChange();
     this.dispatch('columnMoved', {
       columns: cols,
@@ -813,6 +843,48 @@ export class GridCore {
       finished: true,
       source,
     });
+  }
+
+  isMarriedOrderValid(order) {
+    const pos = new Map(order.map((c, i) => [c, i]));
+    for (const group of this.groupById?.values() || []) {
+      if (!group.colGroupDef.marryChildren) continue;
+      const idx = group.getLeafColumns().map(c => pos.get(c)).sort((a, b) => a - b);
+      if (idx.length && idx[idx.length - 1] - idx[0] !== idx.length - 1) return false;
+    }
+    return true;
+  }
+
+  getColumnGroup(key) {
+    if (key == null) return null;
+    if (key instanceof ColumnGroup) return key;
+    return this.groupById?.get(String(key)) ?? null;
+  }
+
+  setColumnGroupOpened(key, open, source = 'api') {
+    const group = this.getColumnGroup(key);
+    if (!group || group.expanded === !!open) return;
+    group.setExpanded(open);
+    this.afterColumnLayoutChange();
+    this.dispatch('columnGroupOpened', { columnGroup: group, columnGroups: [group], source });
+  }
+
+  getColumnGroupState() {
+    return [...(this.groupById?.values() || [])].map(g => ({ groupId: g.groupId, open: g.expanded }));
+  }
+
+  setColumnGroupState(state) {
+    const changed = [];
+    (state || []).forEach(s => {
+      const group = this.getColumnGroup(s.groupId);
+      if (group && group.expanded !== !!s.open) {
+        group.setExpanded(s.open);
+        changed.push(group);
+      }
+    });
+    if (!changed.length) return;
+    this.afterColumnLayoutChange();
+    this.dispatch('columnGroupOpened', { columnGroup: changed.length === 1 ? changed[0] : undefined, columnGroups: changed, source: 'api' });
   }
 
   afterColumnLayoutChange() {
@@ -3146,9 +3218,23 @@ export class GridCore {
     }
   }
 
+  // autoSizeStrategy: fitCellContents 는 첫 데이터 렌더 시 1회, fitGridWidth/fitProvidedWidth 는 크기 변경마다
+  applyAutoSizeStrategy(firstData) {
+    const s = this.gos.autoSizeStrategy;
+    if (!s || !this.bodyWidth) return;
+    if (s.type === 'fitCellContents') {
+      if (firstData) this.autoSizeColumns(s.colIds || null, s.skipHeader);
+    } else if (s.type === 'fitGridWidth') {
+      this.sizeColumnsToFit(s);
+    } else if (s.type === 'fitProvidedWidth' && s.width) {
+      this.sizeColumnsToFit(s.width);
+    }
+  }
+
   maybeFireFirstDataRendered() {
     if (this.firstDataRenderedFired || !this.displayedNodes.length) return;
     this.firstDataRenderedFired = true;
+    this.applyAutoSizeStrategy(true);
     this.dispatch('firstDataRendered', {
       firstRow: this.renderedRange.first,
       lastRow: this.renderedRange.last,

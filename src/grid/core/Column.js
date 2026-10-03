@@ -97,8 +97,18 @@ export class Column {
     return this.visible;
   }
 
+  // 그룹 접힘(columnGroupShow) 까지 반영한 실제 표시 여부
   isDisplayed() {
-    return this.visible;
+    return this.visible && this.groupShown !== false;
+  }
+
+  getColumnGroupShow() {
+    return this.colDef.columnGroupShow;
+  }
+
+  // AG 내부 필드 호환: column.originalParent.colGroupDef (CLM WorkGroupList)
+  get originalParent() {
+    return this.parent;
   }
 
   getActualWidth() {
@@ -223,6 +233,53 @@ export class ColumnGroup {
     this.level = level;
     this.children = [];
     this.parent = null;
+    this.expanded = !!colGroupDef.openByDefault;
+    this.expandable = false;
+  }
+
+  // AG 규칙: 열림 때 보이는 자식·닫힘 때 보이는 자식이 모두 있고, columnGroupShow 지정 자식이 하나라도 있어야 접기 가능
+  computeExpandable() {
+    let whenOpen = false;
+    let whenClosed = false;
+    let changeable = false;
+    this.children.forEach(c => {
+      const show = c.isColumn ? c.colDef.columnGroupShow : c.colGroupDef.columnGroupShow;
+      if (show === 'open') {
+        whenOpen = true;
+        changeable = true;
+      } else if (show === 'closed') {
+        whenClosed = true;
+        changeable = true;
+      } else {
+        whenOpen = true;
+        whenClosed = true;
+      }
+    });
+    this.expandable = whenOpen && whenClosed && changeable;
+  }
+
+  get originalParent() {
+    return this.parent;
+  }
+
+  getProvidedColumnGroup() {
+    return this;
+  }
+
+  getOriginalParent() {
+    return this.parent;
+  }
+
+  getColumnGroupShow() {
+    return this.colGroupDef.columnGroupShow;
+  }
+
+  isPadding() {
+    return false;
+  }
+
+  getDisplayedChildren() {
+    return this.children.filter(c => (c.isColumn ? c.isDisplayed() : c.getDisplayedLeafColumns().length > 0));
   }
 
   getGroupId() {
@@ -257,7 +314,7 @@ export class ColumnGroup {
   }
 
   getDisplayedLeafColumns() {
-    return this.getLeafColumns().filter(c => c.visible);
+    return this.getLeafColumns().filter(c => c.isDisplayed());
   }
 
   getParent() {
@@ -265,11 +322,15 @@ export class ColumnGroup {
   }
 
   isExpandable() {
-    return false;
+    return this.expandable;
   }
 
   isExpanded() {
-    return true;
+    return this.expanded;
+  }
+
+  setExpanded(expanded) {
+    this.expanded = !!expanded;
   }
 
   getLevel() {

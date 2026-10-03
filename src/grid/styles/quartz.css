@@ -341,6 +341,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.ag-header-expand-icon {
+  display: inline-flex;
+  margin-left: 4px;
+  cursor: pointer;
+  flex: none;
+}
 .ag-header-group-cell-with-group::after {
   content: '';
   position: absolute;
