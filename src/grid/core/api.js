@@ -367,6 +367,16 @@ export function createApi(core) {
     getToolPanelInstance: id => core.toolPanelInstances?.get(id),
     getSideBar: () => core.sideBarDef,
     getStatusPanel: key => core.getStatusPanel(key),
+    // ── Find ──
+    findNext: () => core.findNext(),
+    findPrevious: () => core.findPrevious(),
+    findGoTo: match => core.findGoTo(match),
+    findClearActive: () => core.findClearActive(),
+    findGetActiveMatch: () => core.findGetActiveMatch(),
+    findGetTotalMatches: () => core.findGetTotalMatches(),
+    findGetNumMatches: p => core.findGetNumMatches(p),
+    findGetParts: p => core.findGetParts(p.node, core.getColumn(p.column), p.value) || [{ value: p.value }],
+    findRefresh: () => core.findRefresh(),
 
     // ── 내보내기 ──
     exportDataAsCsv: params => exportDataAsCsv(core, params),

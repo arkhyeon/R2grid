@@ -27,6 +27,7 @@ import { pinnedMethods } from './pinned.js';
 import { customFilterMethods } from './customFilter.js';
 import { fillHandleMethods } from './fillHandle.js';
 import { statusBarMethods } from './statusBar.js';
+import { findMethods } from './find.js';
 
 export const DEFAULT_ROW_HEIGHT = 42;
 export const DEFAULT_HEADER_HEIGHT = 48;
@@ -341,6 +342,11 @@ export class GridCore {
     }
     if (rebuild) this.buildColumns(false);
     if (changed('sideBar')) this.normalizeSideBar(false);
+    if (changed('findSearchValue') || changed('findOptions')) {
+      this.findActive = null;
+      this.__findKey = null;
+      this.dispatchFindChanged();
+    }
     if (changed('pinnedTopRowData') || changed('pinnedBottomRowData')) this.buildPinnedRows();
 
     const prevGroupMode = this.groupMode;
@@ -1144,6 +1150,7 @@ export class GridCore {
 
   setCellValue(node, column, newValue, source = 'api', knownOldValue) {
     if (!node || !column) return false;
+    this.spanEpoch = (this.spanEpoch || 0) + 1;
     const cd = column.colDef;
     const oldValue = knownOldValue !== undefined ? knownOldValue : this.getCellValue(node, column);
     const params = { ...this.makeValueParams(node, column), oldValue, newValue };
@@ -1364,6 +1371,7 @@ export class GridCore {
   }
 
   setNodeData(node, data, isUpdate) {
+    this.spanEpoch = (this.spanEpoch || 0) + 1;
     const before = isUpdate ? this.flashCandidates(node) : null;
     node.data = data;
     node.__version++;
@@ -1418,6 +1426,7 @@ export class GridCore {
     resetPage = false,
     silent = false,
   } = {}) {
+    this.spanEpoch = (this.spanEpoch || 0) + 1;
     if (this.isSsrm()) {
       this.ssrmRefreshView();
       return;
@@ -3094,6 +3103,55 @@ export class GridCore {
     else this.openToolPanel(id, 'sideBarButtonClicked');
   }
 
+  // ── 셀 스패닝 (enableCellSpan + colDef.spanRows: true | fn) ──
+  // 연속한 행의 값이 같으면 하나의 셀로 병합. 페이지 단위로 컬럼별 스팬 시작 인덱스를 캐시.
+  getCellSpan(col, rowIndex) {
+    if (!this.gos.enableCellSpan || !col.colDef.spanRows) return null;
+    // 모델 갱신·값 변경·페이지 이동 때만 다시 계산
+    const key = `${this.spanEpoch || 0}:${this.pageFirstRow}:${this.pageLastRow}:${this.columnsVersion}`;
+    if (!this.__spanCache || this.__spanKey !== key || this.__spanNodes !== this.displayedNodes) {
+      this.__spanCache = new Map();
+      this.__spanKey = key;
+      this.__spanNodes = this.displayedNodes;
+    }
+    let spans = this.__spanCache.get(col.colId);
+    if (!spans) {
+      spans = this.computeColumnSpans(col);
+      this.__spanCache.set(col.colId, spans);
+    }
+    const i = rowIndex - this.pageFirstRow;
+    const start = spans.startOf[i];
+    if (start == null) return null;
+    return { start: start + this.pageFirstRow, count: spans.count[start] };
+  }
+
+  computeColumnSpans(col) {
+    const n = this.pageLastRow - this.pageFirstRow;
+    const startOf = new Int32Array(n);
+    const count = new Int32Array(n);
+    const sr = col.colDef.spanRows;
+    let prevNode = null;
+    let prevVal;
+    let start = 0;
+    for (let i = 0; i < n; i++) {
+      const node = this.displayedNodes[this.pageFirstRow + i];
+      const val = node && !node.group && !node.detail && !node.stub ? this.getCellValue(node, col) : undefined;
+      let same = false;
+      if (i > 0 && prevNode && node && !node.group && !node.detail && !prevNode.group && !prevNode.detail) {
+        same =
+          typeof sr === 'function'
+            ? !!sr({ valueA: prevVal, valueB: val, nodeA: prevNode, nodeB: node, column: col, colDef: col.colDef, api: this.api, context: this.gos.context })
+            : val != null && val !== '' && val === prevVal;
+      }
+      if (!same) start = i;
+      startOf[i] = start;
+      count[start] = i - start + 1;
+      prevNode = node;
+      prevVal = val;
+    }
+    return { startOf, count };
+  }
+
   // 플로팅 필터 행 높이 (표시 컬럼 중 floatingFilter 가 하나라도 있으면)
   getFloatingFiltersHeight(headerHeight) {
     const has = this.displayedColumns.some(c => !c.isAuto && c.colDef.floatingFilter && c.colDef.filter);
@@ -3419,4 +3477,4 @@ export class GridCore {
 }
 
 // 기능별 mixin 결합 (그룹핑 / SSRM / 행드래그 / undo / 고정행)
-Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods, statusBarMethods);
+Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods, statusBarMethods, findMethods);

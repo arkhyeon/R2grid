@@ -106,7 +106,7 @@ function isEditableEl(t) {
 }
 
 // ── 셀 ─────────────────────────────────────────────────────
-function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan }) {
+function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, cellSpan }) {
   const cellRef = useRef(null);
   const g = core.gos;
   const cd = col.colDef;
@@ -209,6 +209,21 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan }
     } else {
       const v = formatted != null ? formatted : value;
       content = v == null ? '' : typeof v === 'object' && !(v instanceof Date) ? String(v) : toText(v);
+      // Find 하이라이트
+      if (g.findSearchValue && content) {
+        const parts = core.findGetParts(node, col, content);
+        if (parts) {
+          content = parts.map((p, i) =>
+            p.match ? (
+              <mark key={i} className={cx('r2-find-match', p.activeMatch && 'r2-find-active-match')}>
+                {p.value}
+              </mark>
+            ) : (
+              p.value
+            ),
+          );
+        }
+      }
     }
     // 레거시 colDef.checkboxSelection (rowSelection 문자열 모드)
     const legacyCb = core.rsOpts?.legacy && cd.checkboxSelection && !node.rowPinned;
@@ -252,8 +267,8 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan }
   }
 
   // colDef.rowSpan: 아래 행까지 덮는 높이 (AG 동일하게 suppressRowTransform 과 함께 사용)
-  let spanHeight;
-  if (typeof cd.rowSpan === 'function' && !node.stub && !node.rowPinned) {
+  let spanHeight = cellSpan?.height;
+  if (!cellSpan && typeof cd.rowSpan === 'function' && !node.stub && !node.rowPinned) {
     const n = Math.max(1, Number(cd.rowSpan({ ...base })) || 1);
     if (n > 1) {
       const i0 = node.rowIndex - core.pageFirstRow;
@@ -311,6 +326,7 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan }
         left: col.left,
         width: spanWidth ?? col.actualWidth,
         ...(spanHeight ? { height: spanHeight, zIndex: 1 } : null),
+        ...(cellSpan ? { top: cellSpan.top } : null),
         ...(flash && flash.phase === 'fade' ? { transition: `background-color ${flash.fadeMs}ms` } : null),
         ...userStyle,
       }}
@@ -394,8 +410,26 @@ function spanCells(core, node, cols, sectionCols) {
   return out;
 }
 
+// enableCellSpan + spanRows: 병합 구간의 "화면상 첫 행"에만 셀을 그리고 나머지 행에서는 생략
+function cellSpanOf(core, node, col) {
+  if (node.rowPinned || !core.gos.enableCellSpan || !col.colDef.spanRows) return undefined;
+  const span = core.getCellSpan(col, node.rowIndex);
+  if (!span || span.count < 2) return undefined;
+  const first = Math.max(span.start, core.renderedRange.first);
+  if (node.rowIndex !== first) return null; // 덮인 행
+  const p0 = core.pageFirstRow;
+  let height = 0;
+  for (let k = 0; k < span.count; k++) height += core.rowHeightAt(span.start - p0 + k);
+  const offset = core.rowTopAt(first - p0) - core.rowTopAt(span.start - p0);
+  return { top: -offset, height };
+}
+
 function Row({ core, node, cols, sectionCols, top, height, rp, handlers }) {
   const transform = !core.gos.suppressRowTransform;
+  const cells = spanCells(core, node, cols, sectionCols)
+    .map(c => ({ ...c, cellSpan: cellSpanOf(core, node, c.col) }))
+    .filter(c => c.cellSpan !== null);
+  const raise = cells.some(c => c.cellSpan);
   return (
     <div
       className={rp.className}
@@ -404,11 +438,11 @@ function Row({ core, node, cols, sectionCols, top, height, rp, handlers }) {
       row-id={node.id}
       aria-rowindex={node.rowPinned ? undefined : node.rowIndex + 2}
       aria-selected={node.selectable && !node.rowPinned ? node.selected : undefined}
-      style={{ ...(transform ? { transform: `translateY(${top}px)` } : { top }), height, ...rp.style }}
+      style={{ ...(transform ? { transform: `translateY(${top}px)` } : { top }), height, ...rp.style, ...(raise ? { zIndex: 1 } : null) }}
       onClick={e => handlers.rowClick(node, e)}
       onDoubleClick={e => handlers.rowDblClick(node, e)}
     >
-      {spanCells(core, node, cols, sectionCols).map(({ col, span, width }, i) => (
+      {cells.map(({ col, span, width, cellSpan }, i) => (
         <Cell
           key={col.colId}
           core={core}
@@ -417,6 +451,7 @@ function Row({ core, node, cols, sectionCols, top, height, rp, handlers }) {
           handlers={handlers}
           spanWidth={span ? width : undefined}
           colSpan={span}
+          cellSpan={cellSpan}
           isFirst={i === 0 && col === core.displayedColumns[0]}
           isLast={col === core.displayedColumns[core.displayedColumns.length - 1]}
         />

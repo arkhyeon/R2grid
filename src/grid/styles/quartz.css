@@ -546,6 +546,17 @@
   border-right-color: var(--r2-range-selection-border-color);
 }
 
+/* Find 하이라이트 */
+.r2-find-match {
+  background-color: var(--r2-find-match-background-color, #ffe58f);
+  color: var(--r2-find-match-color, inherit);
+  border-radius: 2px;
+}
+.r2-find-active-match {
+  background-color: var(--r2-find-active-match-background-color, #fa8c16);
+  color: var(--r2-find-active-match-color, #fff);
+}
+
 /* 행 그룹 패널 */
 .r2-column-drop-wrapper {
   flex: none;
