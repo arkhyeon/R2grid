@@ -654,7 +654,7 @@ export function FloatingFilterCell({ core, col, height }) {
       className="r2-header-cell r2-floating-filter r2-focus-managed"
       role="gridcell"
       col-id={col.colId}
-      style={{ left: col.left, width: col.actualWidth, height }}
+      style={{ ...core.colPos(col.left), width: col.actualWidth, height }}
     >
       {enabled && <div className="r2-floating-filter-body" role="presentation">{body}</div>}
       {showButton && (

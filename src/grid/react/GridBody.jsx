@@ -69,7 +69,7 @@ function GroupCellRenderer({ core, node, column, params, extra }) {
         grouping && `r2-row-group-indent-${level}`,
         leafIndent && 'r2-row-group-leaf-indent',
       )}
-      style={grouping ? { paddingLeft: level * GROUP_INDENT + leafIndent } : undefined}
+      style={grouping ? { paddingInlineStart: level * GROUP_INDENT + leafIndent } : undefined}
       role="presentation"
     >
       {expandable && (
@@ -129,6 +129,7 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
     context: g.context,
   };
   const focused = core.isCellFocused(node, col.colId);
+  const rtl = core.isRtl();
   const range = core.ranges.length && !node.rowPinned ? core.cellRangeInfo(node.rowIndex, col.colId) : null;
   const fillPrev = core.fillState && !node.rowPinned ? core.fillPreviewInfo(node.rowIndex, col.colId) : null;
   const fh = range && !node.rowPinned && !isEditing ? core.getFillHandleCell() : null;
@@ -314,8 +315,8 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
         range?.single && 'r2-cell-range-single-cell',
         range?.top && 'r2-cell-range-top',
         range?.bottom && 'r2-cell-range-bottom',
-        range?.left && 'r2-cell-range-left',
-        range?.right && 'r2-cell-range-right',
+        (rtl ? range?.right : range?.left) && 'r2-cell-range-left',
+        (rtl ? range?.left : range?.right) && 'r2-cell-range-right',
         fillPrev?.top && 'r2-selection-fill-top',
         fillPrev?.bottom && 'r2-selection-fill-bottom',
         fillPrev?.left && 'r2-selection-fill-left',
@@ -335,7 +336,7 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
       aria-colspan={colSpan > 1 ? colSpan : undefined}
       tabIndex={-1}
       style={{
-        left: col.left,
+        ...core.colPos(col.left),
         width: spanWidth ?? col.actualWidth,
         ...(spanHeight ? { height: spanHeight, zIndex: 1 } : null),
         ...(cellSpan ? { top: cellSpan.top } : null),
@@ -679,11 +680,12 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
         if (bodyVpRef.current) bodyVpRef.current.scrollTop = v / metrics.current.ratio;
       },
       getClientHeight: () => bodyVpRef.current?.clientHeight ?? 0,
-      getScrollLeft: () => hScrollRef.current?.scrollLeft ?? 0,
+      // RTL: 브라우저 scrollLeft 는 시작(오른쪽)에서 음수로 감 → 논리 위치는 절대값
+      getScrollLeft: () => Math.abs(hScrollRef.current?.scrollLeft ?? 0),
       setScrollLeft: v => {
         const hs = hScrollRef.current;
         if (!hs) return;
-        hs.scrollLeft = v;
+        hs.scrollLeft = core.isRtl() ? -v : v;
         syncLeft(hs.scrollLeft);
         schedule();
       },
@@ -717,7 +719,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     const left = e.currentTarget.scrollLeft;
     syncLeft(left);
     schedule();
-    core.dispatch('bodyScroll', { direction: 'horizontal', left, top: core.viewport?.getScrollTop() ?? 0 });
+    core.dispatch('bodyScroll', { direction: 'horizontal', left: Math.abs(left), top: core.viewport?.getScrollTop() ?? 0 });
   };
   const onCenterScroll = e => {
     const left = e.currentTarget.scrollLeft;
@@ -765,7 +767,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     }
     if (hs) {
       const cr = centerVpRef.current?.getBoundingClientRect();
-      if (cr && x < cr.left + 8 && hs.scrollLeft > 0) {
+      if (cr && x < cr.left + 8) {
         hs.scrollLeft -= 30;
         scrolled = true;
       } else if (cr && x > cr.right - 8) {
@@ -1047,7 +1049,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     : { first: -1, last: -1 };
 
   const cw = size.cw || core.bodyWidth || 1200;
-  const sl = scroll.left;
+  const sl = Math.abs(scroll.left);
   let center = core.displayedCenter;
   if (!g.suppressColumnVirtualisation) {
     center = center.filter(c => c.left + c.actualWidth >= sl - 200 && c.left <= sl + cw + 200);

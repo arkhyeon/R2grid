@@ -34,7 +34,7 @@ function HeaderGroupCell({ core, seg, level, height }) {
       )}
       role="columnheader"
       col-id={seg.group?.groupId}
-      style={{ left: seg.left, width: seg.width, height }}
+      style={{ ...core.colPos(seg.left), width: seg.width, height }}
       data-r2-tooltip={def?.headerTooltip}
     >
       {seg.group && (
@@ -91,7 +91,7 @@ function HeaderCell({ core, col, height, multiSortActive, drag }) {
   const sortable = col.isSortable();
   const s = col.sort;
   const headerCls = resolveClassValue(cd.headerClass, { colDef: cd, column: col, api: core.api, context: core.gos.context });
-  const style = { left: col.left, width: col.actualWidth, height, ...(typeof cd.headerStyle === 'function' ? cd.headerStyle({ column: col, colDef: cd, api: core.api }) : cd.headerStyle) };
+  const style = { ...core.colPos(col.left), width: col.actualWidth, height, ...(typeof cd.headerStyle === 'function' ? cd.headerStyle({ column: col, colDef: cd, api: core.api }) : cd.headerStyle) };
   const name = core.getDisplayName(col);
   const isSelection = col.autoType === 'selection';
   const rs = core.rsOpts;
@@ -107,12 +107,13 @@ function HeaderCell({ core, col, height, multiSortActive, drag }) {
     el.setPointerCapture?.(e.pointerId);
     const startX = e.clientX;
     const startW = col.actualWidth;
-    const onMove = ev => core.setColumnWidth(col, startW + (ev.clientX - startX), false, 'uiColumnResized');
+    const dir = core.isRtl() ? -1 : 1;
+    const onMove = ev => core.setColumnWidth(col, startW + (ev.clientX - startX) * dir, false, 'uiColumnResized');
     const onUp = ev => {
       el.removeEventListener('pointermove', onMove);
       el.removeEventListener('pointerup', onUp);
       el.removeEventListener('pointercancel', onUp);
-      core.setColumnWidth(col, startW + (ev.clientX - startX), true, 'uiColumnResized');
+      core.setColumnWidth(col, startW + (ev.clientX - startX) * dir, true, 'uiColumnResized');
     };
     el.addEventListener('pointermove', onMove);
     el.addEventListener('pointerup', onUp);
@@ -357,7 +358,7 @@ function useColumnDrag(core) {
       const target = core.getColumn(targetId);
       if (!target || target.pinned !== col.pinned || target.colDef.lockPosition || target.isAuto) return;
       const r = under.getBoundingClientRect();
-      const before = ev.clientX < r.left + r.width / 2;
+      const before = core.isRtl() ? ev.clientX > r.left + r.width / 2 : ev.clientX < r.left + r.width / 2;
       const rest = core.allColumns.filter(c => c !== col);
       let idx = rest.indexOf(target) + (before ? 0 : 1);
       const curIdx = core.allColumns.indexOf(col);

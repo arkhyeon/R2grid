@@ -235,6 +235,19 @@
   cursor: ew-resize;
   touch-action: none;
 }
+/* RTL */
+.r2-rtl {
+  direction: rtl;
+}
+.r2-rtl .r2-header-cell-resize {
+  right: auto;
+  left: -4px;
+}
+.r2-rtl .r2-fill-handle,
+.r2-rtl .r2-range-handle {
+  right: auto;
+  left: -1px;
+}
 .r2-header-cell-resize::after {
   content: '';
   position: absolute;

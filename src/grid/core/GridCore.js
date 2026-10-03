@@ -2741,7 +2741,8 @@ export class GridCore {
   // 그리드 키 입력 처리. 처리했으면 true
   handleKeyDown(e) {
     const ed = this.editing;
-    const key = e.key;
+    // RTL: 화면상 왼쪽 = 다음 컬럼
+    const key = this.isRtl() && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') ? (e.key === 'ArrowLeft' ? 'ArrowRight' : 'ArrowLeft') : e.key;
     if (ed) {
       const node = ed.node;
       const column = ed.column;
@@ -3118,6 +3119,16 @@ export class GridCore {
   onSideButtonClick(id) {
     if (this.sideBarOpenId === id) this.closeToolPanel('sideBarButtonClicked');
     else this.openToolPanel(id, 'sideBarButtonClicked');
+  }
+
+  // ── RTL (enableRtl) ──
+  isRtl() {
+    return !!this.gos.enableRtl;
+  }
+
+  // 컬럼 시작 위치 스타일: LTR 은 left, RTL 은 right (컬럼 left 값은 "시작 기준" 오프셋)
+  colPos(offset) {
+    return this.isRtl() ? { right: offset } : { left: offset };
   }
 
   // ── 셀 스패닝 (enableCellSpan + colDef.spanRows: true | fn) ──
