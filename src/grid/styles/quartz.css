@@ -546,6 +546,38 @@
   border-right-color: var(--r2-range-selection-border-color);
 }
 
+/* 채우기/범위 핸들 */
+.r2-fill-handle,
+.r2-range-handle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  right: -1px;
+  bottom: -1px;
+  z-index: 2;
+  background-color: var(--r2-range-selection-border-color);
+  border: 1px solid var(--r2-background-color);
+  box-sizing: content-box;
+}
+.r2-fill-handle {
+  cursor: crosshair;
+}
+.r2-range-handle {
+  cursor: nwse-resize;
+}
+.r2-cell.r2-selection-fill-top {
+  border-top: 1px dashed var(--r2-range-selection-border-color);
+}
+.r2-cell.r2-selection-fill-bottom {
+  border-bottom: 1px dashed var(--r2-range-selection-border-color);
+}
+.r2-cell.r2-selection-fill-left {
+  border-left: 1px dashed var(--r2-range-selection-border-color);
+}
+.r2-cell.r2-selection-fill-right {
+  border-right: 1px dashed var(--r2-range-selection-border-color);
+}
+
 /* 값 변경 플래시 / 복사 하이라이트 */
 .r2-cell-data-changed {
   background-color: var(--r2-value-change-value-highlight-background-color) !important;

@@ -116,6 +116,9 @@ function Cell({ core, node, col, handlers, isFirst, isLast }) {
   };
   const focused = core.isCellFocused(node, col.colId);
   const range = core.ranges.length && !node.rowPinned ? core.cellRangeInfo(node.rowIndex, col.colId) : null;
+  const fillPrev = core.fillState && !node.rowPinned ? core.fillPreviewInfo(node.rowIndex, col.colId) : null;
+  const fh = range && !node.rowPinned && !isEditing ? core.getFillHandleCell() : null;
+  const showHandle = !!fh && fh.rowIndex === node.rowIndex && fh.colId === col.colId;
   const flash = core.getFlash(node.id, col.colId);
   const userCls = node.stub ? '' : cx(resolveClassValue(cd.cellClass, base), resolveClassRules(cd.cellClassRules, base));
   const userStyle = node.stub ? null : typeof cd.cellStyle === 'function' ? cd.cellStyle(base) : cd.cellStyle;
@@ -263,6 +266,10 @@ function Cell({ core, node, col, handlers, isFirst, isLast }) {
         range?.bottom && 'r2-cell-range-bottom',
         range?.left && 'r2-cell-range-left',
         range?.right && 'r2-cell-range-right',
+        fillPrev?.top && 'r2-selection-fill-top',
+        fillPrev?.bottom && 'r2-selection-fill-bottom',
+        fillPrev?.left && 'r2-selection-fill-left',
+        fillPrev?.right && 'r2-selection-fill-right',
         flashCls,
         cd.wrapText && 'r2-cell-wrap-text',
         isFirst && 'r2-column-first',
@@ -289,6 +296,12 @@ function Cell({ core, node, col, handlers, isFirst, isLast }) {
       onContextMenu={e => handlers.cellContextMenu(node, col, e)}
     >
       {content}
+      {showHandle && (
+        <div
+          className={fh.mode === 'fill' ? 'r2-fill-handle' : 'r2-range-handle'}
+          onPointerDown={e => handlers.fillHandleDown(e)}
+        />
+      )}
     </div>
   );
 }
@@ -693,7 +706,50 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     if (sink && document.activeElement !== sink) sink.focus({ preventScroll: true });
   };
 
+  // 채우기/범위 핸들 드래그
+  const startFillDrag = () => {
+    let lastX = 0;
+    let lastY = 0;
+    let moved = false;
+    const move = () => {
+      const c = locateCell(lastX, lastY);
+      if (c) core.fillMove(c.rowIndex, c.colId);
+    };
+    const onMove = ev => {
+      moved = true;
+      lastX = ev.clientX;
+      lastY = ev.clientY;
+      move();
+    };
+    const timer = setInterval(() => {
+      if (moved && edgeScroll(lastX, lastY)) move();
+    }, 50);
+    const onKey = ev => {
+      if (ev.key === 'Escape') finish(ev, true);
+    };
+    const finish = (ev, cancelled = false) => {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+      document.removeEventListener('keydown', onKey, true);
+      clearInterval(timer);
+      core.fillEnd(ev, cancelled);
+    };
+    const onUp = ev => finish(ev, ev.type === 'pointercancel');
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+    document.addEventListener('keydown', onKey, true);
+  };
+
   const handlers = {
+    fillHandleDown(e) {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      e.preventDefault();
+      focusSink(e.target);
+      if (core.fillStart()) startFillDrag();
+    },
     dragHandleDown(node, col, e) {
       if (e.button !== 0) return;
       e.stopPropagation();

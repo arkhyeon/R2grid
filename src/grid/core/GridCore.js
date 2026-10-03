@@ -25,6 +25,7 @@ import { rowDragMethods } from './rowDrag.js';
 import { undoMethods } from './undo.js';
 import { pinnedMethods } from './pinned.js';
 import { customFilterMethods } from './customFilter.js';
+import { fillHandleMethods } from './fillHandle.js';
 
 export const DEFAULT_ROW_HEIGHT = 42;
 export const DEFAULT_HEADER_HEIGHT = 48;
@@ -3329,4 +3330,4 @@ export class GridCore {
 }
 
 // 기능별 mixin 결합 (그룹핑 / SSRM / 행드래그 / undo / 고정행)
-Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods);
+Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods);
