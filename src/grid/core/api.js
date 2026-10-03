@@ -424,6 +424,23 @@ export function createApi(core) {
       api.setRowGroupColumns(core.rowGroupColumns().filter(c => !rm.includes(c)));
     },
 
+    // ── 피벗 ──
+    isPivotMode: () => core.isPivotActive(),
+    setPivotMode: on => core.setPivotMode(on),
+    getPivotColumns: () => core.pivotColumns(),
+    setPivotColumns: keys => core.setPivotColumns(keys),
+    addPivotColumns: keys => core.setPivotColumns([...core.pivotColumns(), ...core.getColumnsFromKeys(keys)]),
+    removePivotColumns: keys => {
+      const rm = core.getColumnsFromKeys(keys);
+      core.setPivotColumns(core.pivotColumns().filter(c => !rm.includes(c)));
+    },
+    getPivotResultColumns: () => (core.pivotResultColumns?.length ? core.pivotResultColumns : null),
+    getPivotResultColumn: (pivotKeys, valueColKey) => {
+      const vc = core.getColumn(valueColKey);
+      return core.pivotResultColumns?.find(c => c.pivotValueColumn === vc && JSON.stringify(c.colDef.pivotKeys) === JSON.stringify(pivotKeys)) ?? null;
+    },
+    getValueColumns: () => core.valueColumns(),
+
     // ── Server-Side Row Model ──
     refreshServerSide: params => core.refreshServerSide(params || {}),
     retryServerSideLoads: () => core.retryServerSideLoads(),

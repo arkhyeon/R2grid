@@ -317,13 +317,18 @@ export const groupingMethods = {
     const agg = {};
     for (const col of aggCols) {
       const af = col.colDef.aggFunc;
+      // 피벗 결과 컬럼: 피벗 키가 일치하는 리프만 대상 (값은 원본 값 컬럼에서)
+      const pk = col.pivotKeyString;
+      const leafOk = ch => pk == null || this.pivotKeyOf(ch) === pk;
+      const valueCol = col.pivotValueColumn || col;
+      const kids = n.childrenAfterFilter.filter(ch => ch.group || leafOk(ch));
       // 자식 그룹은 표시값(합계행 때문에 비울 수 있음)이 아닌 aggData 를 직접 사용
-      const values = n.childrenAfterFilter.map(ch =>
-        ch.group && ch.aggData && col.colId in ch.aggData ? ch.aggData[col.colId] : this.getCellValue(ch, col),
-      );
+      const values = kids
+        .map(ch => (ch.group ? (ch.aggData && col.colId in ch.aggData ? ch.aggData[col.colId] : pk != null ? undefined : this.getCellValue(ch, col)) : this.getCellValue(ch, valueCol)))
+        .filter(v => pk == null || v !== undefined);
       let fn = typeof af === 'function' ? af : this.gos.aggFuncs?.[af] || BUILTIN_AGG[af];
       if (af === 'count') {
-        agg[col.colId] = n.childrenAfterFilter.reduce((s, ch) => s + (ch.group && ch.aggData ? ch.aggData[col.colId] || 0 : 1), 0);
+        agg[col.colId] = kids.reduce((s, ch) => s + (ch.group ? (ch.aggData ? ch.aggData[col.colId] || 0 : 0) : 1), 0);
         continue;
       }
       if (!fn) {
@@ -390,8 +395,11 @@ export const groupingMethods = {
     const sortedTop = sortList(top);
     const out = [];
     const hideOpen = !!this.gos.groupHideOpenParents;
+    const pivot = this.isPivotActive?.();
     const flatten = list => {
       for (const n of list) {
+        // 피벗 모드: 리프(데이터) 행은 표시하지 않음
+        if (pivot && !n.group) continue;
         // groupHideOpenParents: 펼친 그룹 행 자체는 숨기고 자식만 (값은 첫 자식의 그룹 컬럼에 표시)
         const hidden = hideOpen && n.group && n.expanded && n.childrenAfterSort?.length;
         if (!hidden) out.push(n);

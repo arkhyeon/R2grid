@@ -9,6 +9,7 @@ import { EditorHost } from './editors.jsx';
 import { stableElement } from './renderComponent.js';
 import { PopupLayer } from './popup.jsx';
 import { localeText } from '../core/locale.js';
+import { SparklineCell } from './sparkline.jsx';
 
 const MAX_DIV_HEIGHT = 10_000_000;
 const GROUP_INDENT = 28;
@@ -45,7 +46,9 @@ function GroupCellRenderer({ core, node, column, params, extra }) {
   if (multi) {
     target = node.group && node.level === column.groupIndex ? node : params.value != null && params.value !== '' ? core.ancestorAtLevel(node, column.groupIndex) : null;
   }
-  const expandable = multi ? !!target?.childrenAll?.length : node.master || (node.group && !!node.childrenAll?.length);
+  // 피벗 모드: 리프만 가진 최하위 그룹은 펼칠 것이 없음
+  const hasKids = t => (core.isPivotActive() ? !!t?.childrenAll?.some(c => c.group) : !!t?.childrenAll?.length);
+  const expandable = multi ? hasKids(target) : node.master || (node.group && hasKids(node));
   const level = grouping && !multi ? node.uiLevel ?? node.level ?? 0 : 0;
   const leafIndent = grouping && !multi && !expandable ? GROUP_INDENT : 0;
   const toggle = e => {
@@ -183,7 +186,16 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
     }
     if (!comp && col.dataType === 'boolean') comp = 'agCheckboxCellRenderer';
     const extra = typeof rendererParams === 'function' ? rendererParams(base) : rendererParams;
-    if (comp === 'agCheckboxCellRenderer') {
+    if (comp === 'agSparklineCellRenderer') {
+      content = (
+        <SparklineCell
+          value={value}
+          width={Math.max(10, (spanWidth ?? col.actualWidth) - 18)}
+          height={Math.max(10, (node.rowHeight || core.getDefaultRowHeight()) - 4)}
+          options={extra?.sparklineOptions}
+        />
+      );
+    } else if (comp === 'agCheckboxCellRenderer') {
       content = <CheckboxCellRenderer core={core} node={node} column={col} value={value} />;
     } else if (comp === 'agGroupCellRenderer' || comp === 'group') {
       content = <GroupCellRenderer core={core} node={node} column={col} params={{ ...base, ...(extra || {}) }} extra={extra} />;

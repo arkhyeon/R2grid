@@ -28,6 +28,7 @@ import { customFilterMethods } from './customFilter.js';
 import { fillHandleMethods } from './fillHandle.js';
 import { statusBarMethods } from './statusBar.js';
 import { findMethods } from './find.js';
+import { pivotMethods } from './pivot.js';
 
 export const DEFAULT_ROW_HEIGHT = 42;
 export const DEFAULT_HEADER_HEIGHT = 48;
@@ -342,6 +343,10 @@ export class GridCore {
     }
     if (rebuild) this.buildColumns(false);
     if (changed('sideBar')) this.normalizeSideBar(false);
+    if (changed('pivotMode')) {
+      this.pivotModeOverride = undefined;
+      this.applyPivotModeChange();
+    }
     if (changed('findSearchValue') || changed('findOptions')) {
       this.findActive = null;
       this.__findKey = null;
@@ -635,6 +640,9 @@ export class GridCore {
     }
     this.allColumns = ordered;
     this.columnById = newById;
+    // 피벗 결과 컬럼 (pivotMode + pivot 컬럼) 재구성
+    this.pivotResultColumns = [];
+    this.applyPivotResultColumns(true);
 
     // 사라진 컬럼의 필터 제거
     for (const colId of [...this.filterModels.keys()]) {
@@ -712,7 +720,7 @@ export class GridCore {
     this.allColumns.forEach(c => {
       c.groupShown = this.computeGroupShown(c);
     });
-    const visible = this.allColumns.filter(c => c.visible && c.groupShown);
+    const visible = this.allColumns.filter(c => c.visible && c.groupShown && this.isShownInPivot(c));
     const left = [];
     const center = [];
     const right = [];
@@ -846,7 +854,7 @@ export class GridCore {
     else if (column.isAuto) return '';
     else name = camelToHuman(cd.field ?? column.colId);
     // 그룹 집계 컬럼: "sum(가격)" (suppressAggFuncInHeader 로 끔)
-    if (this.groupMode && cd.aggFunc && !this.gos.suppressAggFuncInHeader && column.autoType !== 'group') {
+    if ((this.groupMode || this.isPivotActive()) && cd.aggFunc && !this.gos.suppressAggFuncInHeader && column.autoType !== 'group' && !column.isPivotResult) {
       const fnName = typeof cd.aggFunc === 'string' ? cd.aggFunc : 'func';
       return `${fnName}(${name})`;
     }
@@ -1431,9 +1439,18 @@ export class GridCore {
       this.ssrmRefreshView();
       return;
     }
+    // 피벗: 데이터 변화로 피벗 키가 바뀌면 결과 컬럼 재구성
+    if ((this.isPivotActive() || this.pivotResultColumns?.length) && this.applyPivotResultColumns()) {
+      this.columnsVersion++;
+      this.layoutColumns();
+      if (!this.initializing) this.dispatch('displayedColumnsChanged', { source: 'api' });
+    }
     if (this.groupMode) {
       if (!skipFilter || !this.filterPreds) this.applyFilters();
       this.runGroupPipeline(this.filterPreds, this.makeSortComparator());
+    } else if (this.isPivotActive()) {
+      if (!skipFilter || !this.filterPreds) this.applyFilters();
+      this.runPivotTotalsOnly(this.filterPreds);
     } else {
       if (!skipFilter) this.applyFilters();
       this.applySort();
@@ -3477,4 +3494,4 @@ export class GridCore {
 }
 
 // 기능별 mixin 결합 (그룹핑 / SSRM / 행드래그 / undo / 고정행)
-Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods, statusBarMethods, findMethods);
+Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods, statusBarMethods, findMethods, pivotMethods);

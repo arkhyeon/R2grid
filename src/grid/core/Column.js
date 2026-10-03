@@ -45,6 +45,12 @@ export class Column {
       this.rowGroup = !!rg || rgi != null;
       this.rowGroupIndex = rgi ?? null;
     }
+    if (changed('pivot') || changed('pivotIndex')) {
+      const pv = pick('pivot', 'initialPivot');
+      const pvi = pick('pivotIndex', 'initialPivotIndex');
+      this.pivot = !!pv || pvi != null;
+      this.pivotIndex = pvi ?? null;
+    }
     if (changed('width')) {
       const w = pick('width', 'initialWidth');
       this.width = w != null ? w : this.width ?? DEFAULT_COL_WIDTH;
@@ -204,7 +210,15 @@ export class Column {
   }
 
   isPivotActive() {
-    return false;
+    return !!this.pivot;
+  }
+
+  isPrimary() {
+    return !this.isPivotResult;
+  }
+
+  getPivotKeys() {
+    return this.colDef.pivotKeys;
   }
 
   getAggFunc() {
