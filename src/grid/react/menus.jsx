@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { localeText } from '../core/locale.js';
 import { cx } from '../core/utils.js';
 import { Checkbox, Icon } from './common.jsx';
-import { PopupLayer, useClickOutside, usePopupPosition } from './popup.jsx';
+import { PopupLayer, useClickOutside, usePopupPosition, visibleClipOf } from './popup.jsx';
 import { FilterUI } from './filters.jsx';
 
 // ── 메뉴 아이템 정규화 ─────────────────────────────────────
@@ -206,14 +206,14 @@ export function MenuList({ core, items, params, onClose, autoFocus = true }) {
 
 function SubMenu({ core, items, params, rect, onClose }) {
   const ref = useRef(null);
-  const pos = usePopupPosition(ref, () => (rect ? { x: rect.right, y: rect.top - 4, alignRight: rect.left } : null), [rect]);
+  const pos = usePopupPosition(ref, () => (rect ? { x: rect.right, y: rect.top - 4, alignRight: rect.left } : null), [rect], core);
   return createPortal(
     <PopupLayer core={core}>
       <div
         ref={ref}
         data-r2-subpopup-of=""
         className="r2-menu r2-ltr r2-popup-child r2-sub-menu"
-        style={{ position: 'fixed', left: pos.x, top: pos.y, visibility: pos.ready ? 'visible' : 'hidden' }}
+        style={pos.style}
         onMouseDown={e => e.stopPropagation()}
       >
         <MenuList core={core} items={items} params={params} onClose={onClose} />
@@ -231,13 +231,13 @@ export function ContextMenuPopup({ core, popup }) {
     core.focusGrid();
   };
   useClickOutside(ref, close, { ignore: t => t instanceof Element && !!t.closest('[data-r2-subpopup-of]') });
-  const pos = usePopupPosition(ref, () => ({ x: popup.x, y: popup.y, flipY: popup.y }), [popup]);
+  const pos = usePopupPosition(ref, () => ({ x: popup.x, y: popup.y, flipY: popup.y }), [popup], core);
   return createPortal(
     <PopupLayer core={core}>
       <div
         ref={ref}
         className="r2-menu r2-ltr r2-popup-child r2-context-menu"
-        style={{ position: 'fixed', left: pos.x, top: pos.y, visibility: pos.ready ? 'visible' : 'hidden' }}
+        style={pos.style}
         onContextMenu={e => e.preventDefault()}
       >
         <MenuList core={core} items={popup.items} params={popup.params} onClose={close} />
@@ -351,9 +351,11 @@ export function ColumnMenuPopup({ core, popup }) {
         core.eRoot?.querySelector(`.r2-header-cell[col-id="${CSS.escape(column.colId)}"]`);
       if (!anchor) return { x: 100, y: 100 };
       const r = anchor.getBoundingClientRect();
-      return { x: legacy ? r.right - 220 : r.left, y: r.bottom, alignTo: r };
+      return { x: legacy ? r.right - 220 : r.left, y: r.bottom, alignTo: r, clip: visibleClipOf(anchor) };
     },
     [popup, tab],
+    core,
+    { track: popup.x == null },
   );
   const params = { column, api: core.api, context: core.gos.context };
   let body;
@@ -390,7 +392,7 @@ export function ColumnMenuPopup({ core, popup }) {
       <div
         ref={ref}
         className={cx('r2-menu r2-ltr r2-popup-child r2-column-menu', legacy ? 'r2-tabs' : 'r2-column-menu-new')}
-        style={{ position: 'fixed', left: pos.x, top: pos.y, visibility: pos.ready ? 'visible' : 'hidden' }}
+        style={pos.style}
         onKeyDown={e => {
           if (e.key === 'Escape') close();
         }}
@@ -418,16 +420,18 @@ export function FilterPopup({ core, popup }) {
       const anchor = core.eRoot?.querySelector(`.r2-header-cell[col-id="${CSS.escape(column.colId)}"]`);
       if (!anchor) return { x: 100, y: 100 };
       const r = anchor.getBoundingClientRect();
-      return { x: r.left, y: r.bottom, alignTo: r };
+      return { x: r.left, y: r.bottom, alignTo: r, clip: visibleClipOf(anchor) };
     },
     [popup],
+    core,
+    { track: true },
   );
   return createPortal(
     <PopupLayer core={core}>
       <div
         ref={ref}
         className="r2-menu r2-ltr r2-popup-child r2-filter-menu"
-        style={{ position: 'fixed', left: pos.x, top: pos.y, visibility: pos.ready ? 'visible' : 'hidden' }}
+        style={pos.style}
         onKeyDown={e => {
           if (e.key === 'Escape') close();
         }}
@@ -451,13 +455,14 @@ export function ColumnChooserPopup({ core }) {
       return { x: r.left + r.width / 2 - 120, y: r.top + 40 };
     },
     [],
+    core,
   );
   return createPortal(
     <PopupLayer core={core}>
       <div
         ref={ref}
         className="r2-dialog r2-popup-child r2-column-chooser"
-        style={{ position: 'fixed', left: pos.x, top: pos.y, width: 240, visibility: pos.ready ? 'visible' : 'hidden' }}
+        style={{ ...pos.style, width: 240 }}
       >
         <div className="r2-panel-title-bar">
           <span className="r2-panel-title-bar-title">{localeText(core, 'columnChooser')}</span>

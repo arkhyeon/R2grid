@@ -13,7 +13,7 @@ import { createPortal } from 'react-dom';
 import { cx, isPrintableKey } from '../core/utils.js';
 import { stableElement } from './renderComponent.js';
 import { Checkbox } from './common.jsx';
-import { usePopupPosition, PopupLayer } from './popup.jsx';
+import { usePopupPosition, PopupLayer, visibleClipOf } from './popup.jsx';
 
 // useGridCellEditor (ag-grid-react 호환) — reactive 커스텀 에디터가 콜백 등록
 const CellEditorContext = createContext(null);
@@ -466,19 +466,26 @@ export function EditorHost({ core, ed, getCellEl }) {
 
 function PopupEditor({ core, ed, getCellEl, children }) {
   const ref = useRef(null);
-  const pos = usePopupPosition(ref, () => {
-    const el = getCellEl?.();
-    if (!el) return null;
-    const r = el.getBoundingClientRect();
-    const under = ed.editor.popupPosition === 'under';
-    return { x: r.left, y: under ? r.bottom : r.top, minWidth: r.width, alignTo: r };
-  }, [ed]);
+  // 셀에 붙어서 스크롤을 따라가고, 셀이 바디 밖으로 나가면 숨김
+  const pos = usePopupPosition(
+    ref,
+    () => {
+      const el = getCellEl?.();
+      if (!el || !el.isConnected) return null;
+      const r = el.getBoundingClientRect();
+      const under = ed.editor.popupPosition === 'under';
+      return { x: r.left, y: under ? r.bottom : r.top, minWidth: r.width, alignTo: r, clip: visibleClipOf(el) };
+    },
+    [ed],
+    core,
+    { track: true },
+  );
   return createPortal(
     <PopupLayer core={core}>
       <div
         ref={ref}
         className="r2-popup-child r2-popup-editor r2-popup-editor-host"
-        style={{ position: 'fixed', left: pos.x, top: pos.y, minWidth: pos.minWidth, visibility: pos.ready ? 'visible' : 'hidden' }}
+        style={{ ...pos.style, maxHeight: undefined }}
         onPointerDown={e => e.stopPropagation()}
       >
         {children}

@@ -339,7 +339,7 @@ export function useTooltip(core) {
             {tip.text}
           </div>
         </PopupLayer>,
-        core.getPopupParent(),
+        document.body,
       )
     : null;
   return { onOver, onOut, node };

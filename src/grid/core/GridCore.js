@@ -3078,10 +3078,11 @@ export class GridCore {
   }
 
   // ── 팝업(메뉴/필터) ────────────────────────────────────────
-  // popupParent 지정 시 팝업(메뉴/필터/팝업 에디터/툴팁/드래그 고스트)을 그 요소에 붙인다
+  // 팝업(메뉴/필터/팝업 에디터) 부모: popupParent 지정 시 그 요소, 아니면 그리드 루트 래퍼 (AG 동일 — 그리드 안에 갇힘)
   getPopupParent() {
     const p = this.gos.popupParent;
-    return p && typeof p.appendChild === 'function' ? p : document.body;
+    if (p && typeof p.appendChild === 'function') return p;
+    return this.eRoot || document.body;
   }
 
   openPopup(popup) {
