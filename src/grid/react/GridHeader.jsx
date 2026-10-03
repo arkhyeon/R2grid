@@ -338,9 +338,15 @@ function useColumnDrag(core) {
       const rootRect = core.eRoot?.getBoundingClientRect();
       const outside =
         rootRect && (ev.clientY < rootRect.top - 30 || ev.clientY > rootRect.bottom + 30 || ev.clientX < rootRect.left - 30 || ev.clientX > rootRect.right + 30);
-      state.current.ghost = { ...state.current.ghost, x: ev.clientX, y: ev.clientY, hidden: outside };
+      // 행 그룹 패널 위 (enableRowGroup 컬럼만 — AG 동일)
+      const overPanel =
+        !outside &&
+        !!col.colDef.enableRowGroup &&
+        !!document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('.r2-row-group-panel') &&
+        core.eRoot.contains(document.elementFromPoint(ev.clientX, ev.clientY));
+      state.current.ghost = { ...state.current.ghost, x: ev.clientX, y: ev.clientY, hidden: outside, group: overPanel };
       force();
-      if (outside) return;
+      if (outside || overPanel) return;
       // 포인터 아래 헤더 셀 → 이동 위치 계산
       const headerRow = core.eRoot?.querySelector('.r2-header-row-column');
       const y = headerRow ? headerRow.getBoundingClientRect().top + 5 : ev.clientY;
@@ -370,7 +376,9 @@ function useColumnDrag(core) {
       const g = state.current.ghost;
       state.current.ghost = null;
       force();
-      if (g?.hidden && !core.gos.suppressDragLeaveHidesColumns && !col.colDef.lockVisible) {
+      if (g?.group) {
+        if (!core.rowGroupColumns().includes(col)) core.api.addRowGroupColumns([col]);
+      } else if (g?.hidden && !core.gos.suppressDragLeaveHidesColumns && !col.colDef.lockVisible) {
         core.setColumnsVisible([col], false, 'uiColumnDragged');
       }
       core.dispatch('dragStopped', { target: ev.target });
@@ -384,7 +392,7 @@ function useColumnDrag(core) {
         <PopupLayer core={core}>
           <div ref={ghostRef} className="r2-dnd-ghost r2-unselectable" style={{ position: 'fixed', left: g.x + 12, top: g.y + 12 }}>
             <span className="r2-dnd-ghost-icon r2-shake-left-to-right">
-              <Icon name={g.hidden ? 'eye-slash' : 'arrows'} />
+              <Icon name={g.group ? 'group' : g.hidden ? 'eye-slash' : 'arrows'} />
             </span>
             <div className="r2-dnd-ghost-label">{g.name}</div>
           </div>

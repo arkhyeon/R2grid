@@ -58,15 +58,38 @@ export const groupingMethods = {
     return null;
   },
 
-  wantsAutoGroupColumn() {
+  wantsAutoGroupColumn(leaves) {
     const g = this.gos;
     if (g.groupDisplayType === 'custom' || g.groupDisplayType === 'groupRows') return false;
     if (g.treeData && typeof g.getDataPath === 'function') return true;
+    // 컬럼 상태 기준 (api/패널로 바뀐 그룹 반영)
+    if (leaves) return leaves.some(c => c.rowGroup);
     return (g.columnDefs || []).some(function hasGroup(d) {
       if (!d) return false;
       if (Array.isArray(d.children)) return d.children.some(hasGroup);
       return !!d.rowGroup || d.rowGroupIndex != null || !!d.initialRowGroup;
     });
+  },
+
+  // groupDisplayType 'multipleColumns' (groupHideOpenParents 는 multipleColumns 를 함께 켬 — AG 동일)
+  isMultipleGroupColumns() {
+    const g = this.gos;
+    return g.groupDisplayType === 'multipleColumns' || !!g.groupHideOpenParents;
+  },
+
+  isGroupRowsDisplay() {
+    return this.gos.groupDisplayType === 'groupRows' && this.groupMode === 'group';
+  },
+
+  isFirstDisplayedDescendant(node, anc) {
+    return anc.__firstDisplayed === node;
+  },
+
+  // 행의 레벨 lvl 조상 그룹 (자기 자신 포함)
+  ancestorAtLevel(node, lvl) {
+    let n = node.group ? node : node.parent;
+    while (n && n.level > lvl) n = n.parent;
+    return n && n.level === lvl ? n : null;
   },
 
   rowGroupColumns() {
@@ -366,9 +389,13 @@ export const groupingMethods = {
     };
     const sortedTop = sortList(top);
     const out = [];
+    const hideOpen = !!this.gos.groupHideOpenParents;
     const flatten = list => {
       for (const n of list) {
-        out.push(n);
+        // groupHideOpenParents: 펼친 그룹 행 자체는 숨기고 자식만 (값은 첫 자식의 그룹 컬럼에 표시)
+        const hidden = hideOpen && n.group && n.expanded && n.childrenAfterSort?.length;
+        if (!hidden) out.push(n);
+        n.__firstDisplayed = null;
         n.__footerShown = false;
         if (n.group && n.expanded && n.childrenAfterSort) {
           flatten(n.childrenAfterSort);
@@ -382,6 +409,16 @@ export const groupingMethods = {
       }
     };
     flatten(sortedTop);
+    // 각 그룹의 첫 표시 자손 (groupHideOpenParents 값 표시 위치)
+    if (hideOpen) {
+      for (const r of out) {
+        let a = r.parent;
+        while (a) {
+          if (a.__firstDisplayed == null) a.__firstDisplayed = r;
+          a = a.parent;
+        }
+      }
+    }
     // 총합계 행
     const grandPos = this.grandTotalPosition();
     this.grandTotalPinned = null;
@@ -431,6 +468,17 @@ export const groupingMethods = {
     if (node.footer) {
       const total = localeText(this, 'footerTotal', 'Total');
       return node.sibling ? `${total} ${node.key ?? ''}` : total;
+    }
+    // multipleColumns: 이 컬럼이 담당하는 레벨의 그룹 키만 표시
+    if (col.groupIndex != null) {
+      const lvl = col.groupIndex;
+      if (node.group && node.level === lvl) return node.key;
+      const anc = this.ancestorAtLevel(node, lvl);
+      if (!anc || anc === node) return undefined;
+      // showOpenedGroup: 펼친 그룹의 키를 하위 모든 행에 / groupHideOpenParents: 숨겨진 부모 키를 첫 자식에
+      if (this.gos.showOpenedGroup) return anc.key;
+      if (this.gos.groupHideOpenParents && this.isFirstDisplayedDescendant(node, anc)) return anc.key;
+      return undefined;
     }
     if (node.group || this.groupMode === 'tree') return node.key;
     const cd = col.colDef;

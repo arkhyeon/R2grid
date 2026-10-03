@@ -14,7 +14,7 @@ import { copySelectionToEvent } from '../core/clipboard.js';
 import { cx } from '../core/utils.js';
 import { GridHeader } from './GridHeader.jsx';
 import { GridBody } from './GridBody.jsx';
-import { Overlay, PagingPanel, SideBar, StatusBar, useTooltip } from './chrome.jsx';
+import { Overlay, PagingPanel, RowGroupPanel, SideBar, StatusBar, useTooltip } from './chrome.jsx';
 import { Popups } from './menus.jsx';
 import { CustomFilterHost } from './filters.jsx';
 import '../styles/quartz.css';
@@ -83,6 +83,7 @@ function GridView({ core }) {
       onMouseOver={tooltip.onOver}
       onMouseOut={tooltip.onOut}
     >
+      <RowGroupPanel core={core} />
       <div className={cx('r2-root-wrapper-body r2-focus-managed', autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal')} role="presentation">
         {core.sideBarPosition === 'left' && <SideBar core={core} />}
         <div

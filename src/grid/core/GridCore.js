@@ -588,22 +588,34 @@ export class GridCore {
       );
     }
     // 그룹핑/트리데이터 자동 그룹 컬럼 (defaultColDef → 기본값 → autoGroupColumnDef 순으로 병합)
-    if (this.wantsAutoGroupColumn()) {
-      makeAuto(
-        AUTO_GROUP_COL_ID,
-        {
-          ...defaultColDef,
-          headerName: localeText(this, 'group'),
-          minWidth: 200,
-          cellRenderer: 'agGroupCellRenderer',
-          suppressColumnsToolPanel: true,
-          ...(g.autoGroupColumnDef || {}),
-          colId: AUTO_GROUP_COL_ID,
-        },
-        'group',
-      );
-      const gc = autoCols[autoCols.length - 1];
-      gc.isAuto = false;
+    if (this.wantsAutoGroupColumn(leaves)) {
+      const multiple = this.isMultipleGroupColumns() && !(g.treeData && typeof g.getDataPath === 'function');
+      const rgCols = multiple
+        ? leaves
+            .filter(c => c.rowGroup)
+            .sort((a, b) => (a.rowGroupIndex ?? 1e9) - (b.rowGroupIndex ?? 1e9) || leaves.indexOf(a) - leaves.indexOf(b))
+        : [null];
+      rgCols.forEach((rgc, i) => {
+        // multipleColumns: 그룹 기준 컬럼마다 하나씩 (colId: ag-Grid-AutoColumn-<colId>)
+        const colId = rgc ? `${AUTO_GROUP_COL_ID}-${rgc.colId}` : AUTO_GROUP_COL_ID;
+        makeAuto(
+          colId,
+          {
+            ...defaultColDef,
+            headerName: rgc ? rgc.colDef.headerName ?? camelToHuman(rgc.colDef.field ?? rgc.colId) : localeText(this, 'group'),
+            minWidth: 200,
+            cellRenderer: 'agGroupCellRenderer',
+            suppressColumnsToolPanel: true,
+            ...(g.autoGroupColumnDef || {}),
+            colId,
+            ...(rgc ? { showRowGroup: rgc.colId } : null),
+          },
+          'group',
+        );
+        const gc = autoCols[autoCols.length - 1];
+        gc.isAuto = false;
+        gc.groupIndex = rgc ? i : null;
+      });
     }
 
     // 이동된 컬럼 순서 보존 (maintainColumnOrder) 또는 colDefs 순서
@@ -1070,6 +1082,17 @@ export class GridCore {
   // valueFormatter 결과 (없으면 null — AG-Grid 와 동일하게 valueFormatted=null)
   formatValue(node, column, value) {
     const cd = column.colDef;
+    if (column.autoType === 'group' && column.groupIndex != null) {
+      if (value == null || node.footer) return null;
+      const target = this.ancestorAtLevel(node, column.groupIndex);
+      if (!target) return null;
+      if (target.key == null) return localeText(this, 'blanks');
+      const rgc = target.rowGroupColumn;
+      if (typeof rgc?.colDef.valueFormatter === 'function') {
+        return rgc.colDef.valueFormatter({ ...this.makeValueParams(target, rgc), value: target.groupValue ?? value });
+      }
+      return null;
+    }
     if (column.autoType === 'group' && node.group) {
       if (node.footer) return null;
       if (node.key == null && this.groupMode === 'group') return localeText(this, 'blanks');

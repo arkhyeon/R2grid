@@ -90,6 +90,39 @@ function ToolPanelWrapper({ hidden, tp, children }) {
   );
 }
 
+// ── 행 그룹 패널 (rowGroupPanelShow: 'always' | 'onlyWhenGrouping') ──
+export function RowGroupPanel({ core }) {
+  const show = core.gos.rowGroupPanelShow;
+  const cols = core.isClientSide() ? core.rowGroupColumns() : [];
+  if (show !== 'always' && !(show === 'onlyWhenGrouping' && cols.length)) return null;
+  return (
+    <div className="r2-column-drop-wrapper" role="presentation">
+      <div className="r2-column-drop r2-column-drop-horizontal r2-row-group-panel" role="toolbar">
+        <span className="r2-column-drop-title-bar">
+          <Icon name="group" className="r2-column-drop-icon" />
+        </span>
+        {!cols.length && <span className="r2-column-drop-empty-message">{localeText(core, 'rowGroupColumnsEmptyMessage')}</span>}
+        {cols.map((c, i) => (
+          <React.Fragment key={c.colId}>
+            {i > 0 && <Icon name="small-right" className="r2-column-drop-cell-divider" />}
+            <span className="r2-column-drop-cell" col-id={c.colId}>
+              <span className="r2-column-drop-cell-text">{core.getDisplayName(c)}</span>
+              <span
+                className="r2-column-drop-cell-button"
+                role="button"
+                aria-label="remove"
+                onClick={() => core.api.removeRowGroupColumns([c])}
+              >
+                <Icon name="cross" />
+              </span>
+            </span>
+          </React.Fragment>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── 상태 표시줄 (statusBar) ───────────────────────────────
 const STATUS_PANEL_CLASS = {
   agTotalAndFilteredRowCountComponent: 'r2-status-panel-total-and-filtered-row-count',

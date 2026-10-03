@@ -92,6 +92,8 @@ export const AG_GRID_LOCALE_KR = {
   pageLastRowUnknown: '?',
 
   footerTotal: '합계',
+  rowGroupColumnsEmptyMessage: '여기로 컬럼을 끌어 행 그룹 지정',
+  pivotColumnsEmptyMessage: '여기로 컬럼을 끌어 피벗 지정',
 
   // 상태 표시줄
   totalAndFilteredRows: '행',

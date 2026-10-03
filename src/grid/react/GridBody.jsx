@@ -8,6 +8,7 @@ import { Checkbox, Icon } from './common.jsx';
 import { EditorHost } from './editors.jsx';
 import { stableElement } from './renderComponent.js';
 import { PopupLayer } from './popup.jsx';
+import { localeText } from '../core/locale.js';
 
 const MAX_DIV_HEIGHT = 10_000_000;
 const GROUP_INDENT = 28;
@@ -38,14 +39,24 @@ function GroupCellRenderer({ core, node, column, params, extra }) {
       ? ''
       : toText(text);
   const grouping = !!core.groupMode && column.autoType === 'group';
-  const expandable = node.master || (node.group && !!node.childrenAll?.length);
-  const level = grouping ? node.uiLevel ?? node.level ?? 0 : 0;
-  const leafIndent = grouping && !expandable ? GROUP_INDENT : 0;
+  // multipleColumns: 이 컬럼 레벨의 그룹(또는 groupHideOpenParents 로 숨은 부모)만 펼침 표시, 들여쓰기 없음
+  const multi = grouping && column.groupIndex != null;
+  let target = node;
+  if (multi) {
+    target = node.group && node.level === column.groupIndex ? node : params.value != null && params.value !== '' ? core.ancestorAtLevel(node, column.groupIndex) : null;
+  }
+  const expandable = multi ? !!target?.childrenAll?.length : node.master || (node.group && !!node.childrenAll?.length);
+  const level = grouping && !multi ? node.uiLevel ?? node.level ?? 0 : 0;
+  const leafIndent = grouping && !multi && !expandable ? GROUP_INDENT : 0;
   const toggle = e => {
     e.stopPropagation();
-    node.setExpanded(!node.expanded);
+    target.setExpanded(!target.expanded);
   };
-  const count = grouping && node.group && !node.footer && !extra?.suppressCount ? node.allChildrenCount ?? node.childrenAfterFilter?.length : null;
+  const countNode = multi ? target : node;
+  const count =
+    grouping && countNode?.group && !countNode.footer && !extra?.suppressCount && (!multi || target === node)
+      ? countNode.allChildrenCount ?? countNode.childrenAfterFilter?.length
+      : null;
   const legacyCb = extra?.checkbox && core.rsOpts?.legacy;
   return (
     <span
@@ -60,10 +71,10 @@ function GroupCellRenderer({ core, node, column, params, extra }) {
     >
       {expandable && (
         <>
-          <span className={cx('r2-group-expanded', !node.expanded && 'r2-hidden')} onClick={toggle}>
+          <span className={cx('r2-group-expanded', !target.expanded && 'r2-hidden')} onClick={toggle}>
             <Icon name="tree-open" />
           </span>
-          <span className={cx('r2-group-contracted', node.expanded && 'r2-hidden')} onClick={toggle}>
+          <span className={cx('r2-group-contracted', target.expanded && 'r2-hidden')} onClick={toggle}>
             <Icon name="tree-closed" />
           </span>
         </>
@@ -410,6 +421,42 @@ function Row({ core, node, cols, sectionCols, top, height, rp, handlers }) {
           isLast={col === core.displayedColumns[core.displayedColumns.length - 1]}
         />
       ))}
+    </div>
+  );
+}
+
+// groupDisplayType 'groupRows': 그룹 행을 전체 폭으로 (펼침 + 키 + 자식 수), groupRowRenderer 지원
+const GROUP_ROW_COLUMN = { autoType: 'group', colId: '__groupRow', groupIndex: null, colDef: {} };
+function GroupFullRow({ core, node, top, height, rp, handlers }) {
+  const g = core.gos;
+  const transform = !g.suppressRowTransform;
+  const rgc = node.rowGroupColumn;
+  let value = node.key;
+  if (node.key == null) value = localeText(core, 'blanks');
+  else if (typeof rgc?.colDef.valueFormatter === 'function') {
+    value = rgc.colDef.valueFormatter({ ...core.makeValueParams(node, rgc), value: node.groupValue ?? node.key });
+  }
+  const params = { value: node.key, valueFormatted: value, node, data: node.data, api: core.api, context: g.context, ...(g.groupRowRendererParams || {}) };
+  const custom = typeof g.groupRowRenderer === 'string' ? g.components?.[g.groupRowRenderer] : g.groupRowRenderer;
+  return (
+    <div
+      className={cx(rp.className, 'r2-full-width-row r2-row-group-row')}
+      role="row"
+      row-index={rowKey(node)}
+      row-id={node.id}
+      aria-rowindex={node.rowIndex + 2}
+      aria-expanded={node.expanded}
+      style={{ ...(transform ? { transform: `translateY(${top}px)` } : { top }), height, ...rp.style }}
+      onClick={e => handlers.rowClick(node, e)}
+      onDoubleClick={() => node.setExpanded(!node.expanded)}
+    >
+      <div className="r2-cell r2-full-width-group-cell" style={{ width: '100%', paddingLeft: 8 }}>
+        {custom ? (
+          stableElement(core, 'groupRow', custom, params)
+        ) : (
+          <GroupCellRenderer core={core} node={node} column={GROUP_ROW_COLUMN} params={params} extra={g.groupRowRendererParams} />
+        )}
+      </div>
     </div>
   );
 }
@@ -982,6 +1029,10 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     const rp = rowProps(core, node, total);
     const key = node.__redraw ? `${node.id}:${node.__redraw}` : node.id;
     const common = { core, node, top, height: h, rp, handlers };
+    if (node.group && !node.footer && core.isGroupRowsDisplay()) {
+      fullRows.push(<GroupFullRow key={key} {...common} />);
+      return;
+    }
     if (!node.group && !node.stub && typeof g.isFullWidthRow === 'function' && g.isFullWidthRow({ rowNode: node, api: core.api, context: g.context })) {
       fullRows.push(<FullWidthRow key={key} {...common} />);
       return;
