@@ -40,4 +40,4 @@ export const LicenseManager = {
   },
 };
 
-export const GRID_VERSION = 'clm-datagrid-34.3.1-compat';
+export const GRID_VERSION = 'r2grid-34.3.1-compat';

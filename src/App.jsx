@@ -88,7 +88,7 @@ function SimpleTextEditor({ value, onValueChange, eventKey, column }) {
       value={value || ''}
       ref={refInput}
       onChange={event => updateValue(event.target.value)}
-      className="ag-input-field-input ag-text-field-input"
+      className="r2-input-field-input r2-text-field-input"
       style={{ width: column.actualWidth || '100%', height: column.gos.gridOptions.rowHeight || '100%' }}
     />
   );
@@ -145,8 +145,8 @@ export default function App() {
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute('data-theme', dark ? 'dark' : 'light');
-    if (dark) root.setAttribute('data-ag-theme-mode', 'dark');
-    else root.removeAttribute('data-ag-theme-mode');
+    if (dark) root.setAttribute('data-r2-theme-mode', 'dark');
+    else root.removeAttribute('data-r2-theme-mode');
   }, [dark]);
 
   const columnDefs = useMemo(
@@ -235,7 +235,7 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <h1>CLM DataGrid — Phase 3 (AG-Grid 호환 엔진)</h1>
+        <h1>R2grid — AG-Grid 호환 데이터 그리드</h1>
         <div className="controls">
           {[10_000, 100_000, 500_000].map(n => (
             <button key={n} className={count === n ? 'on' : ''} onClick={() => regen(n)}>

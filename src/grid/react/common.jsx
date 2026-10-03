@@ -53,7 +53,7 @@ const ICONS = {
 export function Icon({ name, className, ...rest }) {
   const d = ICONS[name];
   return (
-    <span className={cx('ag-icon', `ag-icon-${name}`, className)} unselectable="on" role="presentation" {...rest}>
+    <span className={cx('r2-icon', `r2-icon-${name}`, className)} unselectable="on" role="presentation" {...rest}>
       {d && (
         <svg viewBox="0 0 32 32" width="100%" height="100%" aria-hidden="true" focusable="false">
           <path
@@ -70,7 +70,7 @@ export function Icon({ name, className, ...rest }) {
   );
 }
 
-// <div class="ag-checkbox ag-input-field"><div class="ag-wrapper ag-input-wrapper ag-checkbox-input-wrapper ag-checked"><input class="ag-input-field-input ag-checkbox-input" type="checkbox"></div></div>
+// <div class="r2-checkbox r2-input-field"><div class="r2-wrapper r2-input-wrapper r2-checkbox-input-wrapper r2-checked"><input class="r2-input-field-input r2-checkbox-input" type="checkbox"></div></div>
 export function Checkbox({ checked, disabled, onToggle, className, ariaLabel, stopPropagation = true }) {
   const inputRef = useRef(null);
   const indeterminate = checked === null;
@@ -78,19 +78,19 @@ export function Checkbox({ checked, disabled, onToggle, className, ariaLabel, st
     if (inputRef.current) inputRef.current.indeterminate = indeterminate;
   }, [indeterminate]);
   return (
-    <div className={cx('ag-checkbox ag-input-field', className)} role="presentation">
+    <div className={cx('r2-checkbox r2-input-field', className)} role="presentation">
       <div
         className={cx(
-          'ag-wrapper ag-input-wrapper ag-checkbox-input-wrapper',
-          checked === true && 'ag-checked',
-          indeterminate && 'ag-indeterminate',
-          disabled && 'ag-disabled',
+          'r2-wrapper r2-input-wrapper r2-checkbox-input-wrapper',
+          checked === true && 'r2-checked',
+          indeterminate && 'r2-indeterminate',
+          disabled && 'r2-disabled',
         )}
         role="presentation"
       >
         <input
           ref={inputRef}
-          className="ag-input-field-input ag-checkbox-input"
+          className="r2-input-field-input r2-checkbox-input"
           type="checkbox"
           tabIndex={-1}
           aria-label={ariaLabel}

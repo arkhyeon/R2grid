@@ -14,7 +14,7 @@ function ToolPanelContent({ core, tp }) {
   const comp = tp.toolPanel;
   if (comp === 'agColumnsToolPanel') {
     return (
-      <div className="ag-column-panel">
+      <div className="r2-column-panel">
         <ColumnChooserList core={core} />
       </div>
     );
@@ -37,26 +37,26 @@ export function SideBar({ core }) {
   const open = core.sideBarOpenId;
   return (
     <div
-      className={cx('ag-side-bar ag-focus-managed ag-unselectable', `ag-side-bar-${core.sideBarPosition}`)}
+      className={cx('r2-side-bar r2-focus-managed r2-unselectable', `r2-side-bar-${core.sideBarPosition}`)}
       role="presentation"
       onKeyDown={e => e.stopPropagation()}
     >
-      <div className="ag-side-buttons" role="tablist">
+      <div className="r2-side-buttons" role="tablist">
         {def.toolPanels.map(tp => {
           const label = (tp.labelKey && core.gos.localeText?.[tp.labelKey]) || tp.labelDefault || tp.id;
           return (
-            <div key={tp.id} className={cx('ag-side-button', open === tp.id && 'ag-selected')} role="presentation">
+            <div key={tp.id} className={cx('r2-side-button', open === tp.id && 'r2-selected')} role="presentation">
               <button
                 type="button"
-                className="ag-button ag-side-button-button"
+                className="r2-button r2-side-button-button"
                 role="tab"
                 aria-expanded={open === tp.id}
                 onClick={() => core.onSideButtonClick(tp.id)}
               >
-                <div className="ag-side-button-icon-wrapper" aria-hidden="true">
+                <div className="r2-side-button-icon-wrapper" aria-hidden="true">
                   <Icon name={tp.iconKey || 'menu'} />
                 </div>
-                <span className="ag-side-button-label">{label}</span>
+                <span className="r2-side-button-label">{label}</span>
               </button>
             </div>
           );
@@ -71,17 +71,17 @@ export function SideBar({ core }) {
   );
 }
 
-// ag-hidden 은 classList 로만 토글 (AG 동일). className prop 으로 바꾸면 리렌더 시
-// 외부에서 붙인 클래스(CLM: ag-visible / ag-animation-slideOut)가 지워진다.
+// r2-hidden 은 classList 로만 토글 (AG 동일). className prop 으로 바꾸면 리렌더 시
+// 외부에서 붙인 클래스(CLM: r2-visible / r2-animation-slideOut)가 지워진다.
 function ToolPanelWrapper({ hidden, tp, children }) {
   const ref = useRef(null);
   useLayoutEffect(() => {
-    ref.current?.classList.toggle('ag-hidden', hidden);
+    ref.current?.classList.toggle('r2-hidden', hidden);
   }, [hidden]);
   return (
     <div
       ref={ref}
-      className="ag-tool-panel-wrapper ag-hidden"
+      className="r2-tool-panel-wrapper r2-hidden"
       role="tabpanel"
       style={{ width: tp.width, minWidth: tp.minWidth, maxWidth: tp.maxWidth }}
     >
@@ -106,23 +106,23 @@ export function Overlay({ core, type }) {
     content = <span dangerouslySetInnerHTML={{ __html: template }} />;
   } else if (loading) {
     content = (
-      <span className="ag-overlay-loading-center" aria-live="polite">
-        <span className="ag-loading-icon">
+      <span className="r2-overlay-loading-center" aria-live="polite">
+        <span className="r2-loading-icon">
           <Icon name="loading" />
         </span>
-        <span className="ag-loading-text">{localeText(core, 'loadingOoo')}</span>
+        <span className="r2-loading-text">{localeText(core, 'loadingOoo')}</span>
       </span>
     );
   } else {
-    content = <span className="ag-overlay-no-rows-center">{localeText(core, 'noRowsToShow')}</span>;
+    content = <span className="r2-overlay-no-rows-center">{localeText(core, 'noRowsToShow')}</span>;
   }
   return (
-    <div className={cx('ag-overlay', loading && 'ag-overlay-modal')} aria-hidden="false">
-      <div className="ag-overlay-panel" role="presentation">
+    <div className={cx('r2-overlay', loading && 'r2-overlay-modal')} aria-hidden="false">
+      <div className="r2-overlay-panel" role="presentation">
         <div
           className={cx(
-            'ag-overlay-wrapper ag-layout-normal',
-            loading ? 'ag-overlay-loading-wrapper' : 'ag-overlay-no-rows-wrapper',
+            'r2-overlay-wrapper r2-layout-normal',
+            loading ? 'r2-overlay-loading-wrapper' : 'r2-overlay-no-rows-wrapper',
           )}
           role="presentation"
         >
@@ -151,7 +151,7 @@ export function PagingPanel({ core }) {
   if (selector && !options.includes(size)) options = [...options, size].sort((a, b) => a - b);
   const btn = (name, disabled, onClick, label) => (
     <div
-      className={cx('ag-button ag-paging-button', disabled && 'ag-disabled')}
+      className={cx('r2-button r2-paging-button', disabled && 'r2-disabled')}
       role="button"
       aria-label={label}
       aria-disabled={disabled}
@@ -162,12 +162,12 @@ export function PagingPanel({ core }) {
     </div>
   );
   return (
-    <div className="ag-paging-panel ag-unselectable" role="presentation">
+    <div className="r2-paging-panel r2-unselectable" role="presentation">
       {selector && (
-        <span className="ag-paging-page-size">
-          <span className="ag-paging-page-size-label">{t('pageSizeSelectorLabel')}</span>
+        <span className="r2-paging-page-size">
+          <span className="r2-paging-page-size-label">{t('pageSizeSelectorLabel')}</span>
           <select
-            className="ag-picker-field-wrapper"
+            className="r2-picker-field-wrapper"
             value={size}
             onChange={e => core.setGridOption('paginationPageSize', Number(e.target.value))}
           >
@@ -179,21 +179,21 @@ export function PagingPanel({ core }) {
           </select>
         </span>
       )}
-      <span className="ag-paging-row-summary-panel" role="status">
-        <span className="ag-paging-row-summary-panel-number">{fmt(startRow)}</span>
+      <span className="r2-paging-row-summary-panel" role="status">
+        <span className="r2-paging-row-summary-panel-number">{fmt(startRow)}</span>
         <span> {t('to')} </span>
-        <span className="ag-paging-row-summary-panel-number">{fmt(endRow)}</span>
+        <span className="r2-paging-row-summary-panel-number">{fmt(endRow)}</span>
         <span> {t('of')} </span>
-        <span className="ag-paging-row-summary-panel-number">{fmt(total)}</span>
+        <span className="r2-paging-row-summary-panel-number">{fmt(total)}</span>
       </span>
-      <span className="ag-paging-page-summary-panel" role="presentation">
+      <span className="r2-paging-page-summary-panel" role="presentation">
         {btn('first', page <= 0, () => core.api.paginationGoToFirstPage(), t('first'))}
         {btn('previous', page <= 0, () => core.api.paginationGoToPreviousPage(), t('previous'))}
-        <span className="ag-paging-description" role="status">
+        <span className="r2-paging-description" role="status">
           <span>{t('page')} </span>
-          <span className="ag-paging-number">{pages ? fmt(page + 1) : 0}</span>
+          <span className="r2-paging-number">{pages ? fmt(page + 1) : 0}</span>
           <span> {t('of')} </span>
-          <span className="ag-paging-number">{fmt(pages)}</span>
+          <span className="r2-paging-number">{fmt(pages)}</span>
         </span>
         {btn('next', page >= pages - 1, () => core.api.paginationGoToNextPage(), t('next'))}
         {btn('last', page >= pages - 1, () => core.api.paginationGoToLastPage(), t('last'))}
@@ -203,16 +203,16 @@ export function PagingPanel({ core }) {
 }
 
 // ── 툴팁 ───────────────────────────────────────────────────
-// 셀/헤더에서 data-ag-tooltip 속성을 읽어 지연 표시 (AG 기본 tooltipShowDelay 2000ms)
+// 셀/헤더에서 data-r2-tooltip 속성을 읽어 지연 표시 (AG 기본 tooltipShowDelay 2000ms)
 export function useTooltip(core) {
   const [tip, setTip] = useState(null);
   const timer = useRef(null);
   const hideTimer = useRef(null);
   const onOver = e => {
     if (core.gos.enableBrowserTooltips) return;
-    const el = e.target instanceof Element ? e.target.closest('[data-ag-tooltip]') : null;
+    const el = e.target instanceof Element ? e.target.closest('[data-r2-tooltip]') : null;
     if (!el) return;
-    const text = el.getAttribute('data-ag-tooltip');
+    const text = el.getAttribute('data-r2-tooltip');
     if (!text) return;
     clearTimeout(timer.current);
     const delay = core.gos.tooltipShowDelay ?? 2000;
@@ -224,7 +224,7 @@ export function useTooltip(core) {
     }, delay);
   };
   const onOut = e => {
-    const el = e.target instanceof Element ? e.target.closest('[data-ag-tooltip]') : null;
+    const el = e.target instanceof Element ? e.target.closest('[data-r2-tooltip]') : null;
     if (!el) return;
     if (e.relatedTarget instanceof Node && el.contains(e.relatedTarget)) return;
     clearTimeout(timer.current);
@@ -240,7 +240,7 @@ export function useTooltip(core) {
   const node = tip
     ? createPortal(
         <PopupLayer core={core}>
-          <div className="ag-tooltip ag-popup-child" style={{ position: 'fixed', left: tip.x, top: tip.y }}>
+          <div className="r2-tooltip r2-popup-child" style={{ position: 'fixed', left: tip.x, top: tip.y }}>
             {tip.text}
           </div>
         </PopupLayer>,

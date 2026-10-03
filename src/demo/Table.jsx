@@ -31,9 +31,9 @@ export default function Table({ width, height, ref, gridOptions, menuRole = 2, .
       const target = e.target;
       if (!(target instanceof Element)) return;
       if (
-        target.closest('.ag-pinned-left-cols-container') ||
-        target.closest('.ag-selection-column') ||
-        target.closest('.ag-row-number')
+        target.closest('.r2-pinned-left-cols-container') ||
+        target.closest('.r2-selection-column') ||
+        target.closest('.r2-row-number')
       ) {
         e.stopImmediatePropagation();
       }
@@ -44,8 +44,8 @@ export default function Table({ width, height, ref, gridOptions, menuRole = 2, .
 
   const onToolPanelVisibleChanged = useCallback(params => {
     const handleClickOutside = event => {
-      const gridElement = document.querySelector('.ag-root');
-      const sidebarElement = document.querySelector('.ag-side-bar');
+      const gridElement = document.querySelector('.r2-root');
+      const sidebarElement = document.querySelector('.r2-side-bar');
       if (sidebarElement?.contains(event.target) || !sidebarElement?.offsetParent || gridElement?.contains(event.target)) return;
       if (params.api.isSideBarVisible()) {
         document.removeEventListener('mousedown', handleClickOutside);
@@ -64,9 +64,9 @@ export default function Table({ width, height, ref, gridOptions, menuRole = 2, .
         return;
       }
     }
-    const target = document.querySelector('.ag-tool-panel-wrapper');
+    const target = document.querySelector('.r2-tool-panel-wrapper');
     if (source) {
-      setTimeout(() => target?.classList.add('ag-visible'), 300);
+      setTimeout(() => target?.classList.add('r2-visible'), 300);
       document.addEventListener('mousedown', handleClickOutside);
     }
   }, []);
@@ -101,7 +101,7 @@ export default function Table({ width, height, ref, gridOptions, menuRole = 2, .
   );
 
   return (
-    <div ref={wrapperRef} className="ag-theme-alpine clm-table-wrapper" style={{ width: width ?? '100%', height: height ?? '300px' }}>
+    <div ref={wrapperRef} className="r2-theme-alpine clm-table-wrapper" style={{ width: width ?? '100%', height: height ?? '300px' }}>
       <AgGridReact
         {...props}
         gridOptions={mergedGridOptions}

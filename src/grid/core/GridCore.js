@@ -30,8 +30,8 @@ export const DEFAULT_HEADER_HEIGHT = 48;
 export const DEFAULT_DETAIL_ROW_HEIGHT = 300;
 
 const BUILTIN_COLUMN_TYPES = {
-  numericColumn: { headerClass: 'ag-right-aligned-header', cellClass: 'ag-right-aligned-cell' },
-  rightAligned: { headerClass: 'ag-right-aligned-header', cellClass: 'ag-right-aligned-cell' },
+  numericColumn: { headerClass: 'r2-right-aligned-header', cellClass: 'r2-right-aligned-cell' },
+  rightAligned: { headerClass: 'r2-right-aligned-header', cellClass: 'r2-right-aligned-cell' },
 };
 
 let gridSeq = 0;
@@ -506,8 +506,8 @@ export class GridCore {
           suppressMovable: true,
           lockPosition: 'left',
           suppressColumnsToolPanel: true,
-          cellClass: 'ag-row-number-cell ag-row-number',
-          headerClass: 'ag-row-number-header',
+          cellClass: 'r2-row-number-cell r2-row-number',
+          headerClass: 'r2-row-number-header',
           ...(typeof g.rowNumbers === 'object' ? g.rowNumbers : {}),
         },
         'rowNumbers',
@@ -2502,7 +2502,7 @@ export class GridCore {
     this.notify();
     const rowSel = ed.node.rowPinned ? `[row-index="${ed.node.rowPinned[0]}-${ed.node.rowIndex}"]` : `[row-index="${ed.node.rowIndex}"]`;
     setTimeout(() => {
-      const cell = this.eRoot?.querySelector(`.ag-row${rowSel} .ag-cell[col-id="${CSS.escape(next)}"]`);
+      const cell = this.eRoot?.querySelector(`.r2-row${rowSel} .r2-cell[col-id="${CSS.escape(next)}"]`);
       cell?.querySelector('input,textarea,select,[tabindex]')?.focus({ preventScroll: true });
     }, 0);
     return true;
@@ -3102,16 +3102,16 @@ export class GridCore {
       if (col.colDef.suppressAutoSize) return;
       const sel = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(col.colId) : col.colId;
       let max = 0;
-      root.querySelectorAll(`.ag-cell[col-id="${sel}"]`).forEach(cell => {
+      root.querySelectorAll(`.r2-cell[col-id="${sel}"]`).forEach(cell => {
         max = Math.max(max, measure(cell));
       });
       if (!skip) {
-        const label = root.querySelector(`.ag-header-cell[col-id="${sel}"] .ag-header-cell-label`);
-        const hcell = root.querySelector(`.ag-header-cell[col-id="${sel}"]`);
+        const label = root.querySelector(`.r2-header-cell[col-id="${sel}"] .r2-header-cell-label`);
+        const hcell = root.querySelector(`.r2-header-cell[col-id="${sel}"]`);
         if (label && hcell) {
           range.selectNodeContents(label);
           const cs = getComputedStyle(hcell);
-          const extra = hcell.querySelector('.ag-header-cell-menu-button') ? 24 : 0;
+          const extra = hcell.querySelector('.r2-header-cell-menu-button') ? 24 : 0;
           max = Math.max(max, range.getBoundingClientRect().width + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + extra + 16);
         }
       }

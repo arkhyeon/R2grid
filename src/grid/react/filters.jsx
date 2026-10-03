@@ -22,7 +22,7 @@ function VirtualList({ count, itemHeight, maxHeight, renderItem, className }) {
   const items = [];
   for (let i = first; i < last; i++) {
     items.push(
-      <div key={i} className="ag-virtual-list-item" style={{ position: 'absolute', top: i * itemHeight, height: itemHeight, left: 0, right: 0 }}>
+      <div key={i} className="r2-virtual-list-item" style={{ position: 'absolute', top: i * itemHeight, height: itemHeight, left: 0, right: 0 }}>
         {renderItem(i)}
       </div>,
     );
@@ -30,11 +30,11 @@ function VirtualList({ count, itemHeight, maxHeight, renderItem, className }) {
   return (
     <div
       ref={ref}
-      className={cx('ag-virtual-list-viewport', className)}
+      className={cx('r2-virtual-list-viewport', className)}
       style={{ height, overflowY: 'auto', position: 'relative' }}
       onScroll={e => setTop(e.currentTarget.scrollTop)}
     >
-      <div className="ag-virtual-list-container" style={{ height: count * itemHeight, position: 'relative' }}>
+      <div className="r2-virtual-list-container" style={{ height: count * itemHeight, position: 'relative' }}>
         {items}
       </div>
     </div>
@@ -46,12 +46,12 @@ function FilterButtons({ core, buttons, onApply, onClear, onReset, onCancel }) {
   const label = { apply: 'applyFilter', clear: 'clearFilter', reset: 'resetFilter', cancel: 'cancelFilter' };
   const handler = { apply: onApply, clear: onClear, reset: onReset, cancel: onCancel };
   return (
-    <div className="ag-filter-apply-panel">
+    <div className="r2-filter-apply-panel">
       {buttons.map(b => (
         <button
           key={b}
           type="button"
-          className="ag-button ag-standard-button ag-filter-apply-panel-button"
+          className="r2-button r2-standard-button r2-filter-apply-panel-button"
           onClick={handler[b]}
         >
           {localeText(core, label[b])}
@@ -113,14 +113,14 @@ function SetFilterUI({ core, column, onClose }) {
   };
 
   return (
-    <div className="ag-filter ag-set-filter" role="presentation">
-      <div className="ag-filter-wrapper">
+    <div className="r2-filter r2-set-filter" role="presentation">
+      <div className="r2-filter-wrapper">
         {!fp.suppressMiniFilter && (
-          <div className="ag-mini-filter ag-text-field ag-input-field">
-            <div className="ag-wrapper ag-input-wrapper ag-text-field-input-wrapper">
+          <div className="r2-mini-filter r2-text-field r2-input-field">
+            <div className="r2-wrapper r2-input-wrapper r2-text-field-input-wrapper">
               <input
                 ref={inputRef}
-                className="ag-input-field-input ag-text-field-input"
+                className="r2-input-field-input r2-text-field-input"
                 placeholder={localeText(core, 'searchOoo')}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
@@ -134,16 +134,16 @@ function SetFilterUI({ core, column, onClose }) {
           </div>
         )}
         {!fp.suppressSelectAll && shown.length > 0 && (
-          <div className="ag-set-filter-item ag-set-filter-select-all" onClick={toggleAll} role="option">
+          <div className="r2-set-filter-item r2-set-filter-select-all" onClick={toggleAll} role="option">
             <Checkbox checked={allState} onToggle={toggleAll} />
-            <span className="ag-set-filter-item-value">
+            <span className="r2-set-filter-item-value">
               {localeText(core, search ? 'selectAllSearchResults' : 'selectAll')}
             </span>
           </div>
         )}
         {shown.length ? (
           <VirtualList
-            className="ag-set-filter-list"
+            className="r2-set-filter-list"
             count={shown.length}
             itemHeight={ITEM_H}
             maxHeight={ITEM_H * 8}
@@ -151,15 +151,15 @@ function SetFilterUI({ core, column, onClose }) {
               const i = shown[k];
               const key = entries[i].key;
               return (
-                <div className="ag-set-filter-item" onClick={() => toggleKey(key)} role="option" title={labels[i]}>
+                <div className="r2-set-filter-item" onClick={() => toggleKey(key)} role="option" title={labels[i]}>
                   <Checkbox checked={isSel(key)} onToggle={() => toggleKey(key)} />
-                  <span className="ag-set-filter-item-value">{labels[i]}</span>
+                  <span className="r2-set-filter-item-value">{labels[i]}</span>
                 </div>
               );
             }}
           />
         ) : (
-          <div className="ag-filter-no-matches">{localeText(core, 'noMatches')}</div>
+          <div className="r2-filter-no-matches">{localeText(core, 'noMatches')}</div>
         )}
       </div>
       <FilterButtons
@@ -279,18 +279,18 @@ function ConditionFilterUI({ core, column, kind, onClose }) {
   const inputType = kind === 'number' ? 'number' : kind === 'date' ? 'date' : 'text';
 
   return (
-    <div className={cx('ag-filter', `ag-${kind}-filter`)} role="presentation">
-      <div className="ag-filter-wrapper">
-        <div className="ag-filter-body-wrapper ag-simple-filter-body-wrapper">
+    <div className={cx('r2-filter', `r2-${kind}-filter`)} role="presentation">
+      <div className="r2-filter-wrapper">
+        <div className="r2-filter-body-wrapper r2-simple-filter-body-wrapper">
           {shownConds.map((c, i) => (
             <React.Fragment key={i}>
               {i > 0 && (
-                <div className="ag-filter-condition" role="radiogroup">
+                <div className="r2-filter-condition" role="radiogroup">
                   {['AND', 'OR'].map(op => (
-                    <label key={op} className="ag-filter-condition-operator">
+                    <label key={op} className="r2-filter-condition-operator">
                       <input
                         type="radio"
-                        className="ag-input-field-input ag-radio-button-input"
+                        className="r2-input-field-input r2-radio-button-input"
                         checked={state.operator === op}
                         onChange={() => update({ ...state, operator: op })}
                       />
@@ -299,9 +299,9 @@ function ConditionFilterUI({ core, column, kind, onClose }) {
                   ))}
                 </div>
               )}
-              <div className="ag-filter-select ag-picker-field">
+              <div className="r2-filter-select r2-picker-field">
                 <select
-                  className="ag-picker-field-wrapper ag-filter-select-input"
+                  className="r2-picker-field-wrapper r2-filter-select-input"
                   value={c.type}
                   onChange={e => setCond(i, { type: e.target.value })}
                   onKeyDown={e => e.stopPropagation()}
@@ -314,11 +314,11 @@ function ConditionFilterUI({ core, column, kind, onClose }) {
                 </select>
               </div>
               {!NO_INPUT.has(c.type) && (
-                <div className="ag-filter-body" role="presentation">
-                  <div className="ag-filter-from ag-filter-filter ag-input-field">
+                <div className="r2-filter-body" role="presentation">
+                  <div className="r2-filter-from r2-filter-filter r2-input-field">
                     <input
                       ref={i === 0 ? firstInput : undefined}
-                      className="ag-input-field-input ag-text-field-input"
+                      className="r2-input-field-input r2-text-field-input"
                       type={inputType}
                       placeholder={localeText(core, c.type === 'inRange' ? 'inRangeStart' : 'filterOoo')}
                       value={c.from}
@@ -331,9 +331,9 @@ function ConditionFilterUI({ core, column, kind, onClose }) {
                     />
                   </div>
                   {c.type === 'inRange' && (
-                    <div className="ag-filter-to ag-filter-filter ag-input-field">
+                    <div className="r2-filter-to r2-filter-filter r2-input-field">
                       <input
-                        className="ag-input-field-input ag-text-field-input"
+                        className="r2-input-field-input r2-text-field-input"
                         type={inputType}
                         placeholder={localeText(core, 'inRangeEnd')}
                         value={c.to}
@@ -385,23 +385,23 @@ export function FiltersToolPanel({ core }) {
   const s = search.trim().toLowerCase();
   const shown = s ? cols.filter(c => core.getDisplayName(c).toLowerCase().includes(s)) : cols;
   return (
-    <div className="ag-filter-toolpanel">
-      <div className="ag-filter-toolpanel-search">
+    <div className="r2-filter-toolpanel">
+      <div className="r2-filter-toolpanel-search">
         <input
-          className="ag-input-field-input ag-text-field-input"
+          className="r2-input-field-input r2-text-field-input"
           placeholder={localeText(core, 'searchOoo')}
           value={search}
           onChange={e => setSearch(e.target.value)}
           onKeyDown={e => e.stopPropagation()}
         />
       </div>
-      <div className="ag-filter-list-panel">
+      <div className="r2-filter-list-panel">
         {shown.map(c => {
           const isOpen = open.has(c.colId);
           return (
-            <div key={c.colId} className="ag-filter-toolpanel-instance">
+            <div key={c.colId} className="r2-filter-toolpanel-instance">
               <div
-                className="ag-filter-toolpanel-header ag-filter-toolpanel-instance-header"
+                className="r2-filter-toolpanel-header r2-filter-toolpanel-instance-header"
                 role="button"
                 onClick={() =>
                   setOpen(prev => {
@@ -412,12 +412,12 @@ export function FiltersToolPanel({ core }) {
                   })
                 }
               >
-                <span className={cx('ag-icon', isOpen ? 'ag-icon-tree-open' : 'ag-icon-tree-closed')} />
-                <span className="ag-header-cell-text">{core.getDisplayName(c)}</span>
-                {c.filterActive && <span className="ag-icon ag-icon-filter ag-filter-toolpanel-instance-header-icon" />}
+                <span className={cx('r2-icon', isOpen ? 'r2-icon-tree-open' : 'r2-icon-tree-closed')} />
+                <span className="r2-header-cell-text">{core.getDisplayName(c)}</span>
+                {c.filterActive && <span className="r2-icon r2-icon-filter r2-filter-toolpanel-instance-header-icon" />}
               </div>
               {isOpen && (
-                <div className="ag-filter-toolpanel-instance-body ag-filter">
+                <div className="r2-filter-toolpanel-instance-body r2-filter">
                   <FilterUI core={core} column={c} />
                 </div>
               )}

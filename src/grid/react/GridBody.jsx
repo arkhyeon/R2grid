@@ -18,7 +18,7 @@ const rowKey = node => (node.rowPinned ? `${node.rowPinned[0]}-${node.rowIndex}`
 function CheckboxCellRenderer({ core, node, column, value }) {
   const editable = core.isCellEditable(column, node);
   return (
-    <div className="ag-cell-wrapper ag-checkbox-cell" role="presentation">
+    <div className="r2-cell-wrapper r2-checkbox-cell" role="presentation">
       <Checkbox
         checked={value == null ? false : !!value}
         disabled={!editable}
@@ -50,42 +50,42 @@ function GroupCellRenderer({ core, node, column, params, extra }) {
   return (
     <span
       className={cx(
-        'ag-cell-wrapper',
-        expandable && 'ag-cell-expandable ag-row-group',
-        grouping && `ag-row-group-indent-${level}`,
-        leafIndent && 'ag-row-group-leaf-indent',
+        'r2-cell-wrapper',
+        expandable && 'r2-cell-expandable r2-row-group',
+        grouping && `r2-row-group-indent-${level}`,
+        leafIndent && 'r2-row-group-leaf-indent',
       )}
       style={grouping ? { paddingLeft: level * GROUP_INDENT + leafIndent } : undefined}
       role="presentation"
     >
       {expandable && (
         <>
-          <span className={cx('ag-group-expanded', !node.expanded && 'ag-hidden')} onClick={toggle}>
+          <span className={cx('r2-group-expanded', !node.expanded && 'r2-hidden')} onClick={toggle}>
             <Icon name="tree-open" />
           </span>
-          <span className={cx('ag-group-contracted', node.expanded && 'ag-hidden')} onClick={toggle}>
+          <span className={cx('r2-group-contracted', node.expanded && 'r2-hidden')} onClick={toggle}>
             <Icon name="tree-closed" />
           </span>
         </>
       )}
       {legacyCb && (
-        <span className="ag-group-checkbox">
+        <span className="r2-group-checkbox">
           <Checkbox
             checked={node.group ? core.getGroupSelectionState(node) : node.selected}
             onToggle={e => core.handleCheckboxClick(node, e)}
           />
         </span>
       )}
-      <span className="ag-group-value">{inner}</span>
-      {count != null && <span className="ag-group-child-count">({count})</span>}
+      <span className="r2-group-value">{inner}</span>
+      {count != null && <span className="r2-group-child-count">({count})</span>}
     </span>
   );
 }
 
 function SkeletonCell() {
   return (
-    <div className="ag-skeleton-container">
-      <div className="ag-skeleton-effect" />
+    <div className="r2-skeleton-container">
+      <div className="r2-skeleton-effect" />
     </div>
   );
 }
@@ -121,7 +121,7 @@ function Cell({ core, node, col, handlers, isFirst, isLast }) {
   const userStyle = node.stub ? null : typeof cd.cellStyle === 'function' ? cd.cellStyle(base) : cd.cellStyle;
   let flashCls = null;
   if (flash) {
-    const prefix = flash.cls === 'highlight' ? 'ag-cell-highlight' : 'ag-cell-data-changed';
+    const prefix = flash.cls === 'highlight' ? 'r2-cell-highlight' : 'r2-cell-data-changed';
     flashCls = flash.phase === 'on' ? prefix : `${prefix}-animation`;
   }
 
@@ -144,8 +144,8 @@ function Cell({ core, node, col, handlers, isFirst, isLast }) {
         ? !!rs.checkboxes({ ...base })
         : !(rs?.hideDisabledCheckboxes && !node.selectable && !groupDesc));
     content = show ? (
-      <div className="ag-cell-wrapper" role="presentation">
-        <div className="ag-selection-checkbox" role="presentation">
+      <div className="r2-cell-wrapper" role="presentation">
+        <div className="r2-selection-checkbox" role="presentation">
           <Checkbox
             checked={groupDesc ? core.getGroupSelectionState(node) : node.selected}
             disabled={!groupDesc && !node.selectable}
@@ -200,30 +200,30 @@ function Cell({ core, node, col, handlers, isFirst, isLast }) {
     const legacyCb = core.rsOpts?.legacy && cd.checkboxSelection && !node.rowPinned;
     if (legacyCb && (typeof cd.checkboxSelection !== 'function' || cd.checkboxSelection(base))) {
       content = (
-        <div className="ag-cell-wrapper" role="presentation">
-          <div className="ag-selection-checkbox" role="presentation">
+        <div className="r2-cell-wrapper" role="presentation">
+          <div className="r2-selection-checkbox" role="presentation">
             <Checkbox
               checked={node.group && core.isGroupSelectsDescendants() ? core.getGroupSelectionState(node) : node.selected}
               disabled={!node.selectable}
               onToggle={e => core.handleCheckboxClick(node, e)}
             />
           </div>
-          <span className="ag-cell-value">{content}</span>
+          <span className="r2-cell-value">{content}</span>
         </div>
       );
     }
     // 행 드래그 핸들 (colDef.rowDrag)
     if (core.showRowDragHandle(node, col)) {
       content = (
-        <div className="ag-cell-wrapper" role="presentation">
+        <div className="r2-cell-wrapper" role="presentation">
           <div
-            className="ag-drag-handle ag-row-drag"
+            className="r2-drag-handle r2-row-drag"
             draggable={false}
             onPointerDown={e => handlers.dragHandleDown(node, col, e)}
           >
             <Icon name="grip" />
           </div>
-          <span className="ag-cell-value">{content}</span>
+          <span className="r2-cell-value">{content}</span>
         </div>
       );
     }
@@ -247,28 +247,28 @@ function Cell({ core, node, col, handlers, isFirst, isLast }) {
     <div
       ref={cellRef}
       className={cx(
-        'ag-cell',
+        'r2-cell',
         isEditing
           ? ced.editor.popup
-            ? 'ag-cell-popup-editing ag-cell-not-inline-editing'
-            : 'ag-cell-inline-editing'
-          : 'ag-cell-not-inline-editing',
-        cd.autoHeight ? 'ag-cell-auto-height' : 'ag-cell-normal-height',
-        'ag-cell-value',
-        focused && 'ag-cell-focus',
-        range && 'ag-cell-range-selected',
-        range && !range.single && `ag-cell-range-selected-${Math.min(range.count, 4)}`,
-        range?.single && 'ag-cell-range-single-cell',
-        range?.top && 'ag-cell-range-top',
-        range?.bottom && 'ag-cell-range-bottom',
-        range?.left && 'ag-cell-range-left',
-        range?.right && 'ag-cell-range-right',
+            ? 'r2-cell-popup-editing r2-cell-not-inline-editing'
+            : 'r2-cell-inline-editing'
+          : 'r2-cell-not-inline-editing',
+        cd.autoHeight ? 'r2-cell-auto-height' : 'r2-cell-normal-height',
+        'r2-cell-value',
+        focused && 'r2-cell-focus',
+        range && 'r2-cell-range-selected',
+        range && !range.single && `r2-cell-range-selected-${Math.min(range.count, 4)}`,
+        range?.single && 'r2-cell-range-single-cell',
+        range?.top && 'r2-cell-range-top',
+        range?.bottom && 'r2-cell-range-bottom',
+        range?.left && 'r2-cell-range-left',
+        range?.right && 'r2-cell-range-right',
         flashCls,
-        cd.wrapText && 'ag-cell-wrap-text',
-        isFirst && 'ag-column-first',
-        isLast && 'ag-column-last',
-        col.autoType === 'selection' && 'ag-selection-column ag-cell-selection',
-        node.stub && 'ag-cell-loading',
+        cd.wrapText && 'r2-cell-wrap-text',
+        isFirst && 'r2-column-first',
+        isLast && 'r2-column-last',
+        col.autoType === 'selection' && 'r2-selection-column r2-cell-selection',
+        node.stub && 'r2-cell-loading',
         userCls,
       )}
       role="gridcell"
@@ -282,7 +282,7 @@ function Cell({ core, node, col, handlers, isFirst, isLast }) {
         ...userStyle,
       }}
       title={g.enableBrowserTooltips ? tooltip : undefined}
-      data-ag-tooltip={g.enableBrowserTooltips ? undefined : tooltip}
+      data-r2-tooltip={g.enableBrowserTooltips ? undefined : tooltip}
       onPointerDown={e => handlers.cellPointerDown(node, col, e)}
       onClick={e => handlers.cellClick(node, col, e)}
       onDoubleClick={e => handlers.cellDblClick(node, col, e)}
@@ -300,21 +300,21 @@ function rowProps(core, node, rowCount) {
   const focusRow = core.focus && core.focus.rowIndex === node.rowIndex && (core.focus.rowPinned || null) === (node.rowPinned || null);
   const level = node.uiLevel ?? node.level ?? 0;
   const className = cx(
-    'ag-row',
-    node.rowIndex % 2 === 0 ? 'ag-row-even' : 'ag-row-odd',
-    `ag-row-level-${level}`,
-    'ag-row-position-absolute',
-    !node.rowPinned && node.rowIndex === 0 && 'ag-row-first',
-    !node.rowPinned && node.rowIndex === rowCount - 1 && 'ag-row-last',
-    node.rowPinned && 'ag-row-pinned',
-    node.group && 'ag-row-group',
-    node.stub && 'ag-row-loading',
-    node.selected && 'ag-row-selected',
-    focusRow ? 'ag-row-focus' : 'ag-row-no-focus',
-    editing ? 'ag-row-editing ag-row-inline-editing' : 'ag-row-not-inline-editing',
-    (node.master || (node.group && node.childrenAll?.length)) && (node.expanded ? 'ag-row-group-expanded' : 'ag-row-group-contracted'),
-    node.__dragging && 'ag-row-dragging',
-    core.hoveredRowIndex === rowKey(node) && 'ag-row-hover',
+    'r2-row',
+    node.rowIndex % 2 === 0 ? 'r2-row-even' : 'r2-row-odd',
+    `r2-row-level-${level}`,
+    'r2-row-position-absolute',
+    !node.rowPinned && node.rowIndex === 0 && 'r2-row-first',
+    !node.rowPinned && node.rowIndex === rowCount - 1 && 'r2-row-last',
+    node.rowPinned && 'r2-row-pinned',
+    node.group && 'r2-row-group',
+    node.stub && 'r2-row-loading',
+    node.selected && 'r2-row-selected',
+    focusRow ? 'r2-row-focus' : 'r2-row-no-focus',
+    editing ? 'r2-row-editing r2-row-inline-editing' : 'r2-row-not-inline-editing',
+    (node.master || (node.group && node.childrenAll?.length)) && (node.expanded ? 'r2-row-group-expanded' : 'r2-row-group-contracted'),
+    node.__dragging && 'r2-row-dragging',
+    core.hoveredRowIndex === rowKey(node) && 'r2-row-hover',
     resolveClassValue(g.rowClass, p),
     typeof g.getRowClass === 'function' ? resolveClassValue(g.getRowClass(p), p) : '',
     node.stub ? '' : resolveClassRules(g.rowClassRules, p),
@@ -400,8 +400,8 @@ function DetailRow({ core, node, top, height }) {
   } else if (Grid) {
     const dgo = p.detailGridOptions || {};
     body = (
-      <div className={cx('ag-details-row', g.detailRowAutoHeight ? 'ag-details-row-auto-height' : 'ag-details-row-fixed-height')}>
-        <div className="ag-details-grid" style={{ height: g.detailRowAutoHeight ? undefined : '100%' }}>
+      <div className={cx('r2-details-row', g.detailRowAutoHeight ? 'r2-details-row-auto-height' : 'r2-details-row-fixed-height')}>
+        <div className="r2-details-grid" style={{ height: g.detailRowAutoHeight ? undefined : '100%' }}>
           <Grid
             {...dgo}
             rowData={rows ?? undefined}
@@ -417,7 +417,7 @@ function DetailRow({ core, node, top, height }) {
   }
   return (
     <div
-      className="ag-row ag-full-width-row ag-row-level-1 ag-row-position-absolute ag-details-row-wrapper"
+      className="r2-row r2-full-width-row r2-row-level-1 r2-row-position-absolute r2-details-row-wrapper"
       role="row"
       row-index={node.rowIndex}
       row-id={node.id}
@@ -513,7 +513,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     const el = bodyVpRef.current;
     if (!el) return undefined;
     const onWheel = ev => {
-      if (ev.target instanceof Element && ev.target.closest('.ag-root') !== focusSinkRef.current) return;
+      if (ev.target instanceof Element && ev.target.closest('.r2-root') !== focusSinkRef.current) return;
       let dx = ev.deltaX;
       if (!dx && ev.shiftKey) dx = ev.deltaY;
       if (!dx) return;
@@ -551,8 +551,8 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     const cxp = Math.min(Math.max(x, r.left + 1), r.left + vp.clientWidth - 2);
     const cyp = Math.min(Math.max(y, r.top + 1), r.top + vp.clientHeight - 2);
     const el = document.elementFromPoint(cxp, cyp);
-    const cell = el?.closest?.('.ag-cell[col-id]');
-    if (!cell || cell.closest('.ag-root') !== focusSinkRef.current) return null;
+    const cell = el?.closest?.('.r2-cell[col-id]');
+    if (!cell || cell.closest('.r2-root') !== focusSinkRef.current) return null;
     const row = cell.closest('[row-index]');
     if (!row) return null;
     const rowIndex = Number(row.getAttribute('row-index'));
@@ -644,7 +644,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       if (!dragging) {
         if (Math.abs(ev.clientX - startX) < 4 && Math.abs(ev.clientY - startY) < 4) return;
         dragging = true;
-        document.body.classList.add('ag-dnd-dragging');
+        document.body.classList.add('r2-dnd-dragging');
         const text = core.rowDragStart(node, ev, col);
         setDragGhost({ text, x: ev.clientX, y: ev.clientY });
       }
@@ -673,7 +673,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       document.removeEventListener('pointercancel', finish);
       clearInterval(timer);
       if (!dragging) return;
-      document.body.classList.remove('ag-dnd-dragging');
+      document.body.classList.remove('r2-dnd-dragging');
       setDragGhost(null);
       const o = overIndexAt(ev.clientY);
       core.rowDragEnd(ev, o.index, o.y, ev.type === 'pointercancel');
@@ -763,7 +763,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     },
     rowClick(node, e) {
       if (node.stub || core.__suppressRowClick) return;
-      if (core.editing && core.editing.node === node && e.target instanceof Element && e.target.closest('.ag-cell-inline-editing')) return;
+      if (core.editing && core.editing.node === node && e.target instanceof Element && e.target.closest('.r2-cell-inline-editing')) return;
       core.dispatch('rowClicked', { node, data: node.data, rowIndex: node.rowIndex, rowPinned: node.rowPinned, event: e });
       core.handleRowClickSelection(node, e);
     },
@@ -773,25 +773,25 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     },
   };
 
-  // 호버: 같은 row-index 의 모든 섹션에 ag-row-hover 를 DOM 으로 직접 토글 (재렌더 없음)
+  // 호버: 같은 row-index 의 모든 섹션에 r2-row-hover 를 DOM 으로 직접 토글 (재렌더 없음)
   const setHover = key => {
     if (key === core.hoveredRowIndex) return;
     const root = focusSinkRef.current;
     if (!root) return;
-    const sel = k => root.querySelectorAll(`.ag-row[row-index="${k}"]`);
-    if (core.hoveredRowIndex != null) sel(core.hoveredRowIndex).forEach(el => el.classList.remove('ag-row-hover'));
+    const sel = k => root.querySelectorAll(`.r2-row[row-index="${k}"]`);
+    if (core.hoveredRowIndex != null) sel(core.hoveredRowIndex).forEach(el => el.classList.remove('r2-row-hover'));
     core.hoveredRowIndex = key;
     if (key != null) {
       sel(key).forEach(el => {
-        if (el.closest('.ag-root') === root && !el.classList.contains('ag-full-width-row')) el.classList.add('ag-row-hover');
+        if (el.closest('.r2-root') === root && !el.classList.contains('r2-full-width-row')) el.classList.add('r2-row-hover');
       });
     }
   };
   const onMouseOver = e => {
     const t = e.target instanceof Element ? e.target : null;
-    if (!t || t.closest('.ag-root') !== focusSinkRef.current) return;
-    const row = t.closest('.ag-row[row-index]');
-    setHover(row && !row.classList.contains('ag-full-width-row') ? row.getAttribute('row-index') : null);
+    if (!t || t.closest('.r2-root') !== focusSinkRef.current) return;
+    const row = t.closest('.r2-row[row-index]');
+    setHover(row && !row.classList.contains('r2-full-width-row') ? row.getAttribute('row-index') : null);
   };
   const onMouseLeave = () => setHover(null);
 
@@ -869,27 +869,27 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     const list = pos === 'top' ? core.pinnedTop : core.pinnedBottom;
     if (!height) return null;
     return (
-      <div className={`ag-floating-${pos}`} role="presentation" style={{ height, minHeight: height }} onMouseOver={onMouseOver} onMouseLeave={onMouseLeave}>
+      <div className={`r2-floating-${pos}`} role="presentation" style={{ height, minHeight: height }} onMouseOver={onMouseOver} onMouseLeave={onMouseLeave}>
         <div
-          className={cx(`ag-pinned-left-floating-${pos}`, !core.leftWidth && 'ag-hidden')}
+          className={cx(`r2-pinned-left-floating-${pos}`, !core.leftWidth && 'r2-hidden')}
           role="rowgroup"
           style={{ width: core.leftWidth, minWidth: core.leftWidth, maxWidth: core.leftWidth }}
         >
           {pinnedRows(list, core.displayedLeft)}
         </div>
-        <div ref={ref} className={`ag-floating-${pos}-viewport`} role="presentation">
-          <div className={`ag-floating-${pos}-container`} role="rowgroup" style={{ width: core.centerWidth }}>
+        <div ref={ref} className={`r2-floating-${pos}-viewport`} role="presentation">
+          <div className={`r2-floating-${pos}-container`} role="rowgroup" style={{ width: core.centerWidth }}>
             {pinnedRows(list, center)}
           </div>
         </div>
         <div
-          className={cx(`ag-pinned-right-floating-${pos}`, !core.rightWidth && 'ag-hidden')}
+          className={cx(`r2-pinned-right-floating-${pos}`, !core.rightWidth && 'r2-hidden')}
           role="rowgroup"
           style={{ width: core.rightWidth, minWidth: core.rightWidth, maxWidth: core.rightWidth }}
         >
           {pinnedRows(list, core.displayedRight)}
         </div>
-        {size.sbw > 0 && <div className="ag-floating-scrollbar-spacer" style={{ width: size.sbw, minWidth: size.sbw }} />}
+        {size.sbw > 0 && <div className="r2-floating-scrollbar-spacer" style={{ width: size.sbw, minWidth: size.sbw }} />}
       </div>
     );
   };
@@ -907,7 +907,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       if (!node || node.detail || node.stub) continue;
       let max = 0;
       for (const c of autoCols) {
-        const cell = vp.querySelector(`.ag-row[row-index="${node.rowIndex}"] .ag-cell[col-id="${CSS.escape(c.colId)}"]`);
+        const cell = vp.querySelector(`.r2-row[row-index="${node.rowIndex}"] .r2-cell[col-id="${CSS.escape(c.colId)}"]`);
         if (cell) max = Math.max(max, cell.offsetHeight);
       }
       if (max && core.setAutoRowHeight(node, Math.max(def, Math.ceil(max)))) changed = true;
@@ -932,62 +932,62 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
   return (
     <>
       {floating('top', topH, floatTopRef)}
-      <div className={cx('ag-body', autoLayout ? 'ag-layout-auto-height' : 'ag-layout-normal')} role="presentation">
+      <div className={cx('r2-body', autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal')} role="presentation">
         <div
           ref={bodyVpRef}
-          className={cx('ag-body-viewport', autoLayout ? 'ag-layout-auto-height' : 'ag-layout-normal', 'ag-row-no-animation')}
+          className={cx('r2-body-viewport', autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal', 'r2-row-no-animation')}
           role="presentation"
           onScroll={onBodyScroll}
           onMouseOver={onMouseOver}
           onMouseLeave={onMouseLeave}
           onContextMenu={e => {
-            if (e.target instanceof Element && e.target.closest('.ag-root') !== focusSinkRef.current) return;
+            if (e.target instanceof Element && e.target.closest('.r2-root') !== focusSinkRef.current) return;
             if (g.allowContextMenuWithControlKey && (e.ctrlKey || e.metaKey)) return;
             if (core.openContextMenu({ node: null, column: null, x: e.clientX, y: e.clientY, event: e })) e.preventDefault();
           }}
         >
           <div
-            className={cx('ag-pinned-left-cols-container', !core.leftWidth && 'ag-hidden')}
+            className={cx('r2-pinned-left-cols-container', !core.leftWidth && 'r2-hidden')}
             role="rowgroup"
             style={{ width: core.leftWidth, minWidth: core.leftWidth, maxWidth: core.leftWidth, height: containerH }}
           >
             {leftRows}
           </div>
-          <div ref={centerVpRef} className="ag-center-cols-viewport" role="presentation" style={{ height: containerH }} onScroll={onCenterScroll}>
-            <div className="ag-center-cols-container" role="rowgroup" style={{ width: core.centerWidth, height: containerH }}>
+          <div ref={centerVpRef} className="r2-center-cols-viewport" role="presentation" style={{ height: containerH }} onScroll={onCenterScroll}>
+            <div className="r2-center-cols-container" role="rowgroup" style={{ width: core.centerWidth, height: containerH }}>
               {centerRows}
             </div>
           </div>
           <div
-            className={cx('ag-pinned-right-cols-container', !core.rightWidth && 'ag-hidden')}
+            className={cx('r2-pinned-right-cols-container', !core.rightWidth && 'r2-hidden')}
             role="rowgroup"
             style={{ width: core.rightWidth, minWidth: core.rightWidth, maxWidth: core.rightWidth, height: containerH }}
           >
             {rightRows}
           </div>
           {fullRows.length > 0 && (
-            <div className="ag-full-width-container" role="rowgroup" style={{ height: containerH }}>
+            <div className="r2-full-width-container" role="rowgroup" style={{ height: containerH }}>
               {fullRows}
             </div>
           )}
         </div>
       </div>
       {floating('bottom', bottomH, floatBottomRef)}
-      <div className={cx('ag-body-horizontal-scroll', !hScrollVisible && 'ag-scrollbar-invisible ag-hidden')} aria-hidden="true">
-        <div className="ag-horizontal-left-spacer" style={{ width: core.leftWidth, minWidth: core.leftWidth }} />
-        <div ref={hScrollRef} className="ag-body-horizontal-scroll-viewport" onScroll={onHScroll}>
-          <div className="ag-body-horizontal-scroll-container" style={{ width: core.centerWidth }} />
+      <div className={cx('r2-body-horizontal-scroll', !hScrollVisible && 'r2-scrollbar-invisible r2-hidden')} aria-hidden="true">
+        <div className="r2-horizontal-left-spacer" style={{ width: core.leftWidth, minWidth: core.leftWidth }} />
+        <div ref={hScrollRef} className="r2-body-horizontal-scroll-viewport" onScroll={onHScroll}>
+          <div className="r2-body-horizontal-scroll-container" style={{ width: core.centerWidth }} />
         </div>
-        <div className="ag-horizontal-right-spacer" style={{ width: core.rightWidth + size.sbw, minWidth: core.rightWidth + size.sbw }} />
+        <div className="r2-horizontal-right-spacer" style={{ width: core.rightWidth + size.sbw, minWidth: core.rightWidth + size.sbw }} />
       </div>
       {dragGhost &&
         createPortal(
           <PopupLayer core={core}>
-            <div className="ag-dnd-ghost ag-unselectable" style={{ position: 'fixed', left: dragGhost.x + 12, top: dragGhost.y + 12 }}>
-              <span className="ag-dnd-ghost-icon">
+            <div className="r2-dnd-ghost r2-unselectable" style={{ position: 'fixed', left: dragGhost.x + 12, top: dragGhost.y + 12 }}>
+              <span className="r2-dnd-ghost-icon">
                 <Icon name="grip" />
               </span>
-              <div className="ag-dnd-ghost-label">{dragGhost.text}</div>
+              <div className="r2-dnd-ghost-label">{dragGhost.text}</div>
             </div>
           </PopupLayer>,
           document.body,

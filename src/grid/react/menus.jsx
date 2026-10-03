@@ -129,7 +129,7 @@ export function MenuList({ core, items, params, onClose, autoFocus = true }) {
   return (
     <div
       ref={ref}
-      className="ag-menu-list ag-focus-managed"
+      className="r2-menu-list r2-focus-managed"
       role="menu"
       tabIndex={-1}
       onKeyDown={e => {
@@ -149,11 +149,11 @@ export function MenuList({ core, items, params, onClose, autoFocus = true }) {
       {list.map((item, i) => {
         if (item === 'separator') {
           return (
-            <div key={`sep${i}`} className="ag-menu-separator" aria-hidden="true">
-              <div className="ag-menu-separator-part" />
-              <div className="ag-menu-separator-part" />
-              <div className="ag-menu-separator-part" />
-              <div className="ag-menu-separator-part" />
+            <div key={`sep${i}`} className="r2-menu-separator" aria-hidden="true">
+              <div className="r2-menu-separator-part" />
+              <div className="r2-menu-separator-part" />
+              <div className="r2-menu-separator-part" />
+              <div className="r2-menu-separator-part" />
             </div>
           );
         }
@@ -161,9 +161,9 @@ export function MenuList({ core, items, params, onClose, autoFocus = true }) {
           <div
             key={i}
             className={cx(
-              'ag-menu-option',
-              active === i && 'ag-menu-option-active',
-              item.disabled && 'ag-menu-option-disabled',
+              'r2-menu-option',
+              active === i && 'r2-menu-option-active',
+              item.disabled && 'r2-menu-option-disabled',
               Array.isArray(item.cssClasses) ? item.cssClasses.join(' ') : item.cssClasses,
             )}
             role="menuitem"
@@ -176,12 +176,12 @@ export function MenuList({ core, items, params, onClose, autoFocus = true }) {
             }}
             onClick={e => run(item, i, e)}
           >
-            <span className="ag-menu-option-part ag-menu-option-icon" role="presentation">
+            <span className="r2-menu-option-part r2-menu-option-icon" role="presentation">
               <ItemIcon icon={item.icon} checked={item.checked} />
             </span>
-            <span className="ag-menu-option-part ag-menu-option-text">{item.name}</span>
-            <span className="ag-menu-option-part ag-menu-option-shortcut">{item.shortcut}</span>
-            <span className="ag-menu-option-part ag-menu-option-popup-pointer">
+            <span className="r2-menu-option-part r2-menu-option-text">{item.name}</span>
+            <span className="r2-menu-option-part r2-menu-option-shortcut">{item.shortcut}</span>
+            <span className="r2-menu-option-part r2-menu-option-popup-pointer">
               {item.subMenu ? <Icon name="small-right" /> : null}
             </span>
           </div>
@@ -211,8 +211,8 @@ function SubMenu({ core, items, params, rect, onClose }) {
     <PopupLayer core={core}>
       <div
         ref={ref}
-        data-ag-subpopup-of=""
-        className="ag-menu ag-ltr ag-popup-child ag-sub-menu"
+        data-r2-subpopup-of=""
+        className="r2-menu r2-ltr r2-popup-child r2-sub-menu"
         style={{ position: 'fixed', left: pos.x, top: pos.y, visibility: pos.ready ? 'visible' : 'hidden' }}
         onMouseDown={e => e.stopPropagation()}
       >
@@ -230,13 +230,13 @@ export function ContextMenuPopup({ core, popup }) {
     core.dispatch('contextMenuVisibleChanged', { visible: false, source: 'ui' });
     core.focusGrid();
   };
-  useClickOutside(ref, close, { ignore: t => t instanceof Element && !!t.closest('[data-ag-subpopup-of]') });
+  useClickOutside(ref, close, { ignore: t => t instanceof Element && !!t.closest('[data-r2-subpopup-of]') });
   const pos = usePopupPosition(ref, () => ({ x: popup.x, y: popup.y, flipY: popup.y }), [popup]);
   return createPortal(
     <PopupLayer core={core}>
       <div
         ref={ref}
-        className="ag-menu ag-ltr ag-popup-child ag-context-menu"
+        className="r2-menu r2-ltr r2-popup-child r2-context-menu"
         style={{ position: 'fixed', left: pos.x, top: pos.y, visibility: pos.ready ? 'visible' : 'hidden' }}
         onContextMenu={e => e.preventDefault()}
       >
@@ -256,17 +256,17 @@ export function ColumnChooserList({ core, showSearch = true }) {
   const visibleCount = shown.filter(c => c.visible).length;
   const allState = !shown.length ? false : visibleCount === shown.length ? true : visibleCount === 0 ? false : null;
   return (
-    <div className="ag-column-select" role="presentation">
-      <div className="ag-column-select-header" role="presentation">
+    <div className="r2-column-select" role="presentation">
+      <div className="r2-column-select-header" role="presentation">
         <Checkbox
-          className="ag-column-select-header-checkbox"
+          className="r2-column-select-header-checkbox"
           checked={allState}
           onToggle={() => core.setColumnsVisible(shown.filter(c => !c.colDef.lockVisible), allState !== true, 'toolPanelUi')}
         />
         {showSearch && (
-          <div className="ag-column-select-header-filter-wrapper ag-text-field ag-input-field">
+          <div className="r2-column-select-header-filter-wrapper r2-text-field r2-input-field">
             <input
-              className="ag-input-field-input ag-text-field-input"
+              className="r2-input-field-input r2-text-field-input"
               placeholder={localeText(core, 'searchOoo')}
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -275,22 +275,22 @@ export function ColumnChooserList({ core, showSearch = true }) {
           </div>
         )}
       </div>
-      <div className="ag-column-select-list" role="tree">
+      <div className="r2-column-select-list" role="tree">
         {shown.map(c => (
           <div
             key={c.colId}
-            className="ag-column-select-column"
+            className="r2-column-select-column"
             style={{ paddingLeft: 8 + c.groupChain.length * 16 }}
             role="treeitem"
             onClick={() => !c.colDef.lockVisible && core.setColumnsVisible([c], !c.visible, 'toolPanelUi')}
           >
             <Checkbox
-              className="ag-column-select-checkbox"
+              className="r2-column-select-checkbox"
               checked={c.visible}
               disabled={!!c.colDef.lockVisible}
               onToggle={() => core.setColumnsVisible([c], !c.visible, 'toolPanelUi')}
             />
-            <span className="ag-column-select-column-label">{core.getDisplayName(c)}</span>
+            <span className="r2-column-select-column-label">{core.getDisplayName(c)}</span>
           </div>
         ))}
       </div>
@@ -340,7 +340,7 @@ export function ColumnMenuPopup({ core, popup }) {
     core.focusGrid();
   };
   useClickOutside(ref, close, {
-    ignore: t => t instanceof Element && (!!t.closest('[data-ag-subpopup-of]') || !!t.closest('.ag-header-cell-menu-button')),
+    ignore: t => t instanceof Element && (!!t.closest('[data-r2-subpopup-of]') || !!t.closest('.r2-header-cell-menu-button')),
   });
   const pos = usePopupPosition(
     ref,
@@ -348,7 +348,7 @@ export function ColumnMenuPopup({ core, popup }) {
       if (popup.x != null) return { x: popup.x, y: popup.y };
       const anchor =
         popup.anchorEl ||
-        core.eRoot?.querySelector(`.ag-header-cell[col-id="${CSS.escape(column.colId)}"]`);
+        core.eRoot?.querySelector(`.r2-header-cell[col-id="${CSS.escape(column.colId)}"]`);
       if (!anchor) return { x: 100, y: 100 };
       const r = anchor.getBoundingClientRect();
       return { x: legacy ? r.right - 220 : r.left, y: r.bottom, alignTo: r };
@@ -362,11 +362,11 @@ export function ColumnMenuPopup({ core, popup }) {
   } else {
     body = (
       <>
-        <div className="ag-tabs-header ag-menu-header" role="tablist">
+        <div className="r2-tabs-header r2-menu-header" role="tablist">
           {tabs.map(t => (
             <span
               key={t}
-              className={cx('ag-tab', tab === t && 'ag-tab-selected')}
+              className={cx('r2-tab', tab === t && 'r2-tab-selected')}
               role="tab"
               aria-selected={tab === t}
               onClick={() => setTab(t)}
@@ -375,7 +375,7 @@ export function ColumnMenuPopup({ core, popup }) {
             </span>
           ))}
         </div>
-        <div className="ag-tabs-body ag-menu-body" role="presentation">
+        <div className="r2-tabs-body r2-menu-body" role="presentation">
           {tab === 'filterMenuTab' && <FilterUI core={core} column={column} onClose={close} />}
           {tab === 'generalMenuTab' && (
             <MenuList core={core} items={mainMenuItems(core, column, true)} params={params} onClose={close} autoFocus={false} />
@@ -389,7 +389,7 @@ export function ColumnMenuPopup({ core, popup }) {
     <PopupLayer core={core}>
       <div
         ref={ref}
-        className={cx('ag-menu ag-ltr ag-popup-child ag-column-menu', legacy ? 'ag-tabs' : 'ag-column-menu-new')}
+        className={cx('r2-menu r2-ltr r2-popup-child r2-column-menu', legacy ? 'r2-tabs' : 'r2-column-menu-new')}
         style={{ position: 'fixed', left: pos.x, top: pos.y, visibility: pos.ready ? 'visible' : 'hidden' }}
         onKeyDown={e => {
           if (e.key === 'Escape') close();
@@ -410,12 +410,12 @@ export function FilterPopup({ core, popup }) {
     core.focusGrid();
   };
   useClickOutside(ref, close, {
-    ignore: t => t instanceof Element && (!!t.closest('.ag-header-cell-filter-button') || !!t.closest('[data-ag-subpopup-of]')),
+    ignore: t => t instanceof Element && (!!t.closest('.r2-header-cell-filter-button') || !!t.closest('[data-r2-subpopup-of]')),
   });
   const pos = usePopupPosition(
     ref,
     () => {
-      const anchor = core.eRoot?.querySelector(`.ag-header-cell[col-id="${CSS.escape(column.colId)}"]`);
+      const anchor = core.eRoot?.querySelector(`.r2-header-cell[col-id="${CSS.escape(column.colId)}"]`);
       if (!anchor) return { x: 100, y: 100 };
       const r = anchor.getBoundingClientRect();
       return { x: r.left, y: r.bottom, alignTo: r };
@@ -426,7 +426,7 @@ export function FilterPopup({ core, popup }) {
     <PopupLayer core={core}>
       <div
         ref={ref}
-        className="ag-menu ag-ltr ag-popup-child ag-filter-menu"
+        className="r2-menu r2-ltr r2-popup-child r2-filter-menu"
         style={{ position: 'fixed', left: pos.x, top: pos.y, visibility: pos.ready ? 'visible' : 'hidden' }}
         onKeyDown={e => {
           if (e.key === 'Escape') close();
@@ -456,12 +456,12 @@ export function ColumnChooserPopup({ core }) {
     <PopupLayer core={core}>
       <div
         ref={ref}
-        className="ag-dialog ag-popup-child ag-column-chooser"
+        className="r2-dialog r2-popup-child r2-column-chooser"
         style={{ position: 'fixed', left: pos.x, top: pos.y, width: 240, visibility: pos.ready ? 'visible' : 'hidden' }}
       >
-        <div className="ag-panel-title-bar">
-          <span className="ag-panel-title-bar-title">{localeText(core, 'columnChooser')}</span>
-          <span className="ag-panel-title-bar-button" onClick={close} role="button">
+        <div className="r2-panel-title-bar">
+          <span className="r2-panel-title-bar-title">{localeText(core, 'columnChooser')}</span>
+          <span className="r2-panel-title-bar-button" onClick={close} role="button">
             <Icon name="cross" />
           </span>
         </div>

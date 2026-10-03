@@ -1,10 +1,10 @@
 // AG-Grid v33+ Theming API 호환: themeQuartz.withParams(params, mode?)
-// 파라미터 → CSS 변수(--ag-accent-color 등)로 변환해 테마별 <style> 을 주입한다.
-// 다크 전환은 AG-Grid 와 동일하게 조상 요소의 data-ag-theme-mode="dark" 로 한다.
+// 파라미터 → CSS 변수(--r2-accent-color 등)로 변환해 테마별 <style> 을 주입한다.
+// 다크 전환은 AG-Grid 와 동일하게 조상 요소의 data-r2-theme-mode="dark" 로 한다.
 
 let themeSeq = 0;
 
-const toVarName = name => `--ag-${name.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)}`;
+const toVarName = name => `--r2-${name.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)}`;
 
 // 다크 모드 기본값 (light 전용 파라미터를 다크에서 되돌릴 때 사용)
 const DARK_DEFAULTS = {
@@ -12,9 +12,9 @@ const DARK_DEFAULTS = {
   foregroundColor: '#ffffff',
   accentColor: '#2196f3',
   borderColor: 'rgba(255, 255, 255, 0.16)',
-  chromeBackgroundColor: 'color-mix(in srgb, var(--ag-background-color), var(--ag-foreground-color) 5%)',
-  headerBackgroundColor: 'var(--ag-chrome-background-color)',
-  oddRowBackgroundColor: 'var(--ag-background-color)',
+  chromeBackgroundColor: 'color-mix(in srgb, var(--r2-background-color), var(--r2-foreground-color) 5%)',
+  headerBackgroundColor: 'var(--r2-chrome-background-color)',
+  oddRowBackgroundColor: 'var(--r2-background-color)',
 };
 
 function toCssValue(key, v) {
@@ -24,7 +24,7 @@ function toCssValue(key, v) {
     return `${v}px`;
   }
   if (typeof v === 'boolean') {
-    if (/border$/i.test(key)) return v ? 'solid 1px var(--ag-border-color)' : 'none';
+    if (/border$/i.test(key)) return v ? 'solid 1px var(--r2-border-color)' : 'none';
     return v ? '1' : '0';
   }
   if (Array.isArray(v)) {
@@ -43,7 +43,7 @@ function toCssValue(key, v) {
     }
     if (v.calc) return `calc(${v.calc.replace(/[a-zA-Z]+/g, m => `var(${toVarName(m)})`)})`;
     if (v.style || v.width || v.color) {
-      const c = typeof v.color === 'object' ? toCssValue('color', v.color) : v.color || 'var(--ag-border-color)';
+      const c = typeof v.color === 'object' ? toCssValue('color', v.color) : v.color || 'var(--r2-border-color)';
       return `${v.style || 'solid'} ${typeof v.width === 'number' ? `${v.width}px` : v.width || '1px'} ${c}`;
     }
     if (v.googleFont) return `"${v.googleFont}"`;
@@ -89,7 +89,7 @@ class Theme {
   }
 
   get className() {
-    return `ag-theme-p${this.id}`;
+    return `r2-theme-p${this.id}`;
   }
 
   install() {
@@ -105,13 +105,13 @@ class Theme {
     });
     const darkDecl = declarations({ ...revert, ...dark });
     let css = '';
-    if (base) css += `.ag-theme-vars.${cls}{${base}}`;
+    if (base) css += `.r2-theme-vars.${cls}{${base}}`;
     if (darkDecl) {
-      css += `:where([data-ag-theme-mode^="dark"]) .ag-theme-vars.${cls}.${cls},.ag-theme-vars.${cls}.${cls}[data-ag-theme-mode^="dark"]{${darkDecl}}`;
+      css += `:where([data-r2-theme-mode^="dark"]) .r2-theme-vars.${cls}.${cls},.r2-theme-vars.${cls}.${cls}[data-r2-theme-mode^="dark"]{${darkDecl}}`;
     }
     if (!css) return;
     const style = document.createElement('style');
-    style.setAttribute('data-ag-theme', cls);
+    style.setAttribute('data-r2-theme', cls);
     style.textContent = css;
     document.head.appendChild(style);
   }

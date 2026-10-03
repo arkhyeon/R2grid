@@ -5,7 +5,7 @@ import { cx } from '../core/utils.js';
 // 팝업도 그리드와 같은 CSS 변수(테마/다크)를 받도록 같은 클래스로 감싼다
 export function PopupLayer({ core, children }) {
   return (
-    <div className={cx('ag-popup ag-theme-vars ag-theme-quartz', core.theme?.className)} data-ag-popup="">
+    <div className={cx('r2-popup r2-theme-vars r2-theme-quartz', core.theme?.className)} data-r2-popup="">
       {children}
     </div>
   );

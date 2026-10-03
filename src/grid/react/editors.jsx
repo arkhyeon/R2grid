@@ -55,12 +55,12 @@ function TextEditor({ core, ed, params }) {
     if (core.editing?.primary === ed) focusAndPlace(ref.current, ed.eventKey);
   }, []);
   return (
-    <div className="ag-cell-edit-wrapper">
-      <div className="ag-cell-editor ag-text-field ag-input-field" role="presentation">
-        <div className="ag-wrapper ag-input-wrapper ag-text-field-input-wrapper" role="presentation">
+    <div className="r2-cell-edit-wrapper">
+      <div className="r2-cell-editor r2-text-field r2-input-field" role="presentation">
+        <div className="r2-wrapper r2-input-wrapper r2-text-field-input-wrapper" role="presentation">
           <input
             ref={ref}
-            className="ag-input-field-input ag-text-field-input"
+            className="r2-input-field-input r2-text-field-input"
             type="text"
             value={text}
             maxLength={params.maxLength}
@@ -94,12 +94,12 @@ function NumberEditor({ core, ed, params }) {
     if (core.editing?.primary === ed) focusAndPlace(ref.current, ed.eventKey);
   }, []);
   return (
-    <div className="ag-cell-edit-wrapper">
-      <div className="ag-cell-editor ag-number-field ag-input-field" role="presentation">
-        <div className="ag-wrapper ag-input-wrapper ag-number-field-input-wrapper" role="presentation">
+    <div className="r2-cell-edit-wrapper">
+      <div className="r2-cell-editor r2-number-field r2-input-field" role="presentation">
+        <div className="r2-wrapper r2-input-wrapper r2-number-field-input-wrapper" role="presentation">
           <input
             ref={ref}
-            className={cx('ag-input-field-input ag-number-field-input', !params.showStepperButtons && 'ag-number-field-input-stepper')}
+            className={cx('r2-input-field-input r2-number-field-input', !params.showStepperButtons && 'r2-number-field-input-stepper')}
             type="number"
             step={params.step ?? 'any'}
             min={params.min}
@@ -138,12 +138,12 @@ function DateEditor({ core, ed, params, asString }) {
     if (core.editing?.primary === ed) ref.current?.focus({ preventScroll: true });
   }, []);
   return (
-    <div className="ag-cell-edit-wrapper">
-      <div className="ag-cell-editor ag-date-field ag-input-field">
-        <div className="ag-wrapper ag-input-wrapper">
+    <div className="r2-cell-edit-wrapper">
+      <div className="r2-cell-editor r2-date-field r2-input-field">
+        <div className="r2-wrapper r2-input-wrapper">
           <input
             ref={ref}
-            className="ag-input-field-input ag-date-field-input"
+            className="r2-input-field-input r2-date-field-input"
             type="date"
             min={params.min}
             max={params.max}
@@ -176,7 +176,7 @@ function CheckboxEditor({ core, ed }) {
     <div
       ref={ref}
       tabIndex={-1}
-      className="ag-cell-wrapper ag-checkbox-edit"
+      className="r2-cell-wrapper r2-checkbox-edit"
       onKeyDown={e => {
         if (e.key === ' ') {
           e.preventDefault();
@@ -199,12 +199,12 @@ function LargeTextEditor({ core, ed, params }) {
     if (core.editing?.primary === ed) focusAndPlace(ref.current, ed.eventKey);
   }, []);
   return (
-    <div className="ag-large-text" tabIndex={-1}>
-      <div className="ag-large-text-input ag-text-area ag-input-field">
-        <div className="ag-wrapper ag-input-wrapper ag-text-area-input-wrapper">
+    <div className="r2-large-text" tabIndex={-1}>
+      <div className="r2-large-text-input r2-text-area r2-input-field">
+        <div className="r2-wrapper r2-input-wrapper r2-text-area-input-wrapper">
           <textarea
             ref={ref}
-            className="ag-input-field-input ag-text-area-input"
+            className="r2-input-field-input r2-text-area-input"
             maxLength={params.maxLength ?? 200}
             rows={params.rows ?? 10}
             cols={params.cols ?? 60}
@@ -330,28 +330,28 @@ function RichSelectEditor({ core, ed, params, plain }) {
     <div
       ref={boxRef}
       tabIndex={-1}
-      className={cx('ag-rich-select ag-popup-editor', plain && 'ag-select-editor')}
+      className={cx('r2-rich-select r2-popup-editor', plain && 'r2-select-editor')}
       onKeyDown={onKeyDown}
       role="listbox"
     >
-      <div className="ag-rich-select-value ag-picker-field-wrapper">
+      <div className="r2-rich-select-value r2-picker-field-wrapper">
         {params.allowTyping ? (
           <input
             ref={inputRef}
-            className="ag-input-field-input ag-text-field-input"
+            className="r2-input-field-input r2-text-field-input"
             value={search}
             placeholder={format(ed.value)}
             onChange={e => setSearch(e.target.value)}
           />
         ) : (
-          <span className="ag-picker-field-display">{format(hi >= 0 ? shown[hi] : ed.value)}</span>
+          <span className="r2-picker-field-display">{format(hi >= 0 ? shown[hi] : ed.value)}</span>
         )}
-        <span className="ag-picker-field-icon">
-          <span className="ag-icon ag-icon-small-down" />
+        <span className="r2-picker-field-icon">
+          <span className="r2-icon r2-icon-small-down" />
         </span>
       </div>
-      <div ref={listRef} className="ag-rich-select-list" style={{ maxHeight: maxH }}>
-        <div className="ag-rich-select-virtual-list-container" style={{ height: shown.length * rowH }}>
+      <div ref={listRef} className="r2-rich-select-list" style={{ maxHeight: maxH }}>
+        <div className="r2-rich-select-virtual-list-container" style={{ height: shown.length * rowH }}>
           {shown.map((v, i) => {
             const label = format(v);
             const selected = v === ed.value;
@@ -359,9 +359,9 @@ function RichSelectEditor({ core, ed, params, plain }) {
               <div
                 key={i}
                 className={cx(
-                  'ag-rich-select-row',
-                  i === hi && 'ag-rich-select-row-highlighted',
-                  selected && 'ag-rich-select-row-selected',
+                  'r2-rich-select-row',
+                  i === hi && 'r2-rich-select-row-highlighted',
+                  selected && 'r2-rich-select-row-selected',
                 )}
                 style={{ height: rowH, top: i * rowH }}
                 role="option"
@@ -412,7 +412,7 @@ function CustomEditor({ core, ed, params, getCellEl }) {
     if (core.editing?.primary === ed) {
       // 에디터가 스스로 포커스를 잡지 않으면 첫 입력요소에 포커스
       const el = getCellEl?.();
-      const host = ed.editor.popup ? document.querySelector('.ag-popup-editor-host') : el;
+      const host = ed.editor.popup ? document.querySelector('.r2-popup-editor-host') : el;
       if (host && !host.contains(document.activeElement)) {
         const f = host.querySelector('input,textarea,select,[tabindex]');
         f?.focus({ preventScroll: true });
@@ -477,7 +477,7 @@ function PopupEditor({ core, ed, getCellEl, children }) {
     <PopupLayer core={core}>
       <div
         ref={ref}
-        className="ag-popup-child ag-popup-editor ag-popup-editor-host"
+        className="r2-popup-child r2-popup-editor r2-popup-editor-host"
         style={{ position: 'fixed', left: pos.x, top: pos.y, minWidth: pos.minWidth, visibility: pos.ready ? 'visible' : 'hidden' }}
         onPointerDown={e => e.stopPropagation()}
       >

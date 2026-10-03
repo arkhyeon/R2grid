@@ -46,14 +46,14 @@ function GridView({ core }) {
   const owns = e => {
     const t = e.target;
     if (!(t instanceof Element)) return false;
-    if (t.closest('.ag-root') === agRootRef.current) return true;
-    return !!core.editing && !!t.closest('.ag-popup-editor') && !t.closest('.ag-root');
+    if (t.closest('.r2-root') === agRootRef.current) return true;
+    return !!core.editing && !!t.closest('.r2-popup-editor') && !t.closest('.r2-root');
   };
 
   const onKeyDown = e => {
     if (!owns(e)) return;
     const t = e.target;
-    const inEditor = !!core.editing && t instanceof Element && !!t.closest('.ag-cell-inline-editing,.ag-popup-editor');
+    const inEditor = !!core.editing && t instanceof Element && !!t.closest('.r2-cell-inline-editing,.r2-popup-editor');
     if (!core.editing && t !== agRootRef.current && isEditableEl(t)) return;
     if (core.editing && !inEditor && t !== agRootRef.current && isEditableEl(t)) return;
     if (core.handleKeyDown(e.nativeEvent)) {
@@ -67,29 +67,29 @@ function GridView({ core }) {
     <div
       ref={rootRef}
       className={cx(
-        'ag-root-wrapper ag-ltr ag-theme-vars ag-theme-quartz',
+        'r2-root-wrapper r2-ltr r2-theme-vars r2-theme-quartz',
         core.theme?.className,
-        autoLayout ? 'ag-layout-auto-height' : 'ag-layout-normal',
+        autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal',
       )}
       role="presentation"
       grid-id={core.gridId}
       style={{
-        '--ag-row-height': `${rowHeight}px`,
-        '--ag-header-height': `${headerHeight}px`,
+        '--r2-row-height': `${rowHeight}px`,
+        '--r2-header-height': `${headerHeight}px`,
         ...(autoLayout ? { height: 'auto' } : null),
       }}
       onMouseOver={tooltip.onOver}
       onMouseOut={tooltip.onOut}
     >
-      <div className={cx('ag-root-wrapper-body ag-focus-managed', autoLayout ? 'ag-layout-auto-height' : 'ag-layout-normal')} role="presentation">
+      <div className={cx('r2-root-wrapper-body r2-focus-managed', autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal')} role="presentation">
         {core.sideBarPosition === 'left' && <SideBar core={core} />}
         <div
           ref={agRootRef}
           className={cx(
-            'ag-root',
-            !g.enableCellTextSelection && 'ag-unselectable',
-            g.enableCellTextSelection && 'ag-selectable',
-            autoLayout ? 'ag-layout-auto-height' : 'ag-layout-normal',
+            'r2-root',
+            !g.enableCellTextSelection && 'r2-unselectable',
+            g.enableCellTextSelection && 'r2-selectable',
+            autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal',
           )}
           role="treegrid"
           tabIndex={0}
@@ -113,12 +113,12 @@ function GridView({ core }) {
           onBlur={e => {
             if (!core.editing || !g.stopEditingWhenCellsLoseFocus) return;
             const next = e.relatedTarget;
-            if (next instanceof Element && (agRootRef.current?.contains(next) || next.closest('[data-ag-popup]'))) return;
+            if (next instanceof Element && (agRootRef.current?.contains(next) || next.closest('[data-r2-popup]'))) return;
             // 팝업 에디터로 포커스 이동 중일 수 있어 한 틱 뒤 재확인
             setTimeout(() => {
               if (!core.editing) return;
               const a = document.activeElement;
-              if (a instanceof Element && (agRootRef.current?.contains(a) || a.closest('[data-ag-popup]'))) return;
+              if (a instanceof Element && (agRootRef.current?.contains(a) || a.closest('[data-r2-popup]'))) return;
               core.stopEditing(false);
             }, 0);
           }}
@@ -134,7 +134,7 @@ function GridView({ core }) {
           />
           <GridBody core={core} headerVpRef={headerVpRef} focusSinkRef={agRootRef} onScrollbarWidth={setSbw} />
           {overlay && (
-            <div className="ag-overlay-host" style={{ top: headerTotal }}>
+            <div className="r2-overlay-host" style={{ top: headerTotal }}>
               <Overlay core={core} type={overlay} />
             </div>
           )}
