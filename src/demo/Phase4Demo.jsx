@@ -26,7 +26,7 @@ function RoleCheckbox(props, setRoles) {
   );
 }
 
-function TreeDemo({ log }) {
+export function TreeDemo({ log }) {
   const [roles] = useState(() => {
     const out = [];
     let mid = 1;
@@ -99,7 +99,7 @@ const msgGridOption = {
   defaultColDef: { editable: false, resizable: true, sortable: true, menuTabs: [] },
   rowSelection: { mode: 'multiRow', checkboxes: true, enableSelectionWithoutKeys: true, enableClickSelection: true },
 };
-function GroupDemo({ log }) {
+export function GroupDemo({ log }) {
   const ref = useRef(null);
   const userList = useMemo(
     () => ['개발팀', '운영팀', '보안팀'].flatMap((gname, gi) => Array.from({ length: 3 + gi }, (_, i) => ({ uid: `user${gi}${i}`, group: gname }))),
@@ -130,7 +130,7 @@ function GroupDemo({ log }) {
 }
 
 // ── WorkGroupPlanModal: SSRM ───────────────────────────────────────
-function SsrmPlanDemo({ log }) {
+export function SsrmPlanDemo({ log }) {
   const onGridReady = e => {
     e.api.setGridOption('loading', true);
     e.api.setGridOption('serverSideDatasource', {
@@ -172,7 +172,7 @@ const PLAN_ROWS = [
 ];
 
 // 대용량 SSRM (블록 단위 지연 로딩)
-function SsrmLargeDemo({ log }) {
+export function SsrmLargeDemo({ log }) {
   const total = 2350;
   const logRef = useRef(log);
   logRef.current = log;
@@ -212,7 +212,7 @@ function SsrmLargeDemo({ log }) {
 
 // ── WorkGroupPrioritySetting + ConditionInfo: 행 드래그 / 상단 고정행 ──────────
 const getPinnedRowStyle = ({ node }) => (node.rowPinned ? { fontWeight: 'bold', fontStyle: 'italic' } : 0);
-function RowDragDemo({ log }) {
+export function RowDragDemo({ log }) {
   const [conditionList] = useState(() =>
     Array.from({ length: 6 }, (_, i) => ({ seq: i + 1, mc_id: `COL_${i + 1}`, comp_op: i % 3, value: `값${i + 1}` })),
   );
@@ -277,7 +277,7 @@ function RowDragDemo({ log }) {
 }
 
 // ── DestructionManagementControl: editType fullRow + undoRedo ─────────────
-function FullRowDemo({ log }) {
+export function FullRowDemo({ log }) {
   const ref = useRef(null);
   const [projectList] = useState(() =>
     Array.from({ length: 8 }, (_, i) => ({ id: i + 1, name: `프로젝트${i + 1}`, averageWork: 10 + i, criticalRate: 50 + i })),
@@ -337,7 +337,7 @@ const stageGroup = n => ({
     { headerName: '파기구분', field: `stage_${n}_type`, flex: 0.35, valueGetter: ({ column, data }) => makeStageData(column, data) },
   ],
 });
-function ColumnGroupDemo({ log }) {
+export function ColumnGroupDemo({ log }) {
   const [rows] = useState(() =>
     Array.from({ length: 30 }, (_, i) => {
       const r = { bs_cd_name: `업무${i + 1}`, bs_cd: `BS${String(i + 1).padStart(3, '0')}`, tbl_name: `TB_${i}` };
@@ -411,7 +411,7 @@ const PrefixFilter = React.forwardRef(function PrefixFilter(props, ref) {
     </div>
   );
 });
-function CustomFilterDemo({ log }) {
+export function CustomFilterDemo({ log }) {
   const [rows] = useState(() => Array.from({ length: 200 }, (_, i) => ({ name: `${['가', '나', '다'][i % 3]}작업${i}`, cnt: (i * 37) % 1000, grp: `그룹${i % 4}` })));
   const [legacy] = useState(() => new URLSearchParams(location.search).has('legacyFilter'));
   return (
@@ -440,7 +440,7 @@ function CustomFilterDemo({ log }) {
 }
 
 // ── colSpan / rowSpan / full-width 행 ──
-function SpanDemo() {
+export function SpanDemo() {
   const [rows] = useState(() =>
     Array.from({ length: 30 }, (_, i) =>
       i % 10 === 9

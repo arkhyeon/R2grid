@@ -60,7 +60,11 @@ function GroupCellRenderer({ core, node, column, params, extra }) {
     grouping && countNode?.group && !countNode.footer && !extra?.suppressCount && (!multi || target === node)
       ? countNode.allChildrenCount ?? countNode.childrenAfterFilter?.length
       : null;
-  const legacyCb = extra?.checkbox && core.rsOpts?.legacy;
+  const rs = core.rsOpts;
+  // 레거시 cellRendererParams.checkbox 또는 v34 rowSelection.checkboxLocation: 'autoGroupColumn'
+  const legacyCb =
+    (extra?.checkbox && rs?.legacy) ||
+    (rs && !rs.legacy && rs.checkboxes !== false && rs.checkboxLocation === 'autoGroupColumn' && column.autoType === 'group' && !node.footer && !node.rowPinned);
   return (
     <span
       className={cx(
