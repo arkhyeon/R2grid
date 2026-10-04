@@ -2,7 +2,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { localeText } from '../core/locale.js';
-import { cx } from '../core/utils.js';
+import { canonName, cx } from '../core/utils.js';
 import { Icon } from './common.jsx';
 import { stableElement } from './renderComponent.js';
 import { ColumnChooserList } from './menus.jsx';
@@ -11,7 +11,7 @@ import { PopupLayer } from './popup.jsx';
 
 // ── 사이드바 ───────────────────────────────────────────────
 function ToolPanelContent({ core, tp }) {
-  const comp = tp.toolPanel;
+  const comp = typeof tp.toolPanel === 'string' && !core.gos.components?.[tp.toolPanel] ? canonName(tp.toolPanel) : tp.toolPanel;
   if (comp === 'agColumnsToolPanel') {
     return (
       <div className="r2-column-panel">
@@ -189,9 +189,10 @@ export function StatusBar({ core }) {
   });
   const renderPanel = ({ def, i }) => {
     const key = def.key ?? `${def.statusPanel}-${i}`;
-    const builtin = typeof def.statusPanel === 'string' && STATUS_PANEL_CLASS[def.statusPanel];
+    const biName = typeof def.statusPanel === 'string' && !core.gos.components?.[def.statusPanel] ? canonName(def.statusPanel) : null;
+    const builtin = biName && STATUS_PANEL_CLASS[biName];
     let content;
-    if (builtin) content = <BuiltinStatusPanel core={core} def={def} />;
+    if (builtin) content = <BuiltinStatusPanel core={core} def={{ ...def, statusPanel: biName }} />;
     else {
       const impl = typeof def.statusPanel === 'string' ? core.gos.components?.[def.statusPanel] : def.statusPanel;
       content = impl

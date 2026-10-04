@@ -23,9 +23,12 @@ export function PopupLayer({ core, children }) {
 //  hideWhenClipped: 앵커가 clip 밖으로 나가면 숨김 (헤더 메뉴). false 면 그리드 경계에 붙어 계속 보임 (에디터·선택 목록)
 //  follow: 앵커 위치·팝업 크기 변화를 매 프레임 감시 (스크롤 이벤트 없이 앵커가 움직일 때)
 //  shrink: 위/아래 모두 공간 부족하면 넓은 쪽에 맞춰 maxHeight 축소
-export function usePopupPosition(ref, getAnchor, deps = [], core, { track = false, hideWhenClipped = true, follow = false, shrink = false } = {}) {
+//  stick: 셀에 붙은 팝업(에디터·선택 목록) — 처음 한 번 배치(a.clip 안에서) 후엔 앵커와의 간격을 고정해 같이 움직이고,
+//         a.clip(바디 뷰포트) 밖으로 나간 부분은 잘라냄(clip-path). 헤더 위·바닥 밑에 걸쳐 남지 않음. 전부 나가면 숨김
+export function usePopupPosition(ref, getAnchor, deps = [], core, { track = false, hideWhenClipped = true, follow = false, shrink = false, stick = false } = {}) {
   const [pos, setPos] = useState({ x: 0, y: 0, minWidth: undefined, maxHeight: undefined, ready: false, hidden: false });
   const shrunkRef = useRef({ on: false, nat: 0 });
+  const placedRef = useRef(null);
   const compute = () => {
     const el = ref.current;
     const layer = el?.parentElement;
@@ -40,9 +43,29 @@ export function usePopupPosition(ref, getAnchor, deps = [], core, { track = fals
     const vh = window.innerHeight;
     // 경계 = 팝업 부모의 전체 박스 (뷰포트와 교차시키지 않음 — 페이지 스크롤로 크기·위치가 변하면 안 됨, AG 동일)
     let b = { left: 0, top: 0, right: vw, bottom: vh };
-    if (parent && parent !== document.body && parent !== document.documentElement) {
+    const inGrid = parent && parent !== document.body && parent !== document.documentElement;
+    if (inGrid) {
       const pr = parent.getBoundingClientRect();
       b = { left: pr.left, top: pr.top, right: pr.right, bottom: pr.bottom };
+    }
+    const clip = stick && inGrid && a.clip ? a.clip : null;
+    const lr = layer.getBoundingClientRect();
+    if (stick && a.alignTo) {
+      const p = placedRef.current;
+      // 이미 배치됨 + 크기 그대로 → 앵커 따라 이동만, 잘림 계산
+      if (p && p.w === el.offsetWidth && p.h === el.offsetHeight) {
+        const x = a.alignTo.left + p.dx;
+        const y = a.alignTo.top + p.dy;
+        const cut = clipInset(clip, x, y, p.w, p.h);
+        setPos(prev =>
+          prev.x === x - lr.left && prev.y === y - lr.top && prev.clipPath === cut.clipPath && prev.hidden === cut.hidden
+            ? prev
+            : { ...prev, x: x - lr.left, y: y - lr.top, clipPath: cut.clipPath, hidden: cut.hidden, ready: true },
+        );
+        return;
+      }
+      // 첫 배치는 바디 뷰포트 안에서 (헤더·상태바 위로 펼치지 않게)
+      if (clip) b = { left: b.left, right: b.right, top: Math.max(b.top, clip.top), bottom: Math.min(b.bottom, clip.bottom) };
     }
     let maxHeight = Math.max(80, b.bottom - b.top - 8);
     const w = el.offsetWidth;
@@ -71,17 +94,23 @@ export function usePopupPosition(ref, getAnchor, deps = [], core, { track = fals
       else if (a.flipY != null && a.flipY - h >= b.top + 4) y = a.flipY - h;
       else y = Math.max(b.top + 4, b.bottom - h - 4);
     }
-    // 앵커가 위/아래로 스크롤돼 나가도 경계 안에 붙여 둠
+    // 경계 밖으로 나가지 않게 (stick 은 첫 배치에만 적용 — 이후엔 앵커를 따라감)
     if (y + h > b.bottom - 4) y = b.bottom - h - 4;
     if (y < b.top + 4) y = b.top + 4;
     let hidden = false;
-    if (hideWhenClipped && a.clip && a.alignTo) {
+    let clipPath;
+    if (stick && a.alignTo) {
+      // 렌더 후 실제 높이(maxHeight 반영)로 다음 프레임에 확정되도록 h 는 렌더 결과 기준으로 비교
+      placedRef.current = { dx: x - a.alignTo.left, dy: y - a.alignTo.top, w: el.offsetWidth, h: Math.min(el.offsetHeight, maxHeight) };
+      const cut = clipInset(clip, x, y, w, h);
+      clipPath = cut.clipPath;
+      hidden = cut.hidden;
+    } else if (hideWhenClipped && a.clip && a.alignTo) {
       const c = a.clip;
       const r = a.alignTo;
       hidden = r.bottom <= c.top + 1 || r.top >= c.bottom - 1 || r.right <= c.left + 1 || r.left >= c.right - 1;
     }
-    const lr = layer.getBoundingClientRect();
-    setPos({ x: x - lr.left, y: y - lr.top, minWidth: a.minWidth, maxHeight, ready: true, hidden });
+    setPos({ x: x - lr.left, y: y - lr.top, minWidth: a.minWidth, maxHeight, ready: true, hidden, clipPath });
   };
   useLayoutEffect(compute, deps);
   useEffect(() => {
@@ -126,9 +155,28 @@ export function usePopupPosition(ref, getAnchor, deps = [], core, { track = fals
     top: pos.y,
     minWidth: pos.minWidth,
     maxHeight: pos.maxHeight,
+    clipPath: pos.clipPath,
     visibility: pos.ready && !pos.hidden ? 'visible' : 'hidden',
   };
   return { ...pos, style };
+}
+
+// clip 사각형 밖으로 나간 부분을 잘라내는 clip-path (전부 나가면 hidden)
+function clipInset(clip, x, y, w, h) {
+  if (!clip) return { clipPath: undefined, hidden: false };
+  const t = Math.max(0, clip.top - y);
+  const btm = Math.max(0, y + h - clip.bottom);
+  const l = Math.max(0, clip.left - x);
+  const r = Math.max(0, x + w - clip.right);
+  if (t + btm >= h || l + r >= w) return { clipPath: undefined, hidden: true };
+  if (!t && !btm && !l && !r) return { clipPath: undefined, hidden: false };
+  return { clipPath: `inset(${t}px ${r}px ${btm}px ${l}px)`, hidden: false };
+}
+
+// 셀이 속한 바디(또는 고정 행) 뷰포트 사각형 — stick 팝업 잘림 기준
+export function bodyClipOf(el) {
+  const vp = el?.closest?.('.r2-body-viewport, .r2-floating-top, .r2-floating-bottom');
+  return vp ? vp.getBoundingClientRect() : undefined;
 }
 
 // 앵커 요소가 보이는 영역(바디 뷰포트 / 헤더 뷰포트) — track 팝업 숨김 판정용

@@ -3,7 +3,7 @@
 // - 상단/하단 고정행(floating), 그룹/트리 셀, 행 드래그, SSRM 블록 로드
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { clamp, cx, resolveClassRules, resolveClassValue, toText } from '../core/utils.js';
+import { canonName, clamp, cx, resolveClassRules, resolveClassValue, toText } from '../core/utils.js';
 import { Checkbox, Icon } from './common.jsx';
 import { EditorHost } from './editors.jsx';
 import { stableElement } from './renderComponent.js';
@@ -191,7 +191,9 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
     }
     if (!comp && col.dataType === 'boolean') comp = 'agCheckboxCellRenderer';
     const extra = typeof rendererParams === 'function' ? rendererParams(base) : rendererParams;
-    if (comp === 'agSparklineCellRenderer') {
+    // 내장 이름은 r2 별칭도 허용 (사용자 등록 컴포넌트가 같은 이름이면 그쪽 우선)
+    const bi = typeof comp === 'string' && !g.components?.[comp] ? canonName(comp) : comp;
+    if (bi === 'agSparklineCellRenderer') {
       content = (
         <SparklineCell
           value={value}
@@ -200,11 +202,11 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
           options={extra?.sparklineOptions}
         />
       );
-    } else if (comp === 'agCheckboxCellRenderer') {
+    } else if (bi === 'agCheckboxCellRenderer') {
       content = <CheckboxCellRenderer core={core} node={node} column={col} value={value} />;
-    } else if (comp === 'agGroupCellRenderer' || comp === 'group') {
+    } else if (bi === 'agGroupCellRenderer' || bi === 'group') {
       content = <GroupCellRenderer core={core} node={node} column={col} params={{ ...base, ...(extra || {}) }} extra={extra} />;
-    } else if (comp && comp !== 'agAnimateShowChangeCellRenderer' && comp !== 'agAnimateSlideCellRenderer') {
+    } else if (bi && bi !== 'agAnimateShowChangeCellRenderer' && bi !== 'agAnimateSlideCellRenderer') {
       const impl = typeof comp === 'string' ? g.components?.[comp] ?? g.frameworkComponents?.[comp] : comp;
       if (impl) {
         const params = {

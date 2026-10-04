@@ -113,6 +113,11 @@ export default function Playground() {
   const [theme, setTheme] = useState(readTheme);
   const [copied, setCopied] = useState(false);
   const [mountKey, setMountKey] = useState(0);
+  // 사이드바 아코디언: 한 번에 한 카테고리만 펼침 (기본: 현재 기능의 카테고리)
+  const [openCat, setOpenCat] = useState(() => active.category);
+  useEffect(() => {
+    setOpenCat(active.category);
+  }, [active.category]);
   const searchRef = useRef(null);
   const mainRef = useRef(null);
 
@@ -241,16 +246,28 @@ export default function Playground() {
               <div className="pg-empty">일치하는 기능이 없습니다</div>
             )
           ) : (
-            CATEGORIES.map(cat => (
-              <div key={cat} className="pg-group">
-                <div className="pg-group-title">{cat}</div>
-                {STORIES.filter(s => s.category === cat).map(s => (
-                  <button key={s.id} type="button" className="pg-nav-item" data-active={s.id === active.id} onClick={() => select(s.id)}>
-                    {s.name}
+            CATEGORIES.map(cat => {
+              const items = STORIES.filter(s => s.category === cat);
+              const isOpen = openCat === cat;
+              return (
+                <div key={cat} className="pg-group" data-open={isOpen}>
+                  <button type="button" className="pg-group-title" aria-expanded={isOpen} onClick={() => setOpenCat(isOpen ? null : cat)}>
+                    <span className="pg-group-caret">▸</span>
+                    <span className="pg-group-name">{cat}</span>
+                    <span className="pg-group-count">{items.length}</span>
                   </button>
-                ))}
-              </div>
-            ))
+                  {isOpen && (
+                    <div className="pg-group-items">
+                      {items.map(s => (
+                        <button key={s.id} type="button" className="pg-nav-item" data-active={s.id === active.id} onClick={() => select(s.id)}>
+                          {s.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </nav>
       </aside>

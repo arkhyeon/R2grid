@@ -13,7 +13,7 @@ import { createPortal } from 'react-dom';
 import { cx, isPrintableKey } from '../core/utils.js';
 import { stableElement } from './renderComponent.js';
 import { Checkbox, Icon } from './common.jsx';
-import { usePopupPosition, PopupLayer } from './popup.jsx';
+import { usePopupPosition, PopupLayer, bodyClipOf } from './popup.jsx';
 
 // useGridCellEditor (ag-grid-react 호환) — reactive 커스텀 에디터가 콜백 등록
 const CellEditorContext = createContext(null);
@@ -230,7 +230,7 @@ function LargeTextEditor({ core, ed, params }) {
 }
 
 // agRichSelectCellEditor / agSelectCellEditor
-function RichSelectEditor({ core, ed, params, plain }) {
+function RichSelectEditor({ core, ed, params, plain, getCellEl }) {
   const { node, column } = ed;
   const [values, setValues] = useState(() => (Array.isArray(params.values) ? params.values : []));
   useEffect(() => {
@@ -331,7 +331,8 @@ function RichSelectEditor({ core, ed, params, plain }) {
     }
   };
   const ItemRenderer = params.cellRenderer;
-  const maxH = params.valueListMaxHeight ?? rowH * 8;
+  // 기본 상한 없음 — 그리드 바디 공간이 상한 (AG valueListMaxHeight 지정 시 그 값)
+  const maxH = typeof params.valueListMaxHeight === 'number' ? params.valueListMaxHeight : Infinity;
   // AG 구조: 셀(또는 팝업 에디터) 안에는 선택값 필드만, 목록은 필드 아래 별도 팝업
   //  → 셀 overflow 에 잘리지 않고, 셀이 스크롤로 가려져도 그리드 경계에 붙어 계속 보임
   const fieldRef = useRef(null);
@@ -368,9 +369,15 @@ function RichSelectEditor({ core, ed, params, plain }) {
         </span>
       </div>
       {open && (
-      <SelectListPopup core={core} anchorRef={fieldRef}>
+      <SelectListPopup core={core} anchorRef={fieldRef} getCellEl={getCellEl}>
         {fitH => (
-      <div ref={listRef} className="r2-rich-select-list" role="listbox" style={{ maxHeight: fitH ? Math.min(maxH, fitH) : maxH }}>
+      <div
+        ref={listRef}
+        className="r2-rich-select-list"
+        role="listbox"
+        // 높이 = 선택지 개수만큼 (CSS 고정 높이보다 우선), 공간·valueListMaxHeight 넘치면 스크롤
+        style={{ height: shown.length * rowH, maxHeight: Number.isFinite(Math.min(maxH, fitH ?? Infinity)) ? Math.min(maxH, fitH ?? Infinity) : undefined }}
+      >
         <div className="r2-rich-select-virtual-list-container" style={{ height: shown.length * rowH }}>
           {shown.map((v, i) => {
             const label = format(v);
@@ -410,9 +417,9 @@ function RichSelectEditor({ core, ed, params, plain }) {
   );
 }
 
-// 선택 목록 팝업 — 선택값 필드 바로 아래(공간 없으면 위), 스크롤 추적, 숨기지 않음
+// 선택 목록 팝업 — 선택값 필드 바로 아래(공간 없으면 위), 셀을 따라 움직이고 바디 밖으로 나간 부분은 잘림
 //  className 에 r2-popup-editor 를 달아 키 입력·바깥 클릭 판정에서 에디터 일부로 취급
-function SelectListPopup({ core, anchorRef, children }) {
+function SelectListPopup({ core, anchorRef, getCellEl, children }) {
   const ref = useRef(null);
   const pos = usePopupPosition(
     ref,
@@ -420,11 +427,11 @@ function SelectListPopup({ core, anchorRef, children }) {
       const el = anchorRef.current;
       if (!el || !el.isConnected) return null;
       const r = el.getBoundingClientRect();
-      return { x: r.left, y: r.bottom, minWidth: r.width, alignTo: r };
+      return { x: r.left, y: r.bottom, minWidth: r.width, alignTo: r, clip: bodyClipOf(getCellEl?.()) };
     },
     [],
     core,
-    { track: true, hideWhenClipped: false, follow: true, shrink: true },
+    { track: true, follow: true, shrink: true, stick: true },
   );
   return createPortal(
     <PopupLayer core={core}>
@@ -510,7 +517,7 @@ export function EditorHost({ core, ed, getCellEl }) {
   const params = ed.editor.params || {};
   const Builtin = typeof comp === 'string' ? BUILTIN_EDITORS[comp] || TextEditor : null;
   const content = Builtin ? (
-    <Builtin core={core} ed={ed} params={params} />
+    <Builtin core={core} ed={ed} params={params} getCellEl={getCellEl} />
   ) : (
     <CustomEditor core={core} ed={ed} params={params} getCellEl={getCellEl} />
   );
@@ -520,7 +527,7 @@ export function EditorHost({ core, ed, getCellEl }) {
 
 function PopupEditor({ core, ed, getCellEl, children }) {
   const ref = useRef(null);
-  // 셀에 붙어서 스크롤을 따라가고, 셀이 바디 밖으로 나가도 그리드 경계에 붙어 계속 보임
+  // 셀에 붙어서 스크롤을 따라가고, 바디 뷰포트 밖으로 나간 부분은 잘림 (헤더 위·바닥 밑에 남지 않음)
   const pos = usePopupPosition(
     ref,
     () => {
@@ -528,11 +535,11 @@ function PopupEditor({ core, ed, getCellEl, children }) {
       if (!el || !el.isConnected) return null;
       const r = el.getBoundingClientRect();
       const under = ed.editor.popupPosition === 'under';
-      return { x: r.left, y: under ? r.bottom : r.top, minWidth: r.width, alignTo: r };
+      return { x: r.left, y: under ? r.bottom : r.top, minWidth: r.width, alignTo: r, clip: bodyClipOf(el) };
     },
     [ed],
     core,
-    { track: true, hideWhenClipped: false },
+    { track: true, stick: true },
   );
   return createPortal(
     <PopupLayer core={core}>

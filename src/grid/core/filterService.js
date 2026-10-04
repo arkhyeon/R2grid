@@ -3,7 +3,7 @@
 //  number : { filterType:'number', type:'equals', filter: 5, filterTo?: 10 }
 //  date   : { filterType:'date', type:'equals', dateFrom:'2024-01-01 00:00:00', dateTo? }
 //  set    : { filterType:'set', values:['a', null] }
-import { getFieldValue, toText } from './utils.js';
+import { canonName, getFieldValue, toText } from './utils.js';
 
 export const TEXT_FILTER_TYPES = [
   'contains',
@@ -30,7 +30,7 @@ export const DATE_FILTER_TYPES = ['equals', 'notEqual', 'lessThan', 'greaterThan
 
 // colDef.filter → 내부 필터 종류. 사용자 컴포넌트(함수/클래스/components 등록명)는 'custom'
 export function resolveFilterKind(colDef, components) {
-  const f = colDef.filter;
+  const f = canonName(colDef.filter);
   if (!f) return null;
   if (f === true) return 'set'; // 엔터프라이즈 기본: Set 필터
   if (typeof f === 'string') {

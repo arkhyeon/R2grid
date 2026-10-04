@@ -7,6 +7,7 @@ import { getGlobalGridOptions } from './globals.js';
 import { resolveTheme } from './theme.js';
 import { setFilterKey } from './filterService.js';
 import {
+  canonName,
   clamp,
   defaultComparator,
   evaluateExpression,
@@ -837,7 +838,8 @@ export class GridCore {
     if (typeof key === 'object') {
       return this.allColumns.find(c => c.userProvidedColDef === key || c.colDef === key) ?? null;
     }
-    return this.columnById.get(String(key)) ?? null;
+    // r2-Grid-* 별칭 colId 도 허용 (내부 colId 는 AG 와 같은 ag-Grid-*)
+    return this.columnById.get(String(key)) ?? this.columnById.get(canonName(String(key))) ?? null;
   }
 
   getColumnsFromKeys(keys) {
@@ -2482,6 +2484,7 @@ export class GridCore {
     const params = { ...this.makeValueParams(node, column), value: this.getCellValue(node, column) };
     const sel = typeof cd.cellEditorSelector === 'function' ? cd.cellEditorSelector(params) : null;
     let comp = sel?.component ?? cd.cellEditor;
+    if (typeof comp === 'string' && !this.gos.components?.[comp]) comp = canonName(comp);
     const rawParams = sel?.params ?? cd.cellEditorParams;
     const editorParams = (typeof rawParams === 'function' ? rawParams(params) : rawParams) || {};
     let popup = sel?.popup ?? cd.cellEditorPopup;
@@ -3060,7 +3063,8 @@ export class GridCore {
   // ── 사이드바 ─────────────────────────────────────────────
   normalizeSideBar(initial) {
     const sb = this.gos.sideBar;
-    const builtin = id => {
+    const builtin = rawId => {
+      const id = canonName(rawId);
       if (id === 'columns' || id === 'agColumnsToolPanel') {
         return {
           id: 'columns',
