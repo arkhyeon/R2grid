@@ -34,10 +34,11 @@ export function usePopupPosition(ref, getAnchor, deps = [], core, { track = fals
     const parent = core?.getPopupParent?.();
     const vw = window.innerWidth;
     const vh = window.innerHeight;
+    // 경계 = 팝업 부모의 전체 박스 (뷰포트와 교차시키지 않음 — 페이지 스크롤로 크기·위치가 변하면 안 됨, AG 동일)
     let b = { left: 0, top: 0, right: vw, bottom: vh };
     if (parent && parent !== document.body && parent !== document.documentElement) {
       const pr = parent.getBoundingClientRect();
-      b = { left: Math.max(0, pr.left), top: Math.max(0, pr.top), right: Math.min(vw, pr.right), bottom: Math.min(vh, pr.bottom) };
+      b = { left: pr.left, top: pr.top, right: pr.right, bottom: pr.bottom };
     }
     const maxHeight = Math.max(80, b.bottom - b.top - 8);
     const w = el.offsetWidth;

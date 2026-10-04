@@ -667,11 +667,21 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       core.setViewportSize(w, h);
     };
     measure();
-    const ro = new ResizeObserver(measure);
+    // RO 콜백에서 동기 측정 → flex 재계산·스크롤바 변화로 같은 프레임에 다시 리사이즈되면
+    // "ResizeObserver loop completed with undelivered notifications" 발생 → 다음 프레임으로 미룸
+    let roRaf = 0;
+    const ro = new ResizeObserver(() => {
+      if (roRaf) return;
+      roRaf = requestAnimationFrame(() => {
+        roRaf = 0;
+        measure();
+      });
+    });
     ro.observe(el);
     if (cvp) ro.observe(cvp);
     return () => {
       ro.disconnect();
+      if (roRaf) cancelAnimationFrame(roRaf);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, []);

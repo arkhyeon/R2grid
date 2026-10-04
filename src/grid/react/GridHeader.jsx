@@ -7,12 +7,20 @@ import { stableElement } from './renderComponent.js';
 import { PopupLayer } from './popup.jsx';
 import { FloatingFilterCell } from './filters.jsx';
 
+// 그룹이 없는(패딩) 레벨을 컬럼 헤더가 위로 덮는지 — AG 기본, colDef.suppressSpanHeaderHeight 로 끔
+const spansHeaderHeight = col => !col.colDef.suppressSpanHeaderHeight;
+
 function groupSegments(cols, level) {
   const segs = [];
+  let prev = null;
   for (const col of cols) {
     const g = col.groupChain[level] || null;
+    const skip = !g && spansHeaderHeight(col);
     const last = segs[segs.length - 1];
-    if (last && g && last.group === g) {
+    const adjacent = last && last.cols[last.cols.length - 1] === prev;
+    prev = col;
+    if (skip) continue;
+    if (adjacent && g && last.group === g) {
       last.cols.push(col);
       last.width += col.actualWidth;
     } else {
@@ -85,13 +93,17 @@ function SortIndicator({ col, multi }) {
   );
 }
 
-function HeaderCell({ core, col, height, multiSortActive, drag }) {
+function HeaderCell({ core, col, height: rowHeight, groupHeaderHeight, multiSortActive, drag }) {
   const cd = col.colDef;
+  // 위쪽 패딩 그룹 레벨만큼 셀을 위로 늘림
+  const spanLevels = spansHeaderHeight(col) ? Math.max(0, core.headerGroupDepth - col.groupChain.length) : 0;
+  const spanPx = spanLevels * (groupHeaderHeight || 0);
+  const height = rowHeight + spanPx;
   const legacy = core.gos.columnMenu === 'legacy';
   const sortable = col.isSortable();
   const s = col.sort;
   const headerCls = resolveClassValue(cd.headerClass, { colDef: cd, column: col, api: core.api, context: core.gos.context });
-  const style = { ...core.colPos(col.left), width: col.actualWidth, height, ...(typeof cd.headerStyle === 'function' ? cd.headerStyle({ column: col, colDef: cd, api: core.api }) : cd.headerStyle) };
+  const style = { ...core.colPos(col.left), width: col.actualWidth, height, ...(spanPx ? { top: -spanPx } : null), ...(typeof cd.headerStyle === 'function' ? cd.headerStyle({ column: col, colDef: cd, api: core.api }) : cd.headerStyle) };
   const name = core.getDisplayName(col);
   const isSelection = col.autoType === 'selection';
   const rs = core.rsOpts;
@@ -236,6 +248,8 @@ function HeaderCell({ core, col, height, multiSortActive, drag }) {
         col.autoType === 'rowNumbers' && 'r2-row-number-header',
         (menuOpen || filterOpen) && 'r2-header-active',
         cd.wrapHeaderText && 'r2-header-cell-wrap-text',
+        spanPx > 0 && 'r2-header-span-height',
+        spanLevels > 0 && spanLevels === core.headerGroupDepth && 'r2-header-span-total',
         headerCls,
       )}
       col-id={col.colId}
@@ -293,13 +307,13 @@ function HeaderRows({ core, cols, width, headerHeight, groupHeaderHeight, floati
   rows.push(
     <div
       key="cols"
-      className="r2-header-row r2-header-row-column"
+      className={cx('r2-header-row r2-header-row-column', depth > 0 && 'r2-header-row-spanning')}
       role="row"
       aria-rowindex={depth + 1}
       style={{ top: depth * groupHeaderHeight, height: headerHeight, width }}
     >
       {cols.map(col => (
-        <HeaderCell key={col.colId} core={core} col={col} height={headerHeight} multiSortActive={multi} drag={drag} />
+        <HeaderCell key={col.colId} core={core} col={col} height={headerHeight} groupHeaderHeight={groupHeaderHeight} multiSortActive={multi} drag={drag} />
       ))}
     </div>,
   );

@@ -153,13 +153,13 @@
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
+  /* width:0 — 컬럼 총폭(컨테이너 width)이 부모의 고유 폭으로 새어 나가지 않게 (AG 동일).
+     없으면 flex 컬럼이 채운 폭이 다시 부모 폭을 붙잡아 창을 줄여도 그리드가 안 줄어듦 */
+  width: 0;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
   outline: none;
-}
-.r2-root.r2-layout-auto-height {
-  flex: none;
-  width: 100%;
 }
 
 /* ── 헤더 ─────────────────────────────────────────────── */
@@ -210,6 +210,14 @@
 }
 .r2-header-row:not(:first-child) {
   border-top: var(--r2-header-row-border);
+}
+/* 그룹 없는 컬럼 헤더가 위 그룹 행까지 늘어남 (AG 기본 span header height) */
+.r2-header-row-spanning {
+  overflow: visible;
+}
+.r2-header-span-height {
+  background-color: var(--r2-header-background-color);
+  z-index: 1;
 }
 .r2-header-cell,
 .r2-header-group-cell {
