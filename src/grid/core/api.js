@@ -485,7 +485,66 @@ export function createApi(core) {
     getCurrentUndoSize: () => core.undoStack?.length ?? 0,
     getCurrentRedoSize: () => core.redoStack?.length ?? 0,
 
+    // ── 그리드 상태 ──
+    getState: () => core.getState(),
+    setState: (state, propertiesToIgnore) => core.applyGridState(state, { ignore: propertiesToIgnore || [] }),
+
+    // ── 값 컬럼 / 집계 ──
+    setValueColumns: keys => core.setValueColumns(keys),
+    addValueColumns: keys => core.addValueColumns(keys),
+    removeValueColumns: keys => core.removeValueColumns(keys),
+    setColumnAggFunc: (key, aggFunc) => core.setColumnsAggFunc([[core.getColumn(key), aggFunc]]),
+    addAggFuncs: funcs => {
+      core.gos.aggFuncs = { ...(core.gos.aggFuncs || {}), ...(funcs || {}) };
+      core.afterAggregationChange();
+    },
+    clearAggFuncs: () => {
+      core.gos.aggFuncs = {};
+      core.afterAggregationChange();
+    },
+    moveRowGroupColumn: (fromIndex, toIndex) => core.moveRowGroupColumn(fromIndex, toIndex),
+    setPivotResultColumns: colDefs => core.setCustomPivotResultColumns?.(colDefs),
+
+    // ── 일괄 편집 ──
+    startBatchEdit: () => core.startBatchEdit(),
+    commitBatchEdit: () => core.commitBatchEdit(),
+    cancelBatchEdit: () => core.cancelBatchEdit(),
+    isBatchEditing: () => core.isBatchEditing(),
+    getEditRowValues: node => core.getEditRowValues(node),
+    validateEdit: () => null,
+
+    // ── 컬럼 그룹 표시 ──
+    getCenterDisplayedColumnGroups: () => core.displayedGroupsOf?.('center') ?? [],
+    getLeftDisplayedColumnGroups: () => core.displayedGroupsOf?.('left') ?? [],
+    getRightDisplayedColumnGroups: () => core.displayedGroupsOf?.('right') ?? [],
+    getDisplayNameForColumnGroup: group => {
+      const g = typeof group === 'string' ? core.getColumnGroup(group) : group;
+      return g?.colGroupDef?.headerName ?? '';
+    },
+
     // ── 기타 ──
+    forEachPinnedRow: (floating, cb) => (floating === 'bottom' ? core.pinnedBottom : core.pinnedTop).forEach((n, i) => cb(n, i)),
+    isQuickFilterPresent: () => !!core.gos.quickFilterText,
+    isColumnHovered: key => !!core.hoveredColId && core.getColumn(key)?.colId === core.hoveredColId,
+    setFocusedHeader: (colKey, floatingFilter) => {
+      const col = core.getColumn(colKey);
+      const el = col && core.eRoot?.querySelector(`.r2-header-cell[col-id="${CSS.escape(col.colId)}"]`);
+      el?.focus?.();
+      if (col) core.dispatch('headerFocused', { column: col, floatingFilter: !!floatingFilter });
+    },
+    expireValueCache: () => core.notify(),
+    onGroupExpandedOrCollapsed: () => core.refreshModel({ skipFilter: true, keepRenderedRows: true }),
+    isModuleRegistered: () => true,
+    flushAllAnimationFrames: () => {},
+    isAnimationFrameQueueEmpty: () => true,
+    addRenderedRowListener: (eventName, rowIndex, callback) => core.displayedNodes[rowIndex]?.addEventListener?.(eventName, callback),
+    setGridAriaProperty: (property, value) => {
+      const el = core.eRoot?.querySelector('.r2-root');
+      if (!el) return;
+      if (value == null) el.removeAttribute(`aria-${property}`);
+      else el.setAttribute(`aria-${property}`, value);
+    },
+    dispatchEvent: event => event?.type && core.dispatch(event.type, event),
     getLocaleText: key => localeText(core, key),
   };
   // alignedGrids 등 그리드 간 연동용 (열거되지 않는 내부 참조)

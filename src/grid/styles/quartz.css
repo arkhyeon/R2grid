@@ -471,6 +471,16 @@
 .r2-row-hover:not(.r2-full-width-row)::before {
   background-color: var(--r2-row-hover-color);
 }
+/* columnHoverHighlight */
+.r2-cell.r2-column-hover,
+.r2-header-cell.r2-column-hover {
+  background-color: var(--r2-column-hover-color, var(--r2-row-hover-color));
+}
+/* 일괄 편집 보류 셀 (AG ag-cell-batch-edit) */
+.r2-cell.r2-cell-batch-edit {
+  background-color: var(--r2-cell-batch-edit-background-color, color-mix(in srgb, var(--r2-accent-color, #2196f3) 14%, transparent));
+  color: var(--r2-cell-batch-edit-text-color, inherit);
+}
 .r2-row-hover.r2-row-selected:not(.r2-full-width-row)::before {
   background-color: var(--r2-row-hover-color);
   background-image: linear-gradient(var(--r2-selected-row-background-color), var(--r2-selected-row-background-color));

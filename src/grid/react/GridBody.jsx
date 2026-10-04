@@ -315,6 +315,8 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
           : 'r2-cell-not-inline-editing',
         cd.autoHeight ? 'r2-cell-auto-height' : 'r2-cell-normal-height',
         'r2-cell-value',
+        core.batch && core.hasBatchValue(node, col) && 'r2-cell-batch-edit',
+        g.columnHoverHighlight && core.hoveredColId === col.colId && 'r2-column-hover',
         focused && 'r2-cell-focus',
         range && 'r2-cell-range-selected',
         range && !range.single && `r2-cell-range-selected-${Math.min(range.count, 4)}`,
@@ -1034,13 +1036,28 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       });
     }
   };
+  // columnHoverHighlight: 같은 col-id 셀 + 헤더에 r2-column-hover (DOM 토글, 재렌더 없음 — AG 동일 클래스)
+  const setColHover = colId => {
+    if (colId === core.hoveredColId) return;
+    const root = focusSinkRef.current;
+    const prev = core.hoveredColId;
+    core.hoveredColId = colId;
+    if (!root || !g.columnHoverHighlight) return;
+    const sel = id => root.querySelectorAll(`.r2-cell[col-id="${CSS.escape(id)}"], .r2-header-cell[col-id="${CSS.escape(id)}"]`);
+    if (prev != null) sel(prev).forEach(el => el.classList.remove('r2-column-hover'));
+    if (colId != null) sel(colId).forEach(el => el.closest('.r2-root') === root && el.classList.add('r2-column-hover'));
+  };
   const onMouseOver = e => {
     const t = e.target instanceof Element ? e.target : null;
     if (!t || t.closest('.r2-root') !== focusSinkRef.current) return;
     const row = t.closest('.r2-row[row-index]');
     setHover(row && !row.classList.contains('r2-full-width-row') ? row.getAttribute('row-index') : null);
+    setColHover(t.closest('.r2-cell[col-id]')?.getAttribute('col-id') ?? null);
   };
-  const onMouseLeave = () => setHover(null);
+  const onMouseLeave = () => {
+    setHover(null);
+    setColHover(null);
+  };
 
   // ── 렌더 범위 계산 ──
   const rowCount = core.getRowCountInPage();

@@ -27,6 +27,10 @@ export class EventService {
     this.globalListeners.delete(listener);
   }
 
+  hasListeners(type) {
+    return !!this.listeners.get(type)?.size || this.globalListeners.size > 0;
+  }
+
   dispatch(event) {
     const set = this.listeners.get(event.type);
     if (set && set.size) {

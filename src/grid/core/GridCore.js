@@ -32,6 +32,7 @@ import { findMethods } from './find.js';
 import { pivotMethods } from './pivot.js';
 import { advancedFilterMethods } from './advancedFilter.js';
 import { chartMethods } from './charts.js';
+import { stateMethods } from './state.js';
 
 export const DEFAULT_ROW_HEIGHT = 42;
 export const DEFAULT_HEADER_HEIGHT = 48;
@@ -172,6 +173,15 @@ export class GridCore {
 
     this.api = createApi(this);
     this.applyProps(props, true);
+    // initialState: 준 항목만 적용 (AG 동일 — 이후 바뀌어도 다시 적용하지 않음)
+    if (this.gos.initialState) {
+      this.__muteEvents = true;
+      try {
+        this.applyGridState(this.gos.initialState, { partial: true, source: 'gridInitializing' });
+      } finally {
+        this.__muteEvents = false;
+      }
+    }
     this.initializing = false;
   }
 
@@ -203,12 +213,14 @@ export class GridCore {
 
   // ── 이벤트 ───────────────────────────────────────────────
   dispatch(type, params = {}) {
-    if (this.destroyed) return;
+    if (this.destroyed || this.__muteEvents) return;
     const event = { type, api: this.api, context: this.gos.context, ...params };
     const handler = this.gos[eventPropName(type)];
     if (typeof handler === 'function') handler(event);
     this.events.dispatch(event);
     if (this.gos.alignedGrids && !this.__aligning) this.syncAlignedGrids(type, params);
+    // stateUpdated 수집 (드래그 중 리사이즈는 끝났을 때만)
+    if (!(type === 'columnResized' && params.finished === false)) this.noteStateChange(type);
   }
 
   // alignedGrids: [gridRef | api] 또는 () => [...] — 컬럼 폭/순서/표시/고정/그룹 열림 + 가로 스크롤 동기화 (AG 동일)
@@ -983,6 +995,8 @@ export class GridCore {
   }
 
   getColumnState() {
+    const groupIdx = new Map(this.rowGroupColumns().map((c, i) => [c, i]));
+    const pivotIdx = new Map((this.pivotColumns?.() || []).map((c, i) => [c, i]));
     return this.allColumns.map(c => ({
       colId: c.colId,
       width: c.actualWidth,
@@ -990,11 +1004,11 @@ export class GridCore {
       pinned: c.pinned,
       sort: c.sort || null,
       sortIndex: c.sort ? c.sortIndex : null,
-      aggFunc: null,
-      rowGroup: false,
-      rowGroupIndex: null,
-      pivot: false,
-      pivotIndex: null,
+      aggFunc: c.autoType || c.isPivotResult ? null : c.colDef.aggFunc ?? null,
+      rowGroup: groupIdx.has(c),
+      rowGroupIndex: groupIdx.get(c) ?? null,
+      pivot: pivotIdx.has(c),
+      pivotIndex: pivotIdx.get(c) ?? null,
       flex: c.flex ?? null,
     }));
   }
@@ -1017,7 +1031,34 @@ export class GridCore {
         sortChanged = true;
       }
       if (s.sortIndex !== undefined) col.sortIndex = s.sortIndex;
+      if (col.autoType || col.isPivotResult) return;
+      if (s.rowGroup !== undefined || s.rowGroupIndex !== undefined) {
+        const rg = s.rowGroupIndex != null || !!s.rowGroup;
+        const rgi = rg ? s.rowGroupIndex ?? col.rowGroupIndex ?? 1e6 : null;
+        if (col.rowGroup !== rg || (rg && col.rowGroupIndex !== rgi)) {
+          col.rowGroup = rg;
+          col.rowGroupIndex = rgi;
+          groupChanged.push(col);
+        }
+      }
+      if (s.aggFunc !== undefined && (col.colDef.aggFunc ?? null) !== (s.aggFunc ?? null)) {
+        col.aggFunc = s.aggFunc ?? null;
+        col.colDef = { ...col.colDef, aggFunc: s.aggFunc ?? undefined };
+        aggChanged.push(col);
+      }
+      if (s.pivot !== undefined || s.pivotIndex !== undefined) {
+        const pv = s.pivotIndex != null || !!s.pivot;
+        const pvi = pv ? s.pivotIndex ?? col.pivotIndex ?? 1e6 : null;
+        if (col.pivot !== pv || (pv && col.pivotIndex !== pvi)) {
+          col.pivot = pv;
+          col.pivotIndex = pvi;
+          pivotChanged.push(col);
+        }
+      }
     };
+    const groupChanged = [];
+    const aggChanged = [];
+    const pivotChanged = [];
     (state || []).forEach(s => {
       const col = this.getColumn(s.colId);
       if (col) {
@@ -1031,13 +1072,28 @@ export class GridCore {
       const rest = this.allColumns.filter(c => !order.includes(c));
       this.allColumns = [...order, ...rest];
     }
+    // 행 그룹/값/피벗 변경 → 인덱스 정규화 + 그룹 재구성 (자동 그룹 컬럼 추가/제거 포함)
+    if (groupChanged.length || aggChanged.length || pivotChanged.length) {
+      this.rowGroupColumns().forEach((c, i) => (c.rowGroupIndex = i));
+      this.pivotColumns?.().forEach((c, i) => (c.pivotIndex = i));
+      if (groupChanged.length) {
+        this.groupMode = this.computeGroupMode();
+        this.buildColumns(false);
+      }
+      this.groupsDirty = true;
+      this.applyPivotResultColumns?.(true);
+    }
+    const modelChanged = groupChanged.length || aggChanged.length || pivotChanged.length;
     this.columnsVersion++;
     this.layoutColumns();
-    if (sortChanged) {
-      if (this.isSsrm()) this.ssrmReset('sort');
+    if (sortChanged || modelChanged) {
+      if (this.isSsrm()) this.ssrmReset(sortChanged ? 'sort' : 'columns');
       else this.refreshModel({});
     }
     this.notify();
+    if (groupChanged.length) this.dispatch('columnRowGroupChanged', { columns: this.rowGroupColumns(), column: null, source: 'api' });
+    if (aggChanged.length) this.dispatch('columnValueChanged', { columns: aggChanged, column: aggChanged.length === 1 ? aggChanged[0] : null, source: 'api' });
+    if (pivotChanged.length) this.dispatch('columnPivotChanged', { columns: this.pivotColumns(), column: null, source: 'api' });
     if (visChanged.length) {
       this.dispatch('columnVisible', {
         columns: visChanged,
@@ -1080,6 +1136,11 @@ export class GridCore {
     if (column.autoType === 'selection') return undefined;
     if (node.stub) return undefined;
     if (column.autoType === 'group') return this.getAutoGroupValue(node, column);
+    // 일괄 편집 중 보류 값
+    if (this.batch) {
+      const pending = this.getBatchValue(node, column);
+      if (pending) return pending.value;
+    }
     // 그룹 노드: 집계값 우선 (트리데이터의 데이터 보유 부모도 동일)
     if (node.group && node.aggData && column.colId in node.aggData) {
       // 합계 행이 아래에 따로 보이면 펼친 그룹 행은 집계값을 비움 (AG 동일)
@@ -1452,6 +1513,8 @@ export class GridCore {
     if (this.groupMode) {
       if (!skipFilter || !this.filterPreds) this.applyFilters();
       this.runGroupPipeline(this.filterPreds, this.makeSortComparator());
+      // setState/initialState 의 그룹 펼침 (그룹 노드가 생긴 뒤에만 가능)
+      if (this.pendingExpansion && this.applyExpansionIds()) this.runGroupPipeline(this.filterPreds, this.makeSortComparator());
     } else if (this.isPivotActive()) {
       if (!skipFilter || !this.filterPreds) this.applyFilters();
       this.runPivotTotalsOnly(this.filterPreds);
@@ -2629,7 +2692,10 @@ export class GridCore {
       } else if (column.dataType === 'text' && newValue === '') {
         newValue = null;
       }
-      if (this.gos.readOnlyEdit) {
+      if (this.batch) {
+        // 일괄 편집: 데이터엔 아직 안 씀 (commitBatchEdit 때 반영)
+        valueChanged = this.stageBatchValue(node, column, newValue, oldValue);
+      } else if (this.gos.readOnlyEdit) {
         this.dispatch('cellEditRequest', {
           ...this.cellEventParams(node, column),
           oldValue,
@@ -3485,6 +3551,15 @@ export class GridCore {
       this.pendingScroll = null;
       this.ensureIndexVisible(index, position);
     }
+    // initialState.scroll 은 뷰포트가 생긴 뒤 + 첫 렌더 후 적용, stateUpdated(gridInitializing) 1회
+    this.setTimer(() => {
+      if (this.pendingStateScroll) {
+        const sc = this.pendingStateScroll;
+        this.pendingStateScroll = null;
+        this.applyScrollState(sc);
+      }
+      this.dispatchStateUpdated(['gridInitializing']);
+    }, 0);
   }
 
   // autoSizeStrategy: fitCellContents 는 첫 데이터 렌더 시 1회, fitGridWidth/fitProvidedWidth 는 크기 변경마다
@@ -3522,4 +3597,4 @@ export class GridCore {
 }
 
 // 기능별 mixin 결합 (그룹핑 / SSRM / 행드래그 / undo / 고정행)
-Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods, statusBarMethods, findMethods, pivotMethods, advancedFilterMethods, chartMethods);
+Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods, statusBarMethods, findMethods, pivotMethods, advancedFilterMethods, chartMethods, stateMethods);

@@ -26,7 +26,10 @@ export class Column {
   }
 
   // isNew=true 면 모든 상태 속성 적용. 아니면 colDef 값이 이전과 달라진 속성만 적용(AG-Grid 상태 보존 규칙)
-  applyColDef(colDef, userColDef, isNew, prevColDef) {
+  applyColDef(colDef, userColDef, isNew, prevColDefArg) {
+    // 비교 기준은 이전 "원본" colDef (aggFunc 상태 반영 사본이 아니라)
+    const prevColDef = this.baseColDef ?? prevColDefArg;
+    this.baseColDef = colDef;
     const changed = attr => isNew || colDef[attr] !== prevColDef?.[attr];
     const pick = (attr, initialAttr) => {
       if (isNew) return colDef[attr] !== undefined ? colDef[attr] : colDef[initialAttr];
@@ -51,6 +54,9 @@ export class Column {
       this.pivot = !!pv || pvi != null;
       this.pivotIndex = pvi ?? null;
     }
+    // aggFunc 도 컬럼 상태 (api.setColumnAggFunc / 값 컬럼 추가로 바뀐 값은 colDef 가 그대로면 유지)
+    if (changed('aggFunc')) this.aggFunc = pick('aggFunc', 'initialAggFunc') ?? null;
+    if ((colDef.aggFunc ?? null) !== (this.aggFunc ?? null)) this.colDef = { ...colDef, aggFunc: this.aggFunc ?? undefined };
     if (changed('width')) {
       const w = pick('width', 'initialWidth');
       this.width = w != null ? w : this.width ?? DEFAULT_COL_WIDTH;
