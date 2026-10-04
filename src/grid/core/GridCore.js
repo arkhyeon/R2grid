@@ -1532,6 +1532,10 @@ export class GridCore {
     this.updatePagination();
     this.computeRowTops();
     this.clampFocusAndRanges();
+    // 필터·정렬·데이터 변경으로 편집 중인 행이 사라지면 편집 취소 (에디터·선택 목록이 허공에 남지 않게).
+    // 포커스는 그대로 (플로팅 필터에 입력 중일 수 있음)
+    const en = this.editing?.node;
+    if (en && !en.rowPinned && !en.displayed && !this.initializing) this.stopEditing(true, { noFocus: true });
     this.notify();
     if (silent || this.initializing) return;
     this.dispatch('modelUpdated', { newData, newPage: false, keepRenderedRows, animate: false });
@@ -2719,7 +2723,7 @@ export class GridCore {
     };
   }
 
-  stopEditing(cancel = false) {
+  stopEditing(cancel = false, { noFocus = false } = {}) {
     const ed = this.editing;
     if (!ed) return;
     this.editing = null;
@@ -2733,7 +2737,7 @@ export class GridCore {
       this.dispatch('rowEditingStopped', this.rowEventParams(ed.node));
       if (!cancel && results.some(r => r.valueChanged)) this.dispatch('rowValueChanged', this.rowEventParams(ed.node));
     }
-    this.focusGrid();
+    if (!noFocus) this.focusGrid();
   }
 
   // fullRow 편집 중 Tab: 같은 행의 다음 편집 셀로 이동

@@ -9,11 +9,10 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { createPortal } from 'react-dom';
 import { cx, isPrintableKey } from '../core/utils.js';
 import { stableElement } from './renderComponent.js';
 import { Checkbox, Icon } from './common.jsx';
-import { usePopupPosition, PopupLayer, bodyClipOf } from './popup.jsx';
+import { bodyClipOf } from './popup.jsx';
 
 // useGridCellEditor (ag-grid-react 호환) — reactive 커스텀 에디터가 콜백 등록
 const CellEditorContext = createContext(null);
@@ -369,7 +368,7 @@ function RichSelectEditor({ core, ed, params, plain, getCellEl }) {
         </span>
       </div>
       {open && (
-      <SelectListPopup core={core} anchorRef={fieldRef} getCellEl={getCellEl}>
+      <SelectListPopup anchorRef={fieldRef} getCellEl={getCellEl} count={shown.length}>
         {fitH => (
       <div
         ref={listRef}
@@ -417,34 +416,69 @@ function RichSelectEditor({ core, ed, params, plain, getCellEl }) {
   );
 }
 
-// 선택 목록 팝업 — 선택값 필드 바로 아래(공간 없으면 위), 셀을 따라 움직이고 바디 밖으로 나간 부분은 잘림
-//  className 에 r2-popup-editor 를 달아 키 입력·바깥 클릭 판정에서 에디터 일부로 취급
-function SelectListPopup({ core, anchorRef, getCellEl, children }) {
+// 셀 편집 팝업 공통: 셀(행) DOM 안에 두므로 스크롤하면 브라우저가 셀과 함께 움직이고(지연·흔들림 없음),
+// 바디 뷰포트 밖으로 나간 부분은 뷰포트 overflow 로 잘린다. 행이 사라지면(필터·데이터 변경) 같이 사라진다.
+// 위치는 열 때 레이아웃 단계에서 한 번만 계산 → 그리기 전에 확정돼 깜빡임 없음.
+export const stopGridPointer = {
+  onMouseDown: e => e.stopPropagation(),
+  onPointerDown: e => e.stopPropagation(),
+  onClick: e => e.stopPropagation(),
+  onDoubleClick: e => e.stopPropagation(),
+  onContextMenu: e => e.stopPropagation(),
+};
+
+// 셀이 보이는 영역: 세로 = 바디(또는 고정 행) 뷰포트, 가로 = 중앙 스크롤 영역(고정 컬럼이면 바디 전체)
+function cellClipRects(cell) {
+  const v = bodyClipOf(cell) || { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth };
+  const h = cell?.closest('.r2-center-cols-viewport')?.getBoundingClientRect() || v;
+  return { v, h };
+}
+
+// 선택 목록 — 선택값 필드 바로 아래(공간 없으면 위, 둘 다 부족하면 넓은 쪽에 맞춰 줄이고 스크롤)
+function SelectListPopup({ anchorRef, getCellEl, count, children }) {
   const ref = useRef(null);
-  const pos = usePopupPosition(
-    ref,
-    () => {
-      const el = anchorRef.current;
-      if (!el || !el.isConnected) return null;
-      const r = el.getBoundingClientRect();
-      return { x: r.left, y: r.bottom, minWidth: r.width, alignTo: r, clip: bodyClipOf(getCellEl?.()) };
-    },
-    [],
-    core,
-    { track: true, follow: true, shrink: true, stick: true },
-  );
-  return createPortal(
-    <PopupLayer core={core}>
-      <div
-        ref={ref}
-        className="r2-popup-child r2-popup-editor r2-rich-select r2-select-list-popup"
-        style={{ ...pos.style, maxHeight: undefined }}
-        onPointerDown={e => e.stopPropagation()}
-      >
-        {children(pos.maxHeight ? pos.maxHeight - 2 : undefined)}
-      </div>
-    </PopupLayer>,
-    core.getPopupParent(),
+  const [pl, setPl] = useState(null); // { above, maxH, dx }
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const a = anchorRef.current;
+    if (!el || !a) return;
+    const ar = a.getBoundingClientRect();
+    const { v, h } = cellClipRects(getCellEl?.());
+    // 원래 높이(줄이기 전): 목록 내용 높이 + 테두리
+    const list = el.querySelector('.r2-rich-select-list');
+    const natural = list ? list.scrollHeight + (el.offsetHeight - list.clientHeight) : el.offsetHeight;
+    const below = v.bottom - ar.bottom - 2;
+    const above = ar.top - v.top - 2;
+    let up = false;
+    let maxH;
+    if (natural > below) {
+      if (natural <= above) up = true;
+      else if (above > below) {
+        up = true;
+        maxH = above;
+      } else maxH = below;
+    }
+    const w = el.offsetWidth;
+    let dx = 0;
+    if (ar.left + w > h.right - 2) dx = Math.max(h.left + 2 - ar.left, h.right - 2 - w - ar.left);
+    setPl({ above: up, maxH, dx });
+  }, [count]);
+  return (
+    <div
+      ref={ref}
+      className="r2-popup-child r2-popup-editor r2-select-list-popup"
+      style={{
+        position: 'absolute',
+        left: pl?.dx ?? 0,
+        top: pl?.above ? undefined : '100%',
+        bottom: pl?.above ? '100%' : undefined,
+        minWidth: '100%',
+        visibility: pl ? 'visible' : 'hidden',
+      }}
+      {...stopGridPointer}
+    >
+      {children(pl?.maxH != null ? pl.maxH - 2 : undefined)}
+    </div>
   );
 }
 
@@ -473,7 +507,7 @@ function CustomEditor({ core, ed, params, getCellEl }) {
     if (core.editing?.primary === ed) {
       // 에디터가 스스로 포커스를 잡지 않으면 첫 입력요소에 포커스
       const el = getCellEl?.();
-      const host = ed.editor.popup ? document.querySelector('.r2-popup-editor-host') : el;
+      const host = ed.editor.popup ? el?.querySelector('.r2-popup-editor-host') : el;
       if (host && !host.contains(document.activeElement)) {
         const f = host.querySelector('input,textarea,select,[tabindex]');
         f?.focus({ preventScroll: true });
@@ -527,31 +561,33 @@ export function EditorHost({ core, ed, getCellEl }) {
 
 function PopupEditor({ core, ed, getCellEl, children }) {
   const ref = useRef(null);
-  // 셀에 붙어서 스크롤을 따라가고, 바디 뷰포트 밖으로 나간 부분은 잘림 (헤더 위·바닥 밑에 남지 않음)
-  const pos = usePopupPosition(
-    ref,
-    () => {
-      const el = getCellEl?.();
-      if (!el || !el.isConnected) return null;
-      const r = el.getBoundingClientRect();
-      const under = ed.editor.popupPosition === 'under';
-      return { x: r.left, y: under ? r.bottom : r.top, minWidth: r.width, alignTo: r, clip: bodyClipOf(el) };
-    },
-    [ed],
-    core,
-    { track: true, stick: true },
-  );
-  return createPortal(
-    <PopupLayer core={core}>
-      <div
-        ref={ref}
-        className="r2-popup-child r2-popup-editor r2-popup-editor-host"
-        style={{ ...pos.style, maxHeight: undefined }}
-        onPointerDown={e => e.stopPropagation()}
-      >
-        {children}
-      </div>
-    </PopupLayer>,
-    core.getPopupParent(),
+  const [pos, setPos] = useState(null);
+  // 셀 위(over) 또는 아래(under)에 배치, 보이는 영역을 넘으면 안쪽으로 밀어 넣음 (열 때 1회)
+  useLayoutEffect(() => {
+    const host = ref.current;
+    const cell = getCellEl?.();
+    if (!host || !cell || !host.offsetParent) return;
+    const cr = cell.getBoundingClientRect();
+    const op = host.offsetParent.getBoundingClientRect();
+    const { v, h } = cellClipRects(cell);
+    let x = cr.left;
+    let y = ed.editor.popupPosition === 'under' ? cr.bottom : cr.top;
+    const w = host.offsetWidth;
+    const hh = host.offsetHeight;
+    if (x + w > h.right - 2) x = Math.max(h.left + 2, h.right - 2 - w);
+    if (y + hh > v.bottom - 2) y = Math.max(v.top + 2, v.bottom - 2 - hh);
+    // absolute 기준은 offsetParent 의 padding box → 테두리 두께만큼 보정
+    const par = host.offsetParent;
+    setPos({ left: x - op.left - par.clientLeft, top: y - op.top - par.clientTop, minWidth: cr.width });
+  }, [ed]);
+  return (
+    <div
+      ref={ref}
+      className="r2-popup-child r2-popup-editor r2-popup-editor-host"
+      style={{ position: 'absolute', left: pos?.left ?? 0, top: pos?.top ?? 0, minWidth: pos?.minWidth, zIndex: 3, visibility: pos ? 'visible' : 'hidden' }}
+      {...stopGridPointer}
+    >
+      {children}
+    </div>
   );
 }

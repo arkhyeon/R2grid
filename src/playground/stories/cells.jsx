@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { BASE_COLUMNS, makeRows, SAMPLE } from '../data.js';
 import { Grid } from './_shared.jsx';
 
@@ -81,52 +81,6 @@ function Editing({ p, ctx }) {
       enterNavigatesVerticallyAfterEdit={p.enterVertical}
       onCellValueChanged={e => ctx.log(`cellValueChanged ${e.colDef.field}: ${JSON.stringify(e.oldValue)} → ${JSON.stringify(e.newValue)}`)}
       onCellEditingStarted={e => ctx.log(`cellEditingStarted ${e.colDef.field}`)}
-    />
-  );
-}
-
-// CLM SimpleTextEditor 와 같은 reactive 커스텀 에디터 (value / onValueChange)
-function SimpleTextEditor({ value, onValueChange, eventKey, column }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    let start = eventKey === 'Backspace' ? '' : eventKey && eventKey.length === 1 ? eventKey : value;
-    if (start == null) start = '';
-    onValueChange(start === '' ? null : start);
-    ref.current?.focus();
-  }, []);
-  return (
-    <input
-      ref={ref}
-      value={value || ''}
-      onChange={e => onValueChange(e.target.value === '' ? null : e.target.value)}
-      className="r2-input-field-input r2-text-field-input"
-      style={{ width: column.actualWidth || '100%', height: column.gos.gridOptions.rowHeight || 30 }}
-    />
-  );
-}
-// 위/아래 버튼 숫자 에디터 (팝업)
-function StepperEditor({ value, onValueChange }) {
-  const v = Number(value) || 0;
-  return (
-    <div style={{ display: 'flex', gap: 4, padding: 6, background: 'var(--r2-background-color)' }}>
-      <button onClick={() => onValueChange(v - 10)}>-10</button>
-      <input value={v} onChange={e => onValueChange(Number(e.target.value) || 0)} style={{ width: 70 }} autoFocus />
-      <button onClick={() => onValueChange(v + 10)}>+10</button>
-    </div>
-  );
-}
-function CustomEditor({ ctx }) {
-  const [rows] = useState(() => makeRows(30));
-  return (
-    <Grid
-      rowData={rows}
-      reactiveCustomComponents
-      columnDefs={[
-        { field: 'owner', headerName: '소유자 (SimpleTextEditor 팝업)', width: 220, editable: true, cellEditor: SimpleTextEditor, cellEditorPopup: true },
-        { field: 'progress', headerName: '진행률 (Stepper 팝업)', width: 200, editable: true, cellEditor: StepperEditor, cellEditorPopup: true, cellEditorPopupPosition: 'under' },
-        ...BASE_COLUMNS.slice(1, 4),
-      ]}
-      onCellValueChanged={e => ctx.log(`cellValueChanged ${e.colDef.field} = ${e.newValue}`)}
     />
   );
 }
@@ -316,55 +270,6 @@ export default [
   ]}
   onCellValueChanged={e => save(e.data)}
 />`,
-  },
-  {
-    id: 'custom-editor',
-    category: CAT,
-    name: '커스텀 에디터 (팝업)',
-    desc: 'reactive 커스텀 에디터: props.value / props.onValueChange 로 값을 주고받습니다. cellEditorPopup 이면 셀 위 팝업으로 뜨며, 스크롤하면 그 행을 따라가고 그리드 밖으로 나가지 않습니다.',
-    keywords: ['cellEditor', 'cellEditorPopup', 'cellEditorPopupPosition', 'reactiveCustomComponents', 'onValueChange', 'useGridCellEditor', 'isCancelBeforeStart', 'isCancelAfterEnd', 'SimpleTextEditor', 'popupParent'],
-    controls: [],
-    render: (p, ctx) => <CustomEditor ctx={ctx} />,
-    code: () => `function SimpleTextEditor({ value, onValueChange, eventKey, column }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    let start = eventKey === 'Backspace' ? '' : eventKey?.length === 1 ? eventKey : value;
-    onValueChange(start === '' ? null : start);
-    ref.current?.focus();
-  }, []);
-  return <input ref={ref} value={value || ''} onChange={e => onValueChange(e.target.value)} />;
-}
-
-<AgGridReact
-  reactiveCustomComponents
-  columnDefs={[{ field: 'owner', editable: true, cellEditor: SimpleTextEditor, cellEditorPopup: true }]}
-/>`,
-    usage: {
-      file: 'components/AgGridAddOn/SimpleTextEditor.jsx',
-      code: `/**
- * 기존 TextEditor 내부 cellRenderer Component 클릭 안되는 현상 완화한 버전
- * - 필수 설정
- * cellEditorPopup: true (colDef 해당 컬럼)
- * reactiveCustomComponents (Table Option)
- * - 사용
- * cellEditor: SimpleTextEditor
- */
-function SimpleTextEditor({ value, onValueChange, eventKey, column }) {
-  ...
-  return (
-    <input
-      value={value || ''}
-      ref={refInput}
-      onChange={event => updateValue(event.target.value)}
-      className="r2-input-field-input r2-text-field-input"
-      style={{
-        width: column.actualWidth || '100%',
-        height: column.gos.gridOptions.rowHeight || '100%',
-      }}
-    />
-  );
-}`,
-    },
   },
   {
     id: 'full-row-edit',

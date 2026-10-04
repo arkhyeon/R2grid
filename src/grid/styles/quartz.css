@@ -1763,13 +1763,35 @@
 
 /* 리치 셀렉트 / 셀렉트 / 큰 텍스트 에디터 */
 .r2-rich-select {
+  position: relative;
   min-width: 160px;
   background-color: var(--r2-background-color);
   border: var(--r2-menu-border);
   border-radius: var(--r2-border-radius);
   box-shadow: var(--r2-popup-shadow);
   outline: none;
+}
+/* 선택 목록: 선택값 필드의 자식(셀 DOM 안) — 스크롤 시 셀과 함께 움직이고 바디 밖은 뷰포트가 자름 */
+.r2-select-list-popup {
+  z-index: 3;
+  margin: 2px 0;
+  background-color: var(--r2-background-color);
+  border: var(--r2-menu-border);
+  border-radius: var(--r2-border-radius);
+  box-shadow: var(--r2-popup-shadow);
   overflow: hidden;
+  white-space: nowrap;
+}
+.r2-select-list-popup .r2-rich-select-list {
+  overscroll-behavior: contain;
+}
+/* 편집 중 셀/행을 위로 — 셀 안 팝업(에디터·선택 목록)이 옆 셀·아래 행에 가리지 않게 */
+.r2-row.r2-row-editing {
+  z-index: 2;
+}
+.r2-cell.r2-cell-popup-editing {
+  z-index: 3;
+  overflow: visible;
 }
 .r2-rich-select-value {
   display: flex;
@@ -1822,6 +1844,8 @@
   padding: 0 calc(var(--r2-cell-horizontal-padding) - 1px);
   white-space: nowrap;
   cursor: pointer;
+  /* 글꼴 줄높이가 행 높이보다 크면 목록에 쓸데없는 스크롤바가 생김 */
+  overflow: hidden;
 }
 .r2-rich-select-row-selected {
   background-color: var(--r2-selected-row-background-color);
