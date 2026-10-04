@@ -19,9 +19,13 @@ export function PopupLayer({ core, children }) {
 
 // 팝업 배치: anchor(뷰포트 좌표) → 팝업 부모 경계 안으로 보정 → 레이어 기준 좌표.
 //  anchor: { x, y, alignRight?, alignTo?(DOMRect), flipY?, minWidth?, clip?(DOMRect) }
-//  track: 셀/헤더에 붙은 팝업 — 스크롤마다 다시 계산해 그 행/컬럼을 따라가고, clip 밖으로 나가면 숨김
-export function usePopupPosition(ref, getAnchor, deps = [], core, { track = false } = {}) {
+//  track: 셀/헤더에 붙은 팝업 — 스크롤마다 다시 계산해 그 행/컬럼을 따라감
+//  hideWhenClipped: 앵커가 clip 밖으로 나가면 숨김 (헤더 메뉴). false 면 그리드 경계에 붙어 계속 보임 (에디터·선택 목록)
+//  follow: 앵커 위치·팝업 크기 변화를 매 프레임 감시 (스크롤 이벤트 없이 앵커가 움직일 때)
+//  shrink: 위/아래 모두 공간 부족하면 넓은 쪽에 맞춰 maxHeight 축소
+export function usePopupPosition(ref, getAnchor, deps = [], core, { track = false, hideWhenClipped = true, follow = false, shrink = false } = {}) {
   const [pos, setPos] = useState({ x: 0, y: 0, minWidth: undefined, maxHeight: undefined, ready: false, hidden: false });
+  const shrunkRef = useRef({ on: false, nat: 0 });
   const compute = () => {
     const el = ref.current;
     const layer = el?.parentElement;
@@ -40,19 +44,38 @@ export function usePopupPosition(ref, getAnchor, deps = [], core, { track = fals
       const pr = parent.getBoundingClientRect();
       b = { left: pr.left, top: pr.top, right: pr.right, bottom: pr.bottom };
     }
-    const maxHeight = Math.max(80, b.bottom - b.top - 8);
+    let maxHeight = Math.max(80, b.bottom - b.top - 8);
     const w = el.offsetWidth;
-    const h = Math.min(el.offsetHeight, maxHeight);
+    // 축소 중이면 줄이기 전 원래 높이로 판정 (줄인 높이로 재판정하면 커졌다 줄었다 진동)
+    const natural = shrunkRef.current.on ? shrunkRef.current.nat : el.offsetHeight;
+    let h = Math.min(natural, maxHeight);
     let { x, y } = a;
     if (x + w > b.right - 4) x = a.alignRight != null ? a.alignRight - w : b.right - w - 4;
     if (x < b.left + 4) x = b.left + 4;
-    if (y + h > b.bottom - 4) {
+    // shrink: 앵커 아래·위 어느 쪽에도 안 들어가면 넓은 쪽을 골라 그 공간만큼 줄임 (앵커를 덮지 않게 — 선택 목록)
+    const below = b.bottom - 4 - y;
+    const above = a.alignTo ? a.alignTo.top - (b.top + 4) : 0;
+    const doShrink = shrink && a.alignTo && h > below && h > above && Math.max(below, above) >= 60;
+    shrunkRef.current = doShrink ? { on: true, nat: natural } : { on: false, nat: 0 };
+    if (doShrink) {
+      if (below >= above) {
+        maxHeight = below;
+        h = below;
+      } else {
+        maxHeight = above;
+        h = above;
+        y = a.alignTo.top - h;
+      }
+    } else if (y + h > b.bottom - 4) {
       if (a.alignTo && a.alignTo.top - h >= b.top + 4) y = a.alignTo.top - h;
       else if (a.flipY != null && a.flipY - h >= b.top + 4) y = a.flipY - h;
       else y = Math.max(b.top + 4, b.bottom - h - 4);
     }
+    // 앵커가 위/아래로 스크롤돼 나가도 경계 안에 붙여 둠
+    if (y + h > b.bottom - 4) y = b.bottom - h - 4;
+    if (y < b.top + 4) y = b.top + 4;
     let hidden = false;
-    if (a.clip && a.alignTo) {
+    if (hideWhenClipped && a.clip && a.alignTo) {
       const c = a.clip;
       const r = a.alignTo;
       hidden = r.bottom <= c.top + 1 || r.top >= c.bottom - 1 || r.right <= c.left + 1 || r.left >= c.right - 1;
@@ -73,7 +96,25 @@ export function usePopupPosition(ref, getAnchor, deps = [], core, { track = fals
     window.addEventListener('resize', schedule);
     // capture: 그리드 바디/가로 스크롤/페이지 스크롤 모두 감지
     if (track) document.addEventListener('scroll', schedule, true);
+    // follow: 앵커 자체가 움직이는 경우(팝업 에디터 안의 필드에 붙은 목록 등) — 매 프레임 앵커·자기 크기 비교
+    let loop = 0;
+    if (follow) {
+      let last = '';
+      const tick = () => {
+        const a = getAnchor();
+        const r = a?.alignTo;
+        const el = ref.current;
+        const k = r ? `${r.left}|${r.top}|${r.width}|${r.height}|${el?.offsetWidth}|${el?.offsetHeight}` : '-';
+        if (k !== last) {
+          last = k;
+          compute();
+        }
+        loop = requestAnimationFrame(tick);
+      };
+      loop = requestAnimationFrame(tick);
+    }
     return () => {
+      if (loop) cancelAnimationFrame(loop);
       if (raf) cancelAnimationFrame(raf);
       window.removeEventListener('resize', schedule);
       if (track) document.removeEventListener('scroll', schedule, true);

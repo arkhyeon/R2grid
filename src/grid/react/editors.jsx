@@ -12,8 +12,8 @@ import React, {
 import { createPortal } from 'react-dom';
 import { cx, isPrintableKey } from '../core/utils.js';
 import { stableElement } from './renderComponent.js';
-import { Checkbox } from './common.jsx';
-import { usePopupPosition, PopupLayer, visibleClipOf } from './popup.jsx';
+import { Checkbox, Icon } from './common.jsx';
+import { usePopupPosition, PopupLayer } from './popup.jsx';
 
 // useGridCellEditor (ag-grid-react 호환) — reactive 커스텀 에디터가 콜백 등록
 const CellEditorContext = createContext(null);
@@ -273,6 +273,8 @@ function RichSelectEditor({ core, ed, params, plain }) {
     if (search) setHi(findMatch(search));
   }, [search]);
 
+  // 목록 열림: rich 는 항상, select 는 Enter 로 시작했을 때만 (AG SelectCellEditor startedByEnter 동일), 필드 클릭으로 토글
+  const [open, setOpen] = useState(() => !plain || ed.eventKey === 'Enter');
   const listRef = useRef(null);
   const boxRef = useRef(null);
   const inputRef = useRef(null);
@@ -287,7 +289,7 @@ function RichSelectEditor({ core, ed, params, plain }) {
     const top = hi * rowH;
     if (top < el.scrollTop) el.scrollTop = top;
     else if (top + rowH > el.scrollTop + el.clientHeight) el.scrollTop = top + rowH - el.clientHeight;
-  }, [hi]);
+  }, [hi, open]);
 
   const choose = v => {
     ed.setValue(v);
@@ -295,7 +297,11 @@ function RichSelectEditor({ core, ed, params, plain }) {
   };
   const typeBuffer = useRef({ text: '', t: 0 });
   const onKeyDown = e => {
-    if (e.key === 'ArrowDown') {
+    if (!open && (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === ' ')) {
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(true);
+    } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       e.stopPropagation();
       setHi(h => Math.min(shown.length - 1, h + 1));
@@ -326,15 +332,26 @@ function RichSelectEditor({ core, ed, params, plain }) {
   };
   const ItemRenderer = params.cellRenderer;
   const maxH = params.valueListMaxHeight ?? rowH * 8;
+  // AG 구조: 셀(또는 팝업 에디터) 안에는 선택값 필드만, 목록은 필드 아래 별도 팝업
+  //  → 셀 overflow 에 잘리지 않고, 셀이 스크롤로 가려져도 그리드 경계에 붙어 계속 보임
+  const fieldRef = useRef(null);
   return (
     <div
       ref={boxRef}
       tabIndex={-1}
-      className={cx('r2-rich-select r2-popup-editor', plain && 'r2-select-editor')}
+      className={cx('r2-rich-select', plain && 'r2-select-editor', ed.editor.popup ? 'r2-popup-editor' : 'r2-rich-select-inline')}
       onKeyDown={onKeyDown}
-      role="listbox"
+      role="combobox"
+      aria-expanded="true"
     >
-      <div className="r2-rich-select-value r2-picker-field-wrapper">
+      <div
+        ref={fieldRef}
+        className="r2-rich-select-value r2-picker-field-wrapper"
+        onMouseDown={e => {
+          if (e.target.tagName !== 'INPUT') e.preventDefault();
+        }}
+        onClick={() => setOpen(o => !o)}
+      >
         {params.allowTyping ? (
           <input
             ref={inputRef}
@@ -347,10 +364,13 @@ function RichSelectEditor({ core, ed, params, plain }) {
           <span className="r2-picker-field-display">{format(hi >= 0 ? shown[hi] : ed.value)}</span>
         )}
         <span className="r2-picker-field-icon">
-          <span className="r2-icon r2-icon-small-down" />
+          <Icon name="small-down" />
         </span>
       </div>
-      <div ref={listRef} className="r2-rich-select-list" style={{ maxHeight: maxH }}>
+      {open && (
+      <SelectListPopup core={core} anchorRef={fieldRef}>
+        {fitH => (
+      <div ref={listRef} className="r2-rich-select-list" role="listbox" style={{ maxHeight: fitH ? Math.min(maxH, fitH) : maxH }}>
         <div className="r2-rich-select-virtual-list-container" style={{ height: shown.length * rowH }}>
           {shown.map((v, i) => {
             const label = format(v);
@@ -383,7 +403,41 @@ function RichSelectEditor({ core, ed, params, plain }) {
           })}
         </div>
       </div>
+        )}
+      </SelectListPopup>
+      )}
     </div>
+  );
+}
+
+// 선택 목록 팝업 — 선택값 필드 바로 아래(공간 없으면 위), 스크롤 추적, 숨기지 않음
+//  className 에 r2-popup-editor 를 달아 키 입력·바깥 클릭 판정에서 에디터 일부로 취급
+function SelectListPopup({ core, anchorRef, children }) {
+  const ref = useRef(null);
+  const pos = usePopupPosition(
+    ref,
+    () => {
+      const el = anchorRef.current;
+      if (!el || !el.isConnected) return null;
+      const r = el.getBoundingClientRect();
+      return { x: r.left, y: r.bottom, minWidth: r.width, alignTo: r };
+    },
+    [],
+    core,
+    { track: true, hideWhenClipped: false, follow: true, shrink: true },
+  );
+  return createPortal(
+    <PopupLayer core={core}>
+      <div
+        ref={ref}
+        className="r2-popup-child r2-popup-editor r2-rich-select r2-select-list-popup"
+        style={{ ...pos.style, maxHeight: undefined }}
+        onPointerDown={e => e.stopPropagation()}
+      >
+        {children(pos.maxHeight ? pos.maxHeight - 2 : undefined)}
+      </div>
+    </PopupLayer>,
+    core.getPopupParent(),
   );
 }
 
@@ -466,7 +520,7 @@ export function EditorHost({ core, ed, getCellEl }) {
 
 function PopupEditor({ core, ed, getCellEl, children }) {
   const ref = useRef(null);
-  // 셀에 붙어서 스크롤을 따라가고, 셀이 바디 밖으로 나가면 숨김
+  // 셀에 붙어서 스크롤을 따라가고, 셀이 바디 밖으로 나가도 그리드 경계에 붙어 계속 보임
   const pos = usePopupPosition(
     ref,
     () => {
@@ -474,11 +528,11 @@ function PopupEditor({ core, ed, getCellEl, children }) {
       if (!el || !el.isConnected) return null;
       const r = el.getBoundingClientRect();
       const under = ed.editor.popupPosition === 'under';
-      return { x: r.left, y: under ? r.bottom : r.top, minWidth: r.width, alignTo: r, clip: visibleClipOf(el) };
+      return { x: r.left, y: under ? r.bottom : r.top, minWidth: r.width, alignTo: r };
     },
     [ed],
     core,
-    { track: true },
+    { track: true, hideWhenClipped: false },
   );
   return createPortal(
     <PopupLayer core={core}>

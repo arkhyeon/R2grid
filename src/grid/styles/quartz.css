@@ -1627,7 +1627,19 @@
   gap: var(--r2-spacing);
   height: var(--r2-row-height);
   padding: 0 calc(var(--r2-cell-horizontal-padding) - 1px);
-  border-bottom: solid 1px var(--r2-border-color);
+}
+/* 셀 안 선택값 필드 (cellEditorPopup 아님) — 셀을 꽉 채움, 목록은 별도 팝업 */
+.r2-rich-select-inline {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.r2-rich-select-inline .r2-rich-select-value {
+  height: 100%;
 }
 .r2-rich-select-value .r2-input-field-input {
   min-height: 0;

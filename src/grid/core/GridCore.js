@@ -2497,7 +2497,8 @@ export class GridCore {
       const registered = this.gos.components?.[comp];
       if (registered) comp = registered;
     }
-    if (comp === 'agRichSelectCellEditor' || comp === 'agLargeTextCellEditor') popup = popup ?? true;
+    // AG v34: agRichSelect/agSelect 는 isPopup()=false (셀 안 필드 + 목록 팝업), agLargeText 만 팝업
+    if (comp === 'agLargeTextCellEditor') popup = popup ?? true;
     return {
       comp,
       params: editorParams,
