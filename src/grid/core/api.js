@@ -485,6 +485,11 @@ export function createApi(core) {
     getCurrentUndoSize: () => core.undoStack?.length ?? 0,
     getCurrentRedoSize: () => core.redoStack?.length ?? 0,
 
+    // ── 행 드롭 영역 ──
+    addRowDropZone: params => core.addRowDropZone(params),
+    removeRowDropZone: params => core.removeRowDropZone(params),
+    getRowDropZoneParams: events => core.getRowDropZoneParams(events),
+
     // ── 그리드 상태 ──
     getState: () => core.getState(),
     setState: (state, propertiesToIgnore) => core.applyGridState(state, { ignore: propertiesToIgnore || [] }),

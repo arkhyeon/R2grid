@@ -41,6 +41,7 @@ const ICONS = {
   grip: 'M12 8h.01M20 8h.01M12 16h.01M20 16h.01M12 24h.01M20 24h.01',
   group: 'M5 8h22M10 16h17M10 24h17',
   aggregation: 'M24 7H8l8 9-8 9h16',
+  pivot: 'M6 6h20v20H6zM6 12h20M12 12v14',
   chart: 'M6 26h20M10 22v-7M16 22V8M22 22v-11',
   settings: 'M16 12a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM16 4v4M16 24v4M4 16h4M24 16h4M7.5 7.5l2.8 2.8M21.7 21.7l2.8 2.8M7.5 24.5l2.8-2.8M21.7 10.3l2.8-2.8',
   plus: 'M16 7v18M7 16h18',

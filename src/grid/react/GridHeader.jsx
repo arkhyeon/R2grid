@@ -6,6 +6,7 @@ import { Checkbox, Icon } from './common.jsx';
 import { stableElement } from './renderComponent.js';
 import { PopupLayer } from './popup.jsx';
 import { FloatingFilterCell } from './filters.jsx';
+import { canDropInZone, dropIntoZone } from './columnDrop.jsx';
 
 // 그룹이 없는(패딩) 레벨을 컬럼 헤더가 위로 덮는지 — AG 기본, colDef.suppressSpanHeaderHeight 로 끔
 const spansHeaderHeight = col => !col.colDef.suppressSpanHeaderHeight;
@@ -354,15 +355,13 @@ function useColumnDrag(core) {
       const rootRect = core.eRoot?.getBoundingClientRect();
       const outside =
         rootRect && (ev.clientY < rootRect.top - 30 || ev.clientY > rootRect.bottom + 30 || ev.clientX < rootRect.left - 30 || ev.clientX > rootRect.right + 30);
-      // 행 그룹 패널 위 (enableRowGroup 컬럼만 — AG 동일)
-      const overPanel =
-        !outside &&
-        !!col.colDef.enableRowGroup &&
-        !!document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('.r2-row-group-panel') &&
-        core.eRoot.contains(document.elementFromPoint(ev.clientX, ev.clientY));
-      state.current.ghost = { ...state.current.ghost, x: ev.clientX, y: ev.clientY, hidden: outside, group: overPanel };
+      // 드롭 영역(행 그룹/값/열 레이블) 위 — 해당 역할 허용 컬럼만 (enableRowGroup/enableValue/enablePivot, AG 동일)
+      const hit = document.elementFromPoint(ev.clientX, ev.clientY);
+      const zoneEl = !outside && hit?.closest?.('.r2-column-drop[data-kind]');
+      const zone = zoneEl && core.eRoot.contains(zoneEl) && canDropInZone(col, zoneEl.dataset.kind) ? zoneEl.dataset.kind : null;
+      state.current.ghost = { ...state.current.ghost, x: ev.clientX, y: ev.clientY, hidden: outside, zone, zoneEl: zone ? zoneEl : null };
       force();
-      if (outside || overPanel) return;
+      if (outside || zone) return;
       // 포인터 아래 헤더 셀 → 이동 위치 계산
       const headerRow = core.eRoot?.querySelector('.r2-header-row-column');
       const y = headerRow ? headerRow.getBoundingClientRect().top + 5 : ev.clientY;
@@ -392,8 +391,16 @@ function useColumnDrag(core) {
       const g = state.current.ghost;
       state.current.ghost = null;
       force();
-      if (g?.group) {
-        if (!core.rowGroupColumns().includes(col)) core.api.addRowGroupColumns([col]);
+      if (g?.zone) {
+        // 놓은 위치 기준 삽입 순서
+        const chips = [...(g.zoneEl?.querySelectorAll('.r2-column-drop-cell') || [])];
+        const horizontal = g.zoneEl?.classList.contains('r2-column-drop-horizontal');
+        let idx = chips.findIndex(ch => {
+          const r = ch.getBoundingClientRect();
+          return horizontal ? ev.clientX < r.left + r.width / 2 : ev.clientY < r.top + r.height / 2;
+        });
+        if (idx < 0) idx = chips.length;
+        dropIntoZone(core, g.zone, col, idx);
       } else if (g?.hidden && !core.gos.suppressDragLeaveHidesColumns && !col.colDef.lockVisible) {
         core.setColumnsVisible([col], false, 'uiColumnDragged');
       }
@@ -408,7 +415,7 @@ function useColumnDrag(core) {
         <PopupLayer core={core}>
           <div ref={ghostRef} className="r2-dnd-ghost r2-unselectable" style={{ position: 'fixed', left: g.x + 12, top: g.y + 12 }}>
             <span className="r2-dnd-ghost-icon r2-shake-left-to-right">
-              <Icon name={g.group ? 'group' : g.hidden ? 'eye-slash' : 'arrows'} />
+              <Icon name={g.zone === 'rowGroup' ? 'group' : g.zone === 'values' ? 'aggregation' : g.zone === 'pivot' ? 'pivot' : g.hidden ? 'eye-slash' : 'arrows'} />
             </span>
             <div className="r2-dnd-ghost-label">{g.name}</div>
           </div>

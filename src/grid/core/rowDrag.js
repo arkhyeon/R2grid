@@ -90,6 +90,72 @@ export const rowDragMethods = {
     this.dispatch('rowDragLeave', this.dragEventParams('rowDragLeave', -1, 0, event, null));
   },
 
+  // ── 행 드롭 영역 (다른 그리드/임의 요소로 행 끌어 놓기 — AG addRowDropZone) ──
+  //  params: { getContainer(): HTMLElement, onDragEnter?, onDragLeave?, onDragging?, onDragStop?, onDragCancel? }
+  addRowDropZone(params) {
+    if (!params || typeof params.getContainer !== 'function') return;
+    if (!this.rowDropZones) this.rowDropZones = [];
+    if (this.rowDropZones.some(z => z.params === params)) return;
+    this.rowDropZones.push({ params, inside: false });
+  },
+
+  removeRowDropZone(params) {
+    if (!this.rowDropZones) return;
+    const el = params?.getContainer?.();
+    this.rowDropZones = this.rowDropZones.filter(z => z.params !== params && (!el || z.params.getContainer() !== el));
+  },
+
+  // 이 그리드를 드롭 대상으로 쓰는 파라미터 — 콜백 인자에 이 그리드 기준 overIndex/overNode/y 를 채움
+  getRowDropZoneParams(events = {}) {
+    const core = this;
+    const wrap = fn => (typeof fn === 'function' ? p => fn({ ...p, ...core.rowDropTargetInfo(p.event) }) : undefined);
+    return {
+      getContainer: () => core.eRoot?.querySelector('.r2-body-viewport') || core.eRoot,
+      onDragEnter: wrap(events.onDragEnter),
+      onDragLeave: wrap(events.onDragLeave),
+      onDragging: wrap(events.onDragging),
+      onDragStop: wrap(events.onDragStop),
+      onDragCancel: wrap(events.onDragCancel),
+    };
+  },
+
+  rowDropTargetInfo(event) {
+    const vp = this.eRoot?.querySelector('.r2-body-viewport');
+    if (!vp || !event) return { overIndex: -1, overNode: undefined, y: 0 };
+    const r = vp.getBoundingClientRect();
+    const y = (this.viewport?.getScrollTop() ?? vp.scrollTop) + Math.max(0, event.clientY - r.top);
+    const count = this.getRowCountInPage?.() ?? this.displayedNodes.length;
+    const inside = y < (this.pageHeight || 0);
+    const overIndex = count && inside ? this.pageFirstRow + this.indexAtPixel(y) : -1;
+    return { overIndex, overNode: overIndex >= 0 ? this.displayedNodes[overIndex] : undefined, y };
+  },
+
+  // 드래그 중 포인터 위치로 드롭 영역 진입/이탈/이동/놓기 콜백 (phase: move | end | cancel)
+  updateRowDropZones(event, phase) {
+    const zones = this.rowDropZones;
+    const d = this.rowDragState;
+    if (!zones?.length || !d) return;
+    for (const z of zones) {
+      const el = z.params.getContainer?.();
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      const inside = event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom;
+      const base = { type: '', event, node: d.node, nodes: d.nodes, overIndex: -1, overNode: undefined, y: 0, vDirection: null, api: this.api, context: this.gos.context };
+      if (phase === 'move') {
+        if (inside && !z.inside) z.params.onDragEnter?.({ ...base, type: 'rowDragEnter' });
+        if (!inside && z.inside) z.params.onDragLeave?.({ ...base, type: 'rowDragLeave' });
+        if (inside) z.params.onDragging?.({ ...base, type: 'rowDragMove' });
+        z.inside = inside;
+      } else {
+        if (z.inside || inside) {
+          if (phase === 'cancel') z.params.onDragCancel?.({ ...base, type: 'rowDragCancel' });
+          else z.params.onDragStop?.({ ...base, type: 'rowDragEnd' });
+        }
+        z.inside = false;
+      }
+    }
+  },
+
   rowDragEnd(event, overIndex, y, cancelled = false) {
     const d = this.rowDragState;
     if (!d) return;

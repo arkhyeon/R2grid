@@ -45,7 +45,12 @@ export const AG_GRID_LOCALE_KR = {
 
   // 그룹
   group: '그룹',
-  rowGroupColumnsEmptyMessage: '여기로 끌어서 그룹 설정',
+  groups: '행 그룹',
+  values: '값',
+  pivots: '열 레이블',
+  pivotMode: '피벗 모드',
+  valueColumnsEmptyMessage: '여기로 컬럼을 끌어 값 집계',
+  noAggregation: '없음',
 
   // 컬럼 메뉴
   pinColumn: '열 고정',

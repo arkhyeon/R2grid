@@ -8,14 +8,22 @@ import { stableElement } from './renderComponent.js';
 import { ColumnChooserList } from './menus.jsx';
 import { FiltersToolPanel } from './filters.jsx';
 import { PopupLayer } from './popup.jsx';
+import { ColumnDropZone, PivotModeToggle } from './columnDrop.jsx';
 
 // ── 사이드바 ───────────────────────────────────────────────
 function ToolPanelContent({ core, tp }) {
   const comp = typeof tp.toolPanel === 'string' && !core.gos.components?.[tp.toolPanel] ? canonName(tp.toolPanel) : tp.toolPanel;
   if (comp === 'agColumnsToolPanel') {
+    // AG 컬럼 툴패널: 피벗 모드 토글 / 컬럼 목록 / 행 그룹·값·열 레이블 드롭 영역 (toolPanelParams 로 개별 숨김)
+    const p = tp.toolPanelParams || {};
+    const pivot = core.isPivotActive();
     return (
       <div className="r2-column-panel">
-        <ColumnChooserList core={core} />
+        {!p.suppressPivotMode && <PivotModeToggle core={core} />}
+        <ColumnChooserList core={core} toolPanel showSearch={!p.suppressColumnFilter} />
+        {!p.suppressRowGroups && <ColumnDropZone core={core} kind="rowGroup" />}
+        {!p.suppressValues && <ColumnDropZone core={core} kind="values" />}
+        {pivot && !p.suppressPivots && <ColumnDropZone core={core} kind="pivot" />}
       </div>
     );
   }
@@ -91,34 +99,19 @@ function ToolPanelWrapper({ hidden, tp, children }) {
 }
 
 // ── 행 그룹 패널 (rowGroupPanelShow: 'always' | 'onlyWhenGrouping') ──
+// pivotPanelShow: 'always' | 'onlyWhenPivoting' — 피벗 모드일 때 같은 줄에 열 레이블 영역 (AG 동일)
 export function RowGroupPanel({ core }) {
   const show = core.gos.rowGroupPanelShow;
+  const pshow = core.gos.pivotPanelShow;
   const cols = core.isClientSide() ? core.rowGroupColumns() : [];
-  if (show !== 'always' && !(show === 'onlyWhenGrouping' && cols.length)) return null;
+  const pivot = core.isPivotActive();
+  const showGroups = show === 'always' || (show === 'onlyWhenGrouping' && cols.length > 0);
+  const showPivots = pivot && (pshow === 'always' || (pshow === 'onlyWhenPivoting' && core.pivotColumns().length > 0));
+  if (!showGroups && !showPivots) return null;
   return (
     <div className="r2-column-drop-wrapper" role="presentation">
-      <div className="r2-column-drop r2-column-drop-horizontal r2-row-group-panel" role="toolbar">
-        <span className="r2-column-drop-title-bar">
-          <Icon name="group" className="r2-column-drop-icon" />
-        </span>
-        {!cols.length && <span className="r2-column-drop-empty-message">{localeText(core, 'rowGroupColumnsEmptyMessage')}</span>}
-        {cols.map((c, i) => (
-          <React.Fragment key={c.colId}>
-            {i > 0 && <Icon name="small-right" className="r2-column-drop-cell-divider" />}
-            <span className="r2-column-drop-cell" col-id={c.colId}>
-              <span className="r2-column-drop-cell-text">{core.getDisplayName(c)}</span>
-              <span
-                className="r2-column-drop-cell-button"
-                role="button"
-                aria-label="remove"
-                onClick={() => core.api.removeRowGroupColumns([c])}
-              >
-                <Icon name="cross" />
-              </span>
-            </span>
-          </React.Fragment>
-        ))}
-      </div>
+      {showGroups && <ColumnDropZone core={core} kind="rowGroup" horizontal />}
+      {showPivots && <ColumnDropZone core={core} kind="pivot" horizontal />}
     </div>
   );
 }

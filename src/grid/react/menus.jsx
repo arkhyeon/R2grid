@@ -8,6 +8,7 @@ import { PopupLayer, useClickOutside, usePopupPosition, visibleClipOf } from './
 import { FilterUI } from './filters.jsx';
 import { AdvancedFilterBuilderPopup } from './advancedFilter.jsx';
 import { CHART_TYPES } from '../core/charts.js';
+import { dropIntoZone, removeFromZone, setDragColumn } from './columnDrop.jsx';
 
 // ── 메뉴 아이템 정규화 ─────────────────────────────────────
 function builtinItem(core, key, params) {
@@ -258,12 +259,30 @@ export function ContextMenuPopup({ core, popup }) {
 }
 
 // ── 컬럼 선택기 (columnsMenuTab / 컬럼 툴패널 / columnChooser 공용) ──
-export function ColumnChooserList({ core, showSearch = true }) {
+export function ColumnChooserList({ core, showSearch = true, toolPanel = false }) {
   const [search, setSearch] = useState('');
-  const cols = core.allColumns.filter(c => !c.colDef.suppressColumnsToolPanel && !c.isAuto);
+  const pivotUi = toolPanel && core.isPivotActive();
+  const cols = core.allColumns.filter(c => !c.colDef.suppressColumnsToolPanel && !c.isAuto && !c.isPivotResult);
+  // 피벗 모드: 체크 = 값/행 그룹/피벗 중 허용된 첫 역할에 넣기·빼기 (AG 컬럼 툴패널 동일)
+  const pivotRole = c => (c.colDef.enableValue ? 'values' : c.colDef.enableRowGroup ? 'rowGroup' : c.colDef.enablePivot ? 'pivot' : null);
+  // 어느 영역(값/행 그룹/열 레이블)에든 들어 있으면 체크
+  const rolesOf = c => [
+    !!c.colDef.aggFunc && 'values',
+    core.rowGroupColumns().includes(c) && 'rowGroup',
+    core.pivotColumns().includes(c) && 'pivot',
+  ].filter(Boolean);
+  const inRole = c => rolesOf(c).length > 0;
+  const toggleRole = c => {
+    const roles = rolesOf(c);
+    if (roles.length) roles.forEach(r => removeFromZone(core, r, c));
+    else if (pivotRole(c)) dropIntoZone(core, pivotRole(c), c);
+  };
+  const isOn = c => (pivotUi ? inRole(c) : c.visible);
+  const toggle = c => (pivotUi ? toggleRole(c) : !c.colDef.lockVisible && core.setColumnsVisible([c], !c.visible, 'toolPanelUi'));
+  const canDrag = c => toolPanel && (c.colDef.enableRowGroup || c.colDef.enableValue || c.colDef.enablePivot);
   const s = search.trim().toLowerCase();
-  const shown = s ? cols.filter(c => core.getDisplayName(c).toLowerCase().includes(s)) : cols;
-  const visibleCount = shown.filter(c => c.visible).length;
+  const shown = s ? cols.filter(c => core.getDisplayName(c, true).toLowerCase().includes(s)) : cols;
+  const visibleCount = shown.filter(isOn).length;
   const allState = !shown.length ? false : visibleCount === shown.length ? true : visibleCount === 0 ? false : null;
   return (
     <div className="r2-column-select" role="presentation">
@@ -271,7 +290,11 @@ export function ColumnChooserList({ core, showSearch = true }) {
         <Checkbox
           className="r2-column-select-header-checkbox"
           checked={allState}
-          onToggle={() => core.setColumnsVisible(shown.filter(c => !c.colDef.lockVisible), allState !== true, 'toolPanelUi')}
+          onToggle={() =>
+            pivotUi
+              ? shown.filter(c => isOn(c) === (allState === true)).forEach(toggleRole)
+              : core.setColumnsVisible(shown.filter(c => !c.colDef.lockVisible), allState !== true, 'toolPanelUi')
+          }
         />
         {showSearch && (
           <div className="r2-column-select-header-filter-wrapper r2-text-field r2-input-field">
@@ -289,18 +312,25 @@ export function ColumnChooserList({ core, showSearch = true }) {
         {shown.map(c => (
           <div
             key={c.colId}
-            className="r2-column-select-column"
+            className={cx('r2-column-select-column', canDrag(c) && 'r2-column-select-column-draggable')}
             style={{ paddingLeft: 8 + c.groupChain.length * 16 }}
             role="treeitem"
-            onClick={() => !c.colDef.lockVisible && core.setColumnsVisible([c], !c.visible, 'toolPanelUi')}
+            draggable={canDrag(c) || undefined}
+            onDragStart={canDrag(c) ? e => setDragColumn(e, c, null) : undefined}
+            onClick={() => toggle(c)}
           >
+            {canDrag(c) && (
+              <span className="r2-column-select-column-drag-handle">
+                <Icon name="grip" />
+              </span>
+            )}
             <Checkbox
               className="r2-column-select-checkbox"
-              checked={c.visible}
-              disabled={!!c.colDef.lockVisible}
-              onToggle={() => core.setColumnsVisible([c], !c.visible, 'toolPanelUi')}
+              checked={isOn(c)}
+              disabled={!pivotUi && !!c.colDef.lockVisible}
+              onToggle={() => toggle(c)}
             />
-            <span className="r2-column-select-column-label">{core.getDisplayName(c)}</span>
+            <span className="r2-column-select-column-label">{core.getDisplayName(c, true)}</span>
           </div>
         ))}
       </div>

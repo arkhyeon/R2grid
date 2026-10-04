@@ -855,6 +855,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
         setDragGhost({ text, x: ev.clientX, y: ev.clientY });
       }
       setDragGhost(gh => gh && { ...gh, x: ev.clientX, y: ev.clientY });
+      core.updateRowDropZones(ev, 'move');
       const rr = rootRect();
       const outside = rr && (ev.clientX < rr.left || ev.clientX > rr.right || ev.clientY < rr.top || ev.clientY > rr.bottom);
       if (outside) {
@@ -881,6 +882,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       if (!dragging) return;
       document.body.classList.remove('r2-dnd-dragging');
       setDragGhost(null);
+      core.updateRowDropZones(ev, ev.type === 'pointercancel' ? 'cancel' : 'end');
       const o = overIndexAt(ev.clientY);
       core.rowDragEnd(ev, o.index, o.y, ev.type === 'pointercancel');
       core.__suppressRowClick = true;

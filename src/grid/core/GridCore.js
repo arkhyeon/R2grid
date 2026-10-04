@@ -858,7 +858,8 @@ export class GridCore {
     return (keys || []).map(k => this.getColumn(k)).filter(Boolean);
   }
 
-  getDisplayName(column) {
+  // plain=true: 집계 접두("sum(…)") 없이 이름만 (드롭 영역 칩)
+  getDisplayName(column, plain = false) {
     if (!column) return '';
     const cd = column.colDef;
     if (cd.headerValueGetter) {
@@ -870,7 +871,7 @@ export class GridCore {
     else if (column.isAuto) return '';
     else name = camelToHuman(cd.field ?? column.colId);
     // 그룹 집계 컬럼: "sum(가격)" (suppressAggFuncInHeader 로 끔)
-    if ((this.groupMode || this.isPivotActive()) && cd.aggFunc && !this.gos.suppressAggFuncInHeader && column.autoType !== 'group' && !column.isPivotResult) {
+    if (!plain && (this.groupMode || this.isPivotActive()) && cd.aggFunc && !this.gos.suppressAggFuncInHeader && column.autoType !== 'group' && !column.isPivotResult) {
       const fnName = typeof cd.aggFunc === 'string' ? cd.aggFunc : 'func';
       return `${fnName}(${name})`;
     }
