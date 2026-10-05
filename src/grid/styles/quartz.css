@@ -216,7 +216,9 @@
   overflow: visible;
 }
 .r2-header-span-height {
-  background-color: var(--r2-header-background-color);
+  /* 헤더색은 반투명일 수 있어 그대로면 아래 행 경계선이 비침 → 그리드 배경 위에 헤더색을 겹쳐 불투명하게 */
+  background-color: var(--r2-background-color);
+  background-image: linear-gradient(var(--r2-header-background-color), var(--r2-header-background-color));
   z-index: 1;
 }
 .r2-header-cell,
@@ -807,6 +809,12 @@
 .r2-column-drop-cell {
   position: relative;
   cursor: grab;
+}
+.r2-column-select-column[data-insert-before] {
+  box-shadow: inset 0 2px 0 var(--r2-accent-color, #2196f3);
+}
+.r2-column-select-column[data-insert-after] {
+  box-shadow: inset 0 -2px 0 var(--r2-accent-color, #2196f3);
 }
 .r2-column-drop-cell-drag-handle,
 .r2-column-select-column-drag-handle {

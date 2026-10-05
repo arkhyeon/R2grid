@@ -8,7 +8,7 @@ import { PopupLayer, useClickOutside, usePopupPosition, visibleClipOf } from './
 import { FilterUI } from './filters.jsx';
 import { AdvancedFilterBuilderPopup } from './advancedFilter.jsx';
 import { CHART_TYPES } from '../core/charts.js';
-import { dropIntoZone, removeFromZone, setDragColumn } from './columnDrop.jsx';
+import { DND_TYPE, dropIntoZone, removeFromZone, setDragColumn } from './columnDrop.jsx';
 
 // ── 메뉴 아이템 정규화 ─────────────────────────────────────
 function builtinItem(core, key, params) {
@@ -279,9 +279,59 @@ export function ColumnChooserList({ core, showSearch = true, toolPanel = false }
   };
   const isOn = c => (pivotUi ? inRole(c) : c.visible);
   const toggle = c => (pivotUi ? toggleRole(c) : !c.colDef.lockVisible && core.setColumnsVisible([c], !c.visible, 'toolPanelUi'));
-  const canDrag = c => toolPanel && (c.colDef.enableRowGroup || c.colDef.enableValue || c.colDef.enablePivot);
+  // 끌기: 목록 안 순서 변경(suppressMovable·lockPosition 제외) 또는 드롭 영역으로 (AG 컬럼 툴패널 동일)
+  const movable = c => !c.colDef.suppressMovable && !c.colDef.lockPosition;
+  const canDrag = c => toolPanel && (movable(c) || c.colDef.enableRowGroup || c.colDef.enableValue || c.colDef.enablePivot);
   const s = search.trim().toLowerCase();
   const shown = s ? cols.filter(c => core.getDisplayName(c, true).toLowerCase().includes(s)) : cols;
+  const listRef = useRef(null);
+  const [insertAt, setInsertAt] = useState(null); // 삽입 표시 위치 (shown 인덱스)
+  const indexAt = e => {
+    const items = [...(listRef.current?.querySelectorAll('.r2-column-select-column') || [])];
+    const i = items.findIndex(it => {
+      const r = it.getBoundingClientRect();
+      return e.clientY < r.top + r.height / 2;
+    });
+    return i < 0 ? items.length : i;
+  };
+  const listDnd = toolPanel
+    ? {
+        onDragOver: e => {
+          if (![...e.dataTransfer.types].includes(DND_TYPE)) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          const i = indexAt(e);
+          if (i !== insertAt) setInsertAt(i);
+        },
+        onDragLeave: e => {
+          if (!e.currentTarget.contains(e.relatedTarget)) setInsertAt(null);
+        },
+        onDrop: e => {
+          setInsertAt(null);
+          let d;
+          try {
+            d = JSON.parse(e.dataTransfer.getData(DND_TYPE) || 'null');
+          } catch {
+            d = null;
+          }
+          const col = d && core.getColumn(d.colId);
+          if (!col) return;
+          e.preventDefault();
+          // 드롭 영역 칩을 목록에 놓으면 그 영역에서 빼기
+          if (d.from) {
+            removeFromZone(core, d.from, col);
+            return;
+          }
+          if (!movable(col)) return;
+          const i = indexAt(e);
+          const rest = core.allColumns.filter(c => c !== col);
+          const target = shown.filter(c => c !== col)[shown.slice(0, i).filter(c => c !== col).length];
+          const lastShown = shown.filter(c => c !== col).at(-1);
+          const toIndex = target ? rest.indexOf(target) : lastShown ? rest.indexOf(lastShown) + 1 : rest.length;
+          if (core.allColumns.indexOf(col) !== toIndex) core.moveColumns([col], toIndex, 'toolPanelUi');
+        },
+      }
+    : {};
   const visibleCount = shown.filter(isOn).length;
   const allState = !shown.length ? false : visibleCount === shown.length ? true : visibleCount === 0 ? false : null;
   return (
@@ -308,10 +358,12 @@ export function ColumnChooserList({ core, showSearch = true, toolPanel = false }
           </div>
         )}
       </div>
-      <div className="r2-column-select-list" role="tree">
-        {shown.map(c => (
+      <div ref={listRef} className="r2-column-select-list" role="tree" {...listDnd}>
+        {shown.map((c, i) => (
           <div
             key={c.colId}
+            data-insert-before={insertAt === i || undefined}
+            data-insert-after={insertAt === shown.length && i === shown.length - 1 ? true : undefined}
             className={cx('r2-column-select-column', canDrag(c) && 'r2-column-select-column-draggable')}
             style={{ paddingLeft: 8 + c.groupChain.length * 16 }}
             role="treeitem"

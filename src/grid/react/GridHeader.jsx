@@ -363,8 +363,9 @@ function useColumnDrag(core) {
       force();
       if (outside || zone) return;
       // 포인터 아래 헤더 셀 → 이동 위치 계산
-      const headerRow = core.eRoot?.querySelector('.r2-header-row-column');
-      const y = headerRow ? headerRow.getBoundingClientRect().top + 5 : ev.clientY;
+      // 보이는(높이 있는) 컬럼 헤더 행의 아래쪽 — 빈 고정 영역 행(높이 0)이나 위로 늘린 셀 영향 없음
+      const headerRow = [...(core.eRoot?.querySelectorAll('.r2-header-row-column') || [])].find(r => r.offsetHeight > 0 && r.closest('.r2-root') === core.eRoot.querySelector('.r2-root'));
+      const y = headerRow ? headerRow.getBoundingClientRect().bottom - 5 : ev.clientY;
       const under = document.elementFromPoint(ev.clientX, y)?.closest?.('.r2-header-cell[col-id]');
       if (!under || !core.eRoot.contains(under)) return;
       const targetId = under.getAttribute('col-id');
