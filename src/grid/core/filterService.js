@@ -34,11 +34,11 @@ export function resolveFilterKind(colDef, components) {
   if (!f) return null;
   if (f === true) return 'set'; // 엔터프라이즈 기본: Set 필터
   if (typeof f === 'string') {
-    if (f === 'agTextColumnFilter') return 'text';
-    if (f === 'agNumberColumnFilter') return 'number';
-    if (f === 'agDateColumnFilter') return 'date';
-    if (f === 'agSetColumnFilter') return 'set';
-    if (f === 'agMultiColumnFilter') return 'set';
+    if (f === 'r2TextColumnFilter') return 'text';
+    if (f === 'r2NumberColumnFilter') return 'number';
+    if (f === 'r2DateColumnFilter') return 'date';
+    if (f === 'r2SetColumnFilter') return 'set';
+    if (f === 'r2MultiColumnFilter') return 'set';
     if (components && components[f]) return 'custom';
     return 'text';
   }

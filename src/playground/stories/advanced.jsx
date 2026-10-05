@@ -1,6 +1,5 @@
-// 추가 기능 스토리: 그리드 상태 / 일괄 편집 / 컬럼 툴패널·드롭 영역 / 그리드 간 행 드래그 / 컬럼 호버 / R2 이름
+// 추가 기능 스토리: 그리드 상태 / 일괄 편집 / 컬럼 툴패널·드롭 영역 / 그리드 간 행 드래그 / 컬럼 호버
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { R2Grid } from '../../grid/index.js';
 import { BASE_COLUMNS, SALES, SAMPLE } from '../data.js';
 import { Grid } from './_shared.jsx';
 
@@ -66,9 +65,9 @@ function BatchEditDemo({ ctx }) {
     () => [
       { field: 'id', width: 70 },
       { field: 'taskName', headerName: '작업명', editable: true, width: 160 },
-      { field: 'dbms', editable: true, cellEditor: 'agSelectCellEditor', cellEditorParams: { values: ['Oracle', 'MySQL', 'PostgreSQL', 'Tibero', 'MSSQL'] }, width: 130 },
+      { field: 'dbms', editable: true, cellEditor: 'r2SelectCellEditor', cellEditorParams: { values: ['Oracle', 'MySQL', 'PostgreSQL', 'Tibero', 'MSSQL'] }, width: 130 },
       { field: 'rowCnt', headerName: '행 수', editable: true, width: 120 },
-      { field: 'status', headerName: '상태', editable: true, cellEditor: 'agRichSelectCellEditor', cellEditorParams: { values: ['대기', '진행', '완료', '오류'] }, width: 110 },
+      { field: 'status', headerName: '상태', editable: true, cellEditor: 'r2RichSelectCellEditor', cellEditorParams: { values: ['대기', '진행', '완료', '오류'] }, width: 110 },
     ],
     [],
   );
@@ -177,47 +176,7 @@ function RowDropZoneDemo({ ctx }) {
   );
 }
 
-// ── R2 이름 ──
-function R2NamesDemo() {
-  return (
-    <div style={{ height: 300 }}>
-      <R2Grid
-        rowData={SAMPLE.slice(0, 40)}
-        columnDefs={[
-          { field: 'taskName', headerName: '작업명', filter: 'r2TextColumnFilter', width: 160 },
-          { field: 'dbms', filter: 'r2SetColumnFilter', editable: true, cellEditor: 'r2SelectCellEditor', cellEditorParams: { values: ['Oracle', 'MySQL', 'PostgreSQL'] } },
-          { field: 'useYn', headerName: '사용', cellRenderer: 'r2CheckboxCellRenderer', width: 90 },
-          { field: 'history', headerName: '추이', cellRenderer: 'r2SparklineCellRenderer', width: 140 },
-        ]}
-        rowSelection={{ mode: 'multiRow' }}
-        statusBar={{ statusPanels: [{ statusPanel: 'r2TotalAndFilteredRowCountComponent' }, { statusPanel: 'r2SelectedRowCountComponent' }] }}
-      />
-    </div>
-  );
-}
-
 export default [
-  {
-    id: 'r2-names',
-    category: '시작하기',
-    name: 'R2 이름 (별칭)',
-    desc: 'AG 이름 그대로 동작하면서, 나중에 R2 이름으로 바꿀 수 있게 별칭을 함께 받습니다.\n컴포넌트 R2Grid(=AgGridReact), 내장 이름 r2TextColumnFilter·r2SelectCellEditor·r2GroupCellRenderer·r2ColumnsToolPanel·r2TotalRowCountComponent …(ag 접두 → r2), colId 조회 r2-Grid-SelectionColumn 등. CLM 브랜치에선 import 경로 \'r2grid\' 도 연결돼 있습니다.',
-    keywords: ['R2Grid', 'r2grid', 'R2_GRID_LOCALE_KR', 'r2TextColumnFilter', 'r2SelectCellEditor', 'r2-Grid-SelectionColumn', '별칭', 'alias', 'AgGridReact'],
-    controls: [],
-    render: () => <R2NamesDemo />,
-    code: () => `import { R2Grid } from 'r2grid'; // = import { AgGridReact } from 'ag-grid-react'
-
-<R2Grid
-  columnDefs={[
-    { field: 'taskName', filter: 'r2TextColumnFilter' },        // = agTextColumnFilter
-    { field: 'dbms', cellEditor: 'r2SelectCellEditor', editable: true },
-    { field: 'useYn', cellRenderer: 'r2CheckboxCellRenderer' },
-  ]}
-  statusBar={{ statusPanels: [{ statusPanel: 'r2TotalAndFilteredRowCountComponent' }] }}
-/>
-
-api.getColumn('r2-Grid-SelectionColumn'); // = 'ag-Grid-SelectionColumn' (실제 colId 는 AG 와 동일)`,
-  },
   {
     id: 'grid-state',
     category: 'UI 구성',
@@ -232,13 +191,13 @@ const state = gridRef.current.api.getState();
 localStorage.setItem('myGrid', JSON.stringify(state));
 
 // 복원 (그리드 생성 시)
-<AgGridReact initialState={JSON.parse(localStorage.getItem('myGrid') || 'null')} ... />
+<R2Grid initialState={JSON.parse(localStorage.getItem('myGrid') || 'null')} ... />
 
 // 복원 (나중에) — 빠진 항목은 기본값, 두 번째 인자로 제외 가능
 api.setState(state, ['filter']);
 
 // 바뀔 때마다 저장
-<AgGridReact onStateUpdated={e => save(e.state)} ... />  // e.sources: ['sort', 'columnSizing', ...]`,
+<R2Grid onStateUpdated={e => save(e.state)} ... />  // e.sources: ['sort', 'columnSizing', ...]`,
   },
   {
     id: 'batch-edit',
@@ -254,7 +213,7 @@ api.getEditRowValues(rowNode); // { colId: 보류 값 }
 api.commitBatchEdit();         // 한 번에 반영 → cellValueChanged
 api.cancelBatchEdit();         // 전부 취소
 
-<AgGridReact
+<R2Grid
   onBatchEditingStarted={...}
   onBatchEditingStopped={e => console.log(e.changes)}
 />`,
@@ -264,14 +223,36 @@ api.cancelBatchEdit();         // 전부 취소
     category: '그룹 · 집계 · 피벗',
     name: '컬럼 툴패널 · 드롭 영역',
     desc: "AG 컬럼 툴패널: 피벗 모드 토글, 컬럼 목록, 행 그룹 / 값 / 열 레이블 영역. enableRowGroup·enableValue·enablePivot 컬럼을 목록이나 헤더에서 끌어다 놓고, 칩을 끌어 순서를 바꾸거나 밖에 놓아 뺍니다. 값 칩의 함수 이름을 누르면 집계 함수(allowedAggFuncs)를 고릅니다.\ntoolPanelParams: suppressPivotMode / suppressRowGroups / suppressValues / suppressPivots / suppressColumnFilter.",
-    keywords: ['agColumnsToolPanel', 'sideBar', 'enableRowGroup', 'enableValue', 'enablePivot', 'allowedAggFuncs', 'defaultAggFunc', 'pivotPanelShow', 'rowGroupPanelShow', 'setColumnAggFunc', 'addValueColumns', 'moveRowGroupColumn', '피벗 모드', '드롭'],
+    keywords: ['r2ColumnsToolPanel', 'sideBar', 'enableRowGroup', 'enableValue', 'enablePivot', 'allowedAggFuncs', 'defaultAggFunc', 'pivotPanelShow', 'rowGroupPanelShow', 'setColumnAggFunc', 'addValueColumns', 'moveRowGroupColumn', '피벗 모드', '드롭'],
     controls: [
-      { key: 'groupPanel', type: 'select', options: ['always', 'onlyWhenGrouping', 'never'], default: 'always', desc: 'rowGroupPanelShow' },
-      { key: 'pivotPanel', type: 'select', options: ['always', 'onlyWhenPivoting', 'never'], default: 'always', desc: 'pivotPanelShow (피벗 모드일 때)' },
+      {
+        key: 'groupPanel',
+        type: 'select',
+        default: 'always',
+        label: 'rowGroupPanelShow',
+        desc: '그리드 위 행 그룹 패널(가로 드롭 영역)을 언제 보일지. 헤더나 툴패널에서 enableRowGroup 컬럼을 끌어다 놓아 그룹을 만듭니다.',
+        options: [
+          { value: 'always', desc: '항상 표시' },
+          { value: 'onlyWhenGrouping', desc: '행 그룹이 하나 이상 있을 때만' },
+          { value: 'never', desc: '숨김 — 툴패널의 행 그룹 영역만 사용' },
+        ],
+      },
+      {
+        key: 'pivotPanel',
+        type: 'select',
+        default: 'always',
+        label: 'pivotPanelShow',
+        desc: '피벗 모드일 때 그리드 위에 열 레이블(피벗) 드롭 영역을 행 그룹 패널 옆에 보일지. 피벗 모드가 아니면 항상 숨김.',
+        options: [
+          { value: 'always', desc: '피벗 모드면 항상' },
+          { value: 'onlyWhenPivoting', desc: '피벗 컬럼이 하나 이상 있을 때만' },
+          { value: 'never', desc: '숨김' },
+        ],
+      },
     ],
     wide: true,
     render: (p, ctx) => <ColumnsToolPanelDemo p={p} ctx={ctx} />,
-    code: p => `<AgGridReact
+    code: p => `<R2Grid
   sideBar={{ toolPanels: ['columns'], defaultToolPanel: 'columns' }}
   rowGroupPanelShow="${p.groupPanel}"
   pivotPanelShow="${p.pivotPanel}"
@@ -315,8 +296,16 @@ sourceApi.addRowDropZone({
     name: '컬럼 호버 강조',
     desc: 'columnHoverHighlight: 마우스가 올라간 컬럼 전체(셀 + 헤더)를 강조합니다. api.isColumnHovered(col) 로 확인. 색은 --r2-column-hover-color.',
     keywords: ['columnHoverHighlight', 'isColumnHovered', 'r2-column-hover', '호버'],
-    controls: [{ key: 'on', type: 'boolean', default: true, desc: 'columnHoverHighlight' }],
+    controls: [{
+        key: 'on',
+        type: 'boolean',
+        default: true,
+        label: 'columnHoverHighlight',
+        desc: '마우스가 올라간 컬럼 전체(셀 + 헤더)에 r2-column-hover 클래스를 붙여 강조합니다. 색은 --r2-column-hover-color (기본 = 행 호버색).',
+        on: '세로 줄 강조',
+        off: '행 호버 강조만',
+      }],
     render: p => <Grid key={String(p.on)} rowData={SAMPLE} columnDefs={BASE_COLUMNS} columnHoverHighlight={p.on} />,
-    code: p => `<AgGridReact columnHoverHighlight={${p.on}} ... />`,
+    code: p => `<R2Grid columnHoverHighlight={${p.on}} ... />`,
   },
 ];

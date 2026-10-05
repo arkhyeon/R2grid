@@ -6,12 +6,12 @@ import { Grid } from './_shared.jsx';
 const CAT = '필터 · 정렬';
 
 const FILTER_COLS = [
-  { field: 'id', headerName: 'ID', width: 90, filter: 'agNumberColumnFilter' },
-  { field: 'taskName', headerName: '작업명', width: 150, filter: 'agTextColumnFilter' },
-  { field: 'dbms', headerName: 'DBMS', width: 120, filter: 'agSetColumnFilter' },
+  { field: 'id', headerName: 'ID', width: 90, filter: 'r2NumberColumnFilter' },
+  { field: 'taskName', headerName: '작업명', width: 150, filter: 'r2TextColumnFilter' },
+  { field: 'dbms', headerName: 'DBMS', width: 120, filter: 'r2SetColumnFilter' },
   { field: 'owner', headerName: '소유자', width: 120, filter: true },
-  { field: 'rowCnt', headerName: '행 수', width: 130, filter: 'agNumberColumnFilter', valueFormatter: p => p.value.toLocaleString() },
-  { field: 'updatedAt', headerName: '수정일', width: 130, filter: 'agDateColumnFilter', cellDataType: 'dateString' },
+  { field: 'rowCnt', headerName: '행 수', width: 130, filter: 'r2NumberColumnFilter', valueFormatter: p => p.value.toLocaleString() },
+  { field: 'updatedAt', headerName: '수정일', width: 130, filter: 'r2DateColumnFilter', cellDataType: 'dateString' },
 ];
 
 function Sorting({ p, ctx }) {
@@ -165,12 +165,40 @@ export default [
     desc: '헤더 클릭 정렬, Shift(또는 Ctrl)+클릭 다중 정렬, comparator 로 커스텀 순서, sortingOrder 로 순환 순서 지정.',
     keywords: ['sort', 'sortable', 'sortIndex', 'multiSortKey', 'sortingOrder', 'comparator', 'accentedSort', 'postSortRows', 'onSortChanged', 'applyColumnState', 'suppressMultiSort'],
     controls: [
-      { key: 'multiKey', type: 'select', options: ['shift', 'ctrl'], default: 'shift', desc: 'multiSortKey' },
-      { key: 'order', type: 'select', options: ['asc-first', 'desc-first'], default: 'asc-first', desc: 'sortingOrder' },
-      { key: 'accented', type: 'boolean', default: false, desc: 'accentedSort (localeCompare)' },
+      {
+        key: 'multiKey',
+        type: 'select',
+        default: 'shift',
+        label: 'multiSortKey',
+        desc: '여러 컬럼으로 정렬할 때 누르고 클릭할 키. 키 없이 헤더를 클릭하면 그 컬럼 하나로만 정렬합니다. 헤더에 정렬 순서 번호가 붙습니다.',
+        options: [
+          { value: 'shift', desc: 'Shift+헤더 클릭 = 정렬 컬럼 추가' },
+          { value: 'ctrl', desc: 'Ctrl(Mac ⌘)+헤더 클릭 = 정렬 컬럼 추가' },
+        ],
+      },
+      {
+        key: 'order',
+        type: 'select',
+        default: 'asc-first',
+        label: 'sortingOrder',
+        desc: '헤더를 누를 때마다 바뀌는 정렬 순환 순서.',
+        options: [
+          { value: 'asc-first', desc: "['asc','desc',null] — 오름 → 내림 → 해제" },
+          { value: 'desc-first', desc: "['desc','asc',null] — 내림 → 오름 → 해제 (최신순 목록에 적합)" },
+        ],
+      },
+      {
+        key: 'accented',
+        type: 'boolean',
+        default: false,
+        label: 'accentedSort',
+        desc: '문자열 비교를 localeCompare 로 할지. 악센트·한글 자모를 언어 규칙대로 비교하지만 대량 데이터에선 느립니다.',
+        on: '언어 규칙 비교 (느림)',
+        off: '코드값 비교 (빠름, 대부분 충분)',
+      },
     ],
     render: (p, ctx) => <Sorting p={p} ctx={ctx} />,
-    code: p => `<AgGridReact${p.multiKey === 'ctrl' ? "\n  multiSortKey=\"ctrl\"" : ''}${p.order === 'desc-first' ? "\n  sortingOrder={['desc', 'asc', null]}" : ''}${p.accented ? '\n  accentedSort' : ''}
+    code: p => `<R2Grid${p.multiKey === 'ctrl' ? "\n  multiSortKey=\"ctrl\"" : ''}${p.order === 'desc-first' ? "\n  sortingOrder={['desc', 'asc', null]}" : ''}${p.accented ? '\n  accentedSort' : ''}
   columnDefs={[
     { field: 'status', comparator: (a, b) => ORDER.indexOf(a) - ORDER.indexOf(b) },
   ]}
@@ -183,16 +211,16 @@ api.applyColumnState({ state: [{ colId: 'rowCnt', sort: 'desc' }], defaultState:
     id: 'column-filters',
     category: CAT,
     name: '컬럼 필터 (텍스트/숫자/날짜/Set)',
-    desc: '헤더의 필터 아이콘. agTextColumnFilter / agNumberColumnFilter / agDateColumnFilter / agSetColumnFilter(filter: true 기본). 조건 2개(AND/OR), setFilterModel 로 코드 제어.',
-    keywords: ['filter', 'agTextColumnFilter', 'agNumberColumnFilter', 'agDateColumnFilter', 'agSetColumnFilter', 'filterParams', 'setFilterModel', 'getFilterModel', 'setColumnFilterModel', 'getColumnFilterInstance', 'onFilterChanged', 'maxNumConditions', 'buttons', 'debounceMs', 'filterValueGetter', 'inRange'],
+    desc: '헤더의 필터 아이콘. r2TextColumnFilter / r2NumberColumnFilter / r2DateColumnFilter / r2SetColumnFilter(filter: true 기본). 조건 2개(AND/OR), setFilterModel 로 코드 제어.',
+    keywords: ['filter', 'r2TextColumnFilter', 'r2NumberColumnFilter', 'r2DateColumnFilter', 'r2SetColumnFilter', 'filterParams', 'setFilterModel', 'getFilterModel', 'setColumnFilterModel', 'getColumnFilterInstance', 'onFilterChanged', 'maxNumConditions', 'buttons', 'debounceMs', 'filterValueGetter', 'inRange'],
     controls: [],
     render: (p, ctx) => <ColumnFilters ctx={ctx} />,
     code: () => `const columnDefs = [
-  { field: 'id', filter: 'agNumberColumnFilter' },
-  { field: 'taskName', filter: 'agTextColumnFilter' },
-  { field: 'dbms', filter: 'agSetColumnFilter' },
+  { field: 'id', filter: 'r2NumberColumnFilter' },
+  { field: 'taskName', filter: 'r2TextColumnFilter' },
+  { field: 'dbms', filter: 'r2SetColumnFilter' },
   { field: 'owner', filter: true },                       // 기본 = Set 필터
-  { field: 'updatedAt', filter: 'agDateColumnFilter' },
+  { field: 'updatedAt', filter: 'r2DateColumnFilter' },
 ];
 
 api.setFilterModel({
@@ -205,7 +233,7 @@ api.setFilterModel({
   headerName: '테이블',
   field: 'tbl_name',
   flex: 0.7,
-  filter: 'agTextColumnFilter',
+  filter: 'r2TextColumnFilter',
   filterParams: { maxNumConditions: 1 },
 },`,
     },
@@ -221,7 +249,7 @@ api.setFilterModel({
     code: () => `const [text, setText] = useState('');
 
 <input value={text} onChange={e => setText(e.target.value)} />
-<AgGridReact quickFilterText={text} rowData={rowData} columnDefs={columnDefs} />`,
+<R2Grid quickFilterText={text} rowData={rowData} columnDefs={columnDefs} />`,
   },
   {
     id: 'floating-filters',
@@ -229,9 +257,17 @@ api.setFilterModel({
     name: '플로팅 필터',
     desc: 'floatingFilter: true 면 헤더 아래에 필터 입력 줄이 생깁니다. 텍스트/숫자/날짜는 바로 입력, Set·복합 조건은 요약 표시.',
     keywords: ['floatingFilter', 'floatingFilterComponent', 'floatingFilterComponentParams', 'suppressFloatingFilterButton', 'floatingFiltersHeight'],
-    controls: [{ key: 'button', type: 'boolean', default: true, desc: '필터 버튼 표시 (suppressFloatingFilterButton 반대)' }],
+    controls: [{
+        key: 'button',
+        type: 'boolean',
+        default: true,
+        label: 'suppressFloatingFilterButton (반대)',
+        desc: '플로팅 필터 칸 오른쪽의 필터 버튼 표시 여부. 버튼은 전체 필터 팝업(조건 선택·AND/OR)을 엽니다. 칸에 직접 입력하면 기본 조건(포함/같음)으로 바로 걸립니다.',
+        on: '칸 + 버튼 — 세부 조건은 버튼으로',
+        off: '입력 칸만 (suppressFloatingFilterButton: true)',
+      }],
     render: p => <Floating p={p} />,
-    code: p => `<AgGridReact
+    code: p => `<R2Grid
   defaultColDef={{ floatingFilter: true${p.button ? '' : ', suppressFloatingFilterButton: true'} }}
   columnDefs={columnDefs}
 />`,
@@ -244,7 +280,7 @@ api.setFilterModel({
     keywords: ['filter', 'useGridFilter', 'doesFilterPass', 'onModelChange', 'model', 'getValue', 'afterGuiAttached', 'isFilterActive', 'getModel', 'setModel', 'filterChangedCallback', 'reactiveCustomComponents', 'getColumnFilterInstance'],
     controls: [],
     render: (p, ctx) => <CustomFilter ctx={ctx} />,
-    code: () => `import { useGridFilter } from 'ag-grid-react';
+    code: () => `import { useGridFilter } from 'r2grid';
 
 function MinCountFilter({ model, onModelChange, getValue }) {
   const doesFilterPass = useCallback(({ node }) => getValue(node) >= model, [model]);
@@ -258,7 +294,7 @@ function MinCountFilter({ model, onModelChange, getValue }) {
   );
 }
 
-<AgGridReact columnDefs={[{ field: 'rowCnt', filter: MinCountFilter }]} />`,
+<R2Grid columnDefs={[{ field: 'rowCnt', filter: MinCountFilter }]} />`,
   },
   {
     id: 'advanced-filter',
@@ -268,7 +304,7 @@ function MinCountFilter({ model, onModelChange, getValue }) {
     keywords: ['enableAdvancedFilter', 'setAdvancedFilterModel', 'getAdvancedFilterModel', 'showAdvancedFilterBuilder', 'hideAdvancedFilterBuilder', 'includeHiddenColumnsInAdvancedFilter', 'join', 'AND', 'OR'],
     controls: [],
     render: (p, ctx) => <Advanced ctx={ctx} />,
-    code: () => `<AgGridReact enableAdvancedFilter ... />
+    code: () => `<R2Grid enableAdvancedFilter ... />
 
 // 입력줄 예:  [DBMS] = "Oracle" AND ([행 수] > 4000000 OR [상태] = "오류")
 api.setAdvancedFilterModel({
@@ -285,11 +321,24 @@ api.setAdvancedFilterModel({
     name: '외부 필터',
     desc: '그리드 밖 UI 상태로 행을 거릅니다. isExternalFilterPresent + doesExternalFilterPass, 상태가 바뀌면 api.onFilterChanged().',
     keywords: ['isExternalFilterPresent', 'doesExternalFilterPass', 'onFilterChanged'],
-    controls: [{ key: 'status', type: 'select', options: ['전체', '대기', '진행', '완료', '오류'], default: '진행' }],
+    controls: [{
+        key: 'status',
+        type: 'select',
+        default: '진행',
+        label: '외부 조건 (상태)',
+        desc: '그리드 밖 UI 값으로 거르는 외부 필터. isExternalFilterPresent() 가 true 면 doesExternalFilterPass(node) 로 행마다 판정하고, 값이 바뀌면 api.onFilterChanged() 로 다시 거릅니다. 컬럼 필터와 AND 로 결합.',
+        options: [
+          { value: '전체', desc: 'isExternalFilterPresent = false — 외부 필터 꺼짐' },
+          { value: '대기', desc: "상태가 '대기' 인 행만" },
+          { value: '진행', desc: "상태가 '진행' 인 행만" },
+          { value: '완료', desc: "상태가 '완료' 인 행만" },
+          { value: '오류', desc: "상태가 '오류' 인 행만" },
+        ],
+      }],
     render: p => <External p={p} />,
     code: p => `const statusRef = useRef('${p.status}');
 
-<AgGridReact
+<R2Grid
   isExternalFilterPresent={() => statusRef.current !== '전체'}
   doesExternalFilterPass={node => node.data.status === statusRef.current}
 />

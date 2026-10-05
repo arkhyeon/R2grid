@@ -4,7 +4,7 @@ import { RowNode } from './RowNode.js';
 import { getFieldValue, toText } from './utils.js';
 import { localeText } from './locale.js';
 
-export const AUTO_GROUP_COL_ID = 'ag-Grid-AutoColumn';
+export const AUTO_GROUP_COL_ID = 'r2-Grid-AutoColumn';
 
 const isNum = v => typeof v === 'number' && !Number.isNaN(v);
 

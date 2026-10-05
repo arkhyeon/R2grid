@@ -62,7 +62,7 @@ function Ssrm({ ctx }) {
       rowModelType="serverSide"
       serverSideDatasource={datasource}
       cacheBlockSize={100}
-      columnDefs={BASE_COLUMNS.map(c => (c.field === 'owner' ? { ...c, filter: 'agTextColumnFilter' } : c))}
+      columnDefs={BASE_COLUMNS.map(c => (c.field === 'owner' ? { ...c, filter: 'r2TextColumnFilter' } : c))}
     />
   );
 }
@@ -107,13 +107,49 @@ export default [
     desc: 'pagination + paginationPageSize / paginationAutoPageSize / paginationPageSizeSelector. 행 그룹은 최상위 행 단위로 페이지를 나누고 펼친 자식은 같은 페이지에 둡니다 (paginateChildRows 로 변경).',
     keywords: ['pagination', 'paginationPageSize', 'paginationAutoPageSize', 'paginationPageSizeSelector', 'paginateChildRows', 'suppressPaginationPanel', 'paginationGoToPage', 'paginationGetTotalPages', 'paginationGetRowCount', 'onPaginationChanged'],
     controls: [
-      { key: 'size', type: 'select', options: [10, 20, 50, 100], default: 20, desc: 'paginationPageSize' },
-      { key: 'auto', type: 'boolean', default: false, desc: 'paginationAutoPageSize (높이에 맞춤)' },
-      { key: 'grouped', type: 'boolean', default: false, desc: '행 그룹 데이터' },
-      { key: 'childRows', type: 'boolean', default: false, desc: 'paginateChildRows' },
+      {
+        key: 'size',
+        type: 'select',
+        default: 20,
+        label: 'paginationPageSize',
+        desc: '한 페이지 행 수. 하단 페이지 크기 선택(paginationPageSizeSelector)으로 사용자가 바꿀 수도 있습니다.',
+        options: [
+          { value: 10, desc: '10행' },
+          { value: 20, desc: '20행' },
+          { value: 50, desc: '50행' },
+          { value: 100, desc: '100행' },
+        ],
+      },
+      {
+        key: 'auto',
+        type: 'boolean',
+        default: false,
+        label: 'paginationAutoPageSize',
+        desc: '그리드 높이에 들어가는 만큼을 한 페이지로 자동 계산합니다. paginationPageSize 보다 우선하고, 그리드 크기가 바뀌면 다시 계산됩니다.',
+        on: '스크롤 없이 화면에 꽉 차는 행 수',
+        off: 'paginationPageSize 사용',
+      },
+      {
+        key: 'grouped',
+        type: 'boolean',
+        default: false,
+        label: '행 그룹 데이터',
+        desc: '데모 데이터를 지역으로 행 그룹. 그룹이 있을 때 페이지를 어떻게 나눌지는 아래 paginateChildRows 가 정합니다.',
+        on: '지역 그룹 + 페이지네이션',
+        off: '평평한 목록',
+      },
+      {
+        key: 'childRows',
+        type: 'boolean',
+        default: false,
+        label: 'paginateChildRows',
+        desc: '그룹(또는 마스터/디테일)이 있을 때 페이지 크기를 무엇으로 셀지.',
+        on: '펼친 하위 행까지 모두 세서 나눔 — 한 그룹이 여러 페이지에 걸칠 수 있음',
+        off: '최상위 그룹 단위로 나눔 — 그룹은 쪼개지지 않고, 펼치면 그 페이지가 길어짐',
+      },
     ],
     render: (p, ctx) => <Pagination p={p} ctx={ctx} />,
-    code: p => `<AgGridReact
+    code: p => `<R2Grid
   pagination
   paginationPageSize={${p.size}}${p.auto ? '\n  paginationAutoPageSize' : ''}
   paginationPageSizeSelector={[10, 20, 50, 100]}${p.childRows ? '\n  paginateChildRows' : ''}
@@ -151,7 +187,7 @@ export default [
   },
 }), []);
 
-<AgGridReact rowModelType="serverSide" serverSideDatasource={datasource} cacheBlockSize={100} />`,
+<R2Grid rowModelType="serverSide" serverSideDatasource={datasource} cacheBlockSize={100} />`,
     usage: {
       file: 'page/work/workGroup/work/modal/WorkGroupPlanModal.jsx',
       code: `const onGridReady = e => {
@@ -172,7 +208,18 @@ export default [
     name: '무한 스크롤 (Infinite)',
     desc: "rowModelType: 'infinite' + datasource.getRows({ startRow, endRow, sortModel, filterModel, successCallback(rows, lastRow) }). lastRow 를 모르면 -1. maxBlocksInCache 를 넘으면 오래된 블록을 버립니다.",
     keywords: ['rowModelType', 'infinite', 'datasource', 'successCallback', 'failCallback', 'lastRow', 'cacheBlockSize', 'maxBlocksInCache', 'infiniteInitialRowCount', 'cacheOverflowSize', 'purgeInfiniteCache', 'refreshInfiniteCache', 'getInfiniteRowCount', 'isLastRowIndexKnown', 'setRowCount'],
-    controls: [{ key: 'maxBlocks', type: 'select', options: [0, 3, 10], default: 0, desc: 'maxBlocksInCache (0 = 제한 없음)' }],
+    controls: [{
+        key: 'maxBlocks',
+        type: 'select',
+        default: 0,
+        label: 'maxBlocksInCache',
+        desc: '메모리에 유지할 블록(cacheBlockSize 행 단위) 수. 넘으면 가장 오래 안 본 블록을 버리고, 다시 스크롤하면 서버에서 다시 받습니다.',
+        options: [
+          { value: 0, desc: '제한 없음 — 받은 블록 전부 유지' },
+          { value: 3, desc: '3블록만 유지 — 메모리 적게, 되돌아가면 재요청' },
+          { value: 10, desc: '10블록 유지' },
+        ],
+      }],
     render: (p, ctx) => <Infinite p={p} ctx={ctx} />,
     code: p => `const datasource = {
   getRows: ({ startRow, endRow, sortModel, filterModel, successCallback, failCallback }) => {
@@ -182,6 +229,6 @@ export default [
   },
 };
 
-<AgGridReact rowModelType="infinite" datasource={datasource} cacheBlockSize={100}${p.maxBlocks ? ` maxBlocksInCache={${p.maxBlocks}}` : ''} />`,
+<R2Grid rowModelType="infinite" datasource={datasource} cacheBlockSize={100}${p.maxBlocks ? ` maxBlocksInCache={${p.maxBlocks}}` : ''} />`,
   },
 ];

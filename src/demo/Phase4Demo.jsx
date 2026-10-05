@@ -250,7 +250,7 @@ export function RowDragDemo({ log }) {
           columnDefs={useMemo(
             () => [
               { field: 'mc_id', headerName: '컬럼', rowDrag: props => props.context.editable, flex: 1.1 },
-              { field: 'comp_op', headerName: '연산자', cellEditor: 'agRichSelectCellEditor', cellEditorParams: { values: [0, 1, 2] }, valueFormatter: ({ value }) => ['=', '>', '<'][value] ?? '연산자...' },
+              { field: 'comp_op', headerName: '연산자', cellEditor: 'r2RichSelectCellEditor', cellEditorParams: { values: [0, 1, 2] }, valueFormatter: ({ value }) => ['=', '>', '<'][value] ?? '연산자...' },
               { field: 'value', headerName: '값' },
             ],
             [],
@@ -420,8 +420,8 @@ export function CustomFilterDemo({ log }) {
       rowData={rows}
       columnDefs={useMemo(
         () => [
-          { field: 'name', headerName: '이름(imperative)', filter: legacy ? PrefixFilter : 'agTextColumnFilter' },
-          { field: 'cnt', headerName: '건수(reactive)', filter: legacy ? 'agNumberColumnFilter' : 'minCountFilter' },
+          { field: 'name', headerName: '이름(imperative)', filter: legacy ? PrefixFilter : 'r2TextColumnFilter' },
+          { field: 'cnt', headerName: '건수(reactive)', filter: legacy ? 'r2NumberColumnFilter' : 'minCountFilter' },
           { field: 'grp', headerName: '그룹', rowGroup: true, hide: true },
         ],
         [legacy],

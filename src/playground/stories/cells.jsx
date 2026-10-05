@@ -59,13 +59,13 @@ function Editing({ p, ctx }) {
   const [rows] = useState(() => makeRows(40).map(r => ({ ...r, memo: `메모 ${r.id}`, due: r.updatedAt })));
   const defs = useMemo(
     () => [
-      { field: 'taskName', headerName: '텍스트 (agTextCellEditor)', width: 170 },
-      { field: 'rowCnt', headerName: '숫자 (agNumberCellEditor)', width: 160, cellEditor: 'agNumberCellEditor', cellEditorParams: { min: 0, precision: 0 } },
-      { field: 'dbms', headerName: '선택 (agSelectCellEditor)', width: 160, cellEditor: 'agSelectCellEditor', cellEditorParams: { values: ['Oracle', 'MySQL', 'PostgreSQL', 'Tibero', 'MSSQL'] } },
-      { field: 'status', headerName: '리치 선택 (팝업)', width: 140, cellEditor: 'agRichSelectCellEditor', cellEditorPopup: true, cellEditorParams: { values: ['대기', '진행', '완료', '오류'] } },
-      { field: 'memo', headerName: '긴 텍스트 (팝업)', width: 160, cellEditor: 'agLargeTextCellEditor', cellEditorPopup: true, cellEditorParams: { maxLength: 200, rows: 5 } },
+      { field: 'taskName', headerName: '텍스트 (r2TextCellEditor)', width: 170 },
+      { field: 'rowCnt', headerName: '숫자 (r2NumberCellEditor)', width: 160, cellEditor: 'r2NumberCellEditor', cellEditorParams: { min: 0, precision: 0 } },
+      { field: 'dbms', headerName: '선택 (r2SelectCellEditor)', width: 160, cellEditor: 'r2SelectCellEditor', cellEditorParams: { values: ['Oracle', 'MySQL', 'PostgreSQL', 'Tibero', 'MSSQL'] } },
+      { field: 'status', headerName: '리치 선택 (팝업)', width: 140, cellEditor: 'r2RichSelectCellEditor', cellEditorPopup: true, cellEditorParams: { values: ['대기', '진행', '완료', '오류'] } },
+      { field: 'memo', headerName: '긴 텍스트 (팝업)', width: 160, cellEditor: 'r2LargeTextCellEditor', cellEditorPopup: true, cellEditorParams: { maxLength: 200, rows: 5 } },
       { field: 'useYn', headerName: '체크', width: 80 },
-      { field: 'due', headerName: '날짜 (agDateStringCellEditor)', width: 180, cellEditor: 'agDateStringCellEditor' },
+      { field: 'due', headerName: '날짜 (r2DateStringCellEditor)', width: 180, cellEditor: 'r2DateStringCellEditor' },
     ],
     [],
   );
@@ -184,8 +184,8 @@ function Sparklines({ p }) {
   const defs = useMemo(
     () => [
       { field: 'taskName', headerName: '작업명', width: 140 },
-      { field: 'history', headerName: `월별 추이 (${p.type})`, width: 220, cellRenderer: 'agSparklineCellRenderer', cellRendererParams: { sparklineOptions: { type: p.type, direction: p.direction, marker: { enabled: p.marker, size: 4 } } } },
-      { field: 'history', colId: 'bar', headerName: '막대', width: 160, cellRenderer: 'agSparklineCellRenderer', cellRendererParams: { sparklineOptions: { type: 'bar', direction: 'vertical', fill: '#ffa03a' } } },
+      { field: 'history', headerName: `월별 추이 (${p.type})`, width: 220, cellRenderer: 'r2SparklineCellRenderer', cellRendererParams: { sparklineOptions: { type: p.type, direction: p.direction, marker: { enabled: p.marker, size: 4 } } } },
+      { field: 'history', colId: 'bar', headerName: '막대', width: 160, cellRenderer: 'r2SparklineCellRenderer', cellRendererParams: { sparklineOptions: { type: 'bar', direction: 'vertical', fill: '#ffa03a' } } },
       ...BASE_COLUMNS.slice(2, 5),
     ],
     [p.type, p.direction, p.marker],
@@ -201,8 +201,24 @@ export default [
     desc: 'valueGetter / valueFormatter / cellRenderer(함수·컴포넌트·components 등록명) / cellClassRules / cellStyle.',
     keywords: ['cellRenderer', 'cellRendererParams', 'cellRendererSelector', 'components', 'valueGetter', 'valueFormatter', 'cellClass', 'cellClassRules', 'cellStyle', 'refreshCells', 'redrawRows'],
     controls: [
-      { key: 'renderers', type: 'boolean', default: true, desc: '상태 배지 / 진행 막대 렌더러' },
-      { key: 'rules', type: 'boolean', default: true, desc: 'cellClassRules / cellStyle' },
+      {
+        key: 'renderers',
+        type: 'boolean',
+        default: true,
+        label: 'cellRenderer',
+        desc: "셀을 React 컴포넌트로 그립니다. 컴포넌트를 직접 주거나(진행률: ProgressBar), components 에 등록한 이름 문자열(상태: 'statusBadge')로 지정합니다. 렌더러는 표시만 바꾸고 정렬·필터·복사는 원래 값으로 합니다.",
+        on: '상태 = 색 배지, 진행률 = 막대',
+        off: '값 텍스트 그대로',
+      },
+      {
+        key: 'rules',
+        type: 'boolean',
+        default: true,
+        label: 'cellClassRules / cellStyle',
+        desc: 'cellClassRules: { 클래스명: 조건함수 } — 조건이 참인 셀에 CSS 클래스. cellStyle: 스타일 객체나 함수. 값이 바뀌면 다시 평가됩니다.',
+        on: '행 수 400만↑ 빨강·250만↑ 주황 (클래스), 미사용 행 흐리게 (스타일)',
+        off: '조건부 스타일 없음',
+      },
     ],
     render: p => <CellRendering p={p} />,
     code: () => `const columnDefs = [
@@ -214,7 +230,7 @@ export default [
   { field: 'useYn', cellStyle: p => (p.value ? null : { opacity: 0.4 }) },
 ];
 
-<AgGridReact columnDefs={columnDefs} components={{ statusBadge: StatusBadge }} />`,
+<R2Grid columnDefs={columnDefs} components={{ statusBadge: StatusBadge }} />`,
     usage: {
       file: 'page/work/workGroup/modal/WorkGroupPrioritySetting.jsx',
       code: `components={{
@@ -234,11 +250,19 @@ export default [
     desc: 'tooltipField / tooltipValueGetter / headerTooltip. enableBrowserTooltips 면 브라우저 기본 title 툴팁을 씁니다.',
     keywords: ['tooltipField', 'tooltipValueGetter', 'headerTooltip', 'enableBrowserTooltips', 'tooltipShowDelay', 'tooltipComponent'],
     controls: [
-      { key: 'browser', type: 'boolean', default: false, desc: 'enableBrowserTooltips' },
-      { key: 'delay', type: 'number', default: 400, desc: 'tooltipShowDelay (ms)' },
+      {
+        key: 'browser',
+        type: 'boolean',
+        default: false,
+        label: 'enableBrowserTooltips',
+        desc: '툴팁을 그리드 자체 팝업 대신 브라우저 기본 title 속성으로 띄울지. 브라우저 툴팁은 꾸밀 수 없고 지연 시간도 브라우저가 정합니다.',
+        on: '브라우저 기본 툴팁 (tooltipShowDelay 무시)',
+        off: '그리드 툴팁 — 테마 색, 지연 시간 조절 가능',
+      },
+      { key: 'delay', type: 'number', default: 400, label: 'tooltipShowDelay', desc: '마우스를 올린 뒤 툴팁이 뜨기까지 시간(ms). 그리드 툴팁에만 적용. tooltipHideDelay 로 자동 숨김 시간도 지정 가능.' },
     ],
     render: p => <Tooltips p={p} />,
-    code: p => `<AgGridReact
+    code: p => `<R2Grid
   enableBrowserTooltips={${p.browser}}
   tooltipShowDelay={${p.delay}}
   columnDefs={[
@@ -252,21 +276,45 @@ export default [
     category: CAT,
     name: '셀 편집 · 내장 에디터',
     desc: '더블클릭/Enter/F2/타이핑으로 편집, Esc 취소. 내장 에디터: text, number, select, richSelect(팝업), largeText(팝업), checkbox, date/dateString.',
-    keywords: ['editable', 'cellEditor', 'cellEditorParams', 'cellEditorPopup', 'agTextCellEditor', 'agNumberCellEditor', 'agSelectCellEditor', 'agRichSelectCellEditor', 'agLargeTextCellEditor', 'agCheckboxCellEditor', 'agDateCellEditor', 'agDateStringCellEditor', 'singleClickEdit', 'stopEditingWhenCellsLoseFocus', 'enterNavigatesVertically', 'onCellValueChanged', 'valueSetter', 'valueParser', 'startEditingCell', 'stopEditing', 'readOnlyEdit'],
+    keywords: ['editable', 'cellEditor', 'cellEditorParams', 'cellEditorPopup', 'r2TextCellEditor', 'r2NumberCellEditor', 'r2SelectCellEditor', 'r2RichSelectCellEditor', 'r2LargeTextCellEditor', 'r2CheckboxCellEditor', 'r2DateCellEditor', 'r2DateStringCellEditor', 'singleClickEdit', 'stopEditingWhenCellsLoseFocus', 'enterNavigatesVertically', 'onCellValueChanged', 'valueSetter', 'valueParser', 'startEditingCell', 'stopEditing', 'readOnlyEdit'],
     controls: [
-      { key: 'singleClickEdit', type: 'boolean', default: false },
-      { key: 'loseFocus', type: 'boolean', default: true, desc: 'stopEditingWhenCellsLoseFocus' },
-      { key: 'enterVertical', type: 'boolean', default: false, desc: 'enterNavigatesVertically(+AfterEdit)' },
+      {
+        key: 'singleClickEdit',
+        type: 'boolean',
+        default: false,
+        label: 'singleClickEdit',
+        desc: '편집 시작 동작. 기본은 더블클릭·Enter·F2·바로 타이핑으로 시작합니다.',
+        on: '셀 한 번 클릭으로 바로 편집',
+        off: '더블클릭(또는 Enter/F2/타이핑)으로 편집',
+      },
+      {
+        key: 'loseFocus',
+        type: 'boolean',
+        default: true,
+        label: 'stopEditingWhenCellsLoseFocus',
+        desc: '편집 중 그리드 밖(다른 입력창·버튼 등)을 클릭했을 때 편집을 끝낼지. 끝낼 때 입력값은 저장됩니다.',
+        on: '바깥 클릭 = 값 저장하고 편집 종료',
+        off: '바깥 클릭해도 편집 상태 유지 (Enter/Esc 로 종료)',
+      },
+      {
+        key: 'enterVertical',
+        type: 'boolean',
+        default: false,
+        label: 'enterNavigatesVertically(+AfterEdit)',
+        desc: 'Enter 키 동작을 엑셀처럼 바꿉니다. 앞의 것은 편집 중이 아닐 때, AfterEdit 는 편집을 Enter 로 마친 직후에 아래 셀로 이동할지.',
+        on: 'Enter = 아래 셀로 이동 (편집 확정 후에도)',
+        off: 'Enter = 편집 시작/확정, 포커스는 그 셀에 머묾',
+      },
     ],
     render: (p, ctx) => <Editing p={p} ctx={ctx} />,
-    code: p => `<AgGridReact
+    code: p => `<R2Grid
   defaultColDef={{ editable: true }}${p.singleClickEdit ? '\n  singleClickEdit' : ''}
   stopEditingWhenCellsLoseFocus={${p.loseFocus}}${p.enterVertical ? '\n  enterNavigatesVertically\n  enterNavigatesVerticallyAfterEdit' : ''}
   columnDefs={[
-    { field: 'rowCnt', cellEditor: 'agNumberCellEditor', cellEditorParams: { min: 0 } },
-    { field: 'dbms', cellEditor: 'agSelectCellEditor', cellEditorParams: { values: DBMS } },
-    { field: 'status', cellEditor: 'agRichSelectCellEditor', cellEditorPopup: true, cellEditorParams: { values } },
-    { field: 'memo', cellEditor: 'agLargeTextCellEditor', cellEditorPopup: true },
+    { field: 'rowCnt', cellEditor: 'r2NumberCellEditor', cellEditorParams: { min: 0 } },
+    { field: 'dbms', cellEditor: 'r2SelectCellEditor', cellEditorParams: { values: DBMS } },
+    { field: 'status', cellEditor: 'r2RichSelectCellEditor', cellEditorPopup: true, cellEditorParams: { values } },
+    { field: 'memo', cellEditor: 'r2LargeTextCellEditor', cellEditorPopup: true },
   ]}
   onCellValueChanged={e => save(e.data)}
 />`,
@@ -279,7 +327,7 @@ export default [
     keywords: ['editType', 'fullRow', 'onRowValueChanged', 'onRowEditingStarted', 'onRowEditingStopped', 'undoRedoCellEditing', 'undoRedoCellEditingLimit', 'undoCellEditing', 'redoCellEditing', 'onUndoStarted', 'onRedoStarted'],
     controls: [],
     render: (p, ctx) => <FullRowEdit ctx={ctx} />,
-    code: () => `<AgGridReact
+    code: () => `<R2Grid
   editType="fullRow"
   undoRedoCellEditing
   undoRedoCellEditingLimit={20}
@@ -310,11 +358,27 @@ api.redoCellEditing();`,
     desc: '셀 범위 드래그 선택(가장자리 자동 스크롤), 다중 범위, Ctrl+C/X/V (엑셀과 TSV 호환), 헤더 포함 복사, Delete 로 지우기.',
     keywords: ['cellSelection', 'enableRangeSelection', 'suppressMultiRanges', 'copyHeadersToClipboard', 'copyToClipboard', 'cutToClipboard', 'pasteFromClipboard', 'getCellRanges', 'addCellRange', 'clearCellSelection', 'processCellForClipboard', 'processDataFromClipboard', 'sendToClipboard', 'onCellSelectionChanged', 'onPasteEnd'],
     controls: [
-      { key: 'multi', type: 'boolean', default: true, desc: '다중 범위 (false = suppressMultiRanges)' },
-      { key: 'headers', type: 'boolean', default: true, desc: 'copyHeadersToClipboard' },
+      {
+        key: 'multi',
+        type: 'boolean',
+        default: true,
+        label: 'cellSelection.suppressMultiRanges',
+        desc: 'Ctrl+드래그로 범위를 여러 개 동시에 잡을 수 있게 할지 (이 컨트롤을 끄면 suppressMultiRanges: true).',
+        on: 'Ctrl+드래그로 범위 추가 — 복사 시 범위들을 차례로',
+        off: '항상 범위 하나 — 새로 드래그하면 이전 범위 해제',
+      },
+      {
+        key: 'headers',
+        type: 'boolean',
+        default: true,
+        label: 'copyHeadersToClipboard',
+        desc: 'Ctrl+C 로 복사할 때 첫 줄에 컬럼 헤더 이름을 넣을지. 붙여넣기(Ctrl+V)는 헤더 없이 값만 기대합니다.',
+        on: '복사 결과 첫 줄 = 헤더 이름',
+        off: '값만 복사',
+      },
     ],
     render: (p, ctx) => <RangeClipboard p={p} ctx={ctx} />,
-    code: p => `<AgGridReact
+    code: p => `<R2Grid
   cellSelection${p.multi ? '' : '={{ suppressMultiRanges: true }}'}
   copyHeadersToClipboard={${p.headers}}
   defaultColDef={{ editable: true }}
@@ -344,11 +408,32 @@ const mergedGridOptions = useMemo(
     desc: '엑셀처럼 범위 오른쪽 아래 핸들을 끌어 값을 채웁니다. 숫자 2개 이상은 등차 연장, 1개/문자는 복사, Alt 로 전환, 축소하면 비움. setFillValue 로 채울 값을 직접 정할 수 있습니다.',
     keywords: ['cellSelection.handle', 'fill', 'enableFillHandle', 'enableRangeHandle', 'fillHandleDirection', 'setFillValue', 'fillOperation', 'suppressClearOnFillReduction', 'onFillStart', 'onFillEnd', '드래그 복사'],
     controls: [
-      { key: 'mode', type: 'select', options: ['fill', 'range'], default: 'fill', desc: "fill = 값 채우기, range = 범위만 조절" },
-      { key: 'direction', type: 'select', options: ['xy', 'x', 'y'], default: 'xy' },
+      {
+        key: 'mode',
+        type: 'select',
+        default: 'fill',
+        label: 'cellSelection.handle.mode',
+        desc: '범위 오른쪽 아래 핸들을 끌 때 하는 일.',
+        options: [
+          { value: 'fill', desc: '채우기 핸들 — 끈 만큼 값을 복사(숫자 2개 이상이면 등차 연장, Alt 로 전환), 안쪽으로 끌면 비우기' },
+          { value: 'range', desc: '범위 핸들 — 값은 그대로, 선택 범위 크기만 늘리고 줄임' },
+        ],
+      },
+      {
+        key: 'direction',
+        type: 'select',
+        default: 'xy',
+        label: 'cellSelection.handle.direction',
+        desc: '핸들을 끌 수 있는 방향 (fill 모드에서만 의미).',
+        options: [
+          { value: 'xy', desc: '가로·세로 둘 다 (끈 방향 중 큰 쪽으로)' },
+          { value: 'x', desc: '가로(오른쪽/왼쪽)로만' },
+          { value: 'y', desc: '세로(아래/위)로만' },
+        ],
+      },
     ],
     render: (p, ctx) => <FillHandle p={p} ctx={ctx} />,
-    code: p => `<AgGridReact
+    code: p => `<R2Grid
   cellSelection={{
     handle: {
       mode: '${p.mode}',
@@ -366,11 +451,19 @@ const mergedGridOptions = useMemo(
     desc: 'findSearchValue 로 표시 텍스트를 검색해 강조하고, findNext / findPrevious 로 일치 항목 사이를 이동합니다.',
     keywords: ['findSearchValue', 'findOptions', 'caseSensitive', 'findNext', 'findPrevious', 'findGoTo', 'findClearActive', 'findGetTotalMatches', 'findGetActiveMatch', 'onFindChanged', 'r2-find-match'],
     controls: [
-      { key: 'search', type: 'text', default: 'USER_1', desc: '찾을 텍스트' },
-      { key: 'caseSensitive', type: 'boolean', default: false },
+      { key: 'search', type: 'text', default: 'USER_1', label: 'findSearchValue', desc: '찾을 텍스트. 화면에 보이는 값(포맷 적용 후) 기준으로 모든 셀에서 찾아 강조합니다. 비우면 찾기 해제. 이전/다음 버튼 = api.findPrevious/findNext.' },
+      {
+        key: 'caseSensitive',
+        type: 'boolean',
+        default: false,
+        label: 'findOptions.caseSensitive',
+        desc: '대소문자를 구분해 찾을지.',
+        on: "'user_1' 은 'USER_1' 과 다름",
+        off: '대소문자 무시',
+      },
     ],
     render: (p, ctx) => <Find p={p} ctx={ctx} />,
-    code: p => `<AgGridReact
+    code: p => `<R2Grid
   findSearchValue="${p.search}"
   findOptions={{ caseSensitive: ${p.caseSensitive} }}
   onFindChanged={e => setInfo(\`\${e.totalMatches}개\`)}
@@ -383,17 +476,46 @@ api.findPrevious();`,
     id: 'sparklines',
     category: CAT,
     name: '스파크라인',
-    desc: 'cellRenderer: "agSparklineCellRenderer" 로 배열 값을 셀 안의 작은 차트(line/area/bar)로 그립니다.',
-    keywords: ['agSparklineCellRenderer', 'sparklineOptions', 'line', 'area', 'bar', 'marker', 'itemStyler'],
+    desc: 'cellRenderer: "r2SparklineCellRenderer" 로 배열 값을 셀 안의 작은 차트(line/area/bar)로 그립니다.',
+    keywords: ['r2SparklineCellRenderer', 'sparklineOptions', 'line', 'area', 'bar', 'marker', 'itemStyler'],
     controls: [
-      { key: 'type', type: 'select', options: ['line', 'area', 'bar'], default: 'area' },
-      { key: 'direction', type: 'select', options: ['vertical', 'horizontal'], default: 'vertical', desc: 'bar 방향' },
-      { key: 'marker', type: 'boolean', default: false },
+      {
+        key: 'type',
+        type: 'select',
+        default: 'area',
+        label: "sparklineOptions.type",
+        desc: "r2SparklineCellRenderer 의 차트 종류. 셀 값은 숫자 배열이어야 합니다.",
+        options: [
+          { value: 'line', desc: '꺾은선 — 추세' },
+          { value: 'area', desc: '면 — 추세 + 크기감' },
+          { value: 'bar', desc: '막대 — 개별 값 비교 (방향 옵션 적용)' },
+        ],
+      },
+      {
+        key: 'direction',
+        type: 'select',
+        default: 'vertical',
+        label: 'sparklineOptions.direction',
+        desc: "막대(bar)의 방향. line/area 에는 영향 없음.",
+        options: [
+          { value: 'vertical', desc: '세로 막대 (값이 위로)' },
+          { value: 'horizontal', desc: '가로 막대 (값이 오른쪽으로)' },
+        ],
+      },
+      {
+        key: 'marker',
+        type: 'boolean',
+        default: false,
+        label: 'sparklineOptions.marker.enabled',
+        desc: 'line/area 의 각 데이터 점에 동그라미를 찍을지.',
+        on: '점 표시',
+        off: '선만',
+      },
     ],
     render: p => <Sparklines p={p} />,
     code: p => `{
   field: 'history',            // [12, 40, 33, ...]
-  cellRenderer: 'agSparklineCellRenderer',
+  cellRenderer: 'r2SparklineCellRenderer',
   cellRendererParams: {
     sparklineOptions: { type: '${p.type}', direction: '${p.direction}', marker: { enabled: ${p.marker} } },
   },

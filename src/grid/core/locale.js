@@ -1,5 +1,5 @@
-// 기본 한국어 로케일. 화면에서 localeText(AG_GRID_LOCALE_KR 등)를 넘기면 그 값이 우선한다.
-export const AG_GRID_LOCALE_KR = {
+// 기본 한국어 로케일. 화면에서 localeText(R2_GRID_LOCALE_KR 등)를 넘기면 그 값이 우선한다.
+export const R2_GRID_LOCALE_KR = {
   // 오버레이
   loadingOoo: '로딩 중...',
   noRowsToShow: '표시할 행이 없습니다',
@@ -118,8 +118,8 @@ export function localeText(core, key, defaultValue) {
   if (custom && custom[key] != null) return custom[key];
   const fn = core.get('getLocaleText');
   if (typeof fn === 'function') {
-    const r = fn({ key, defaultValue: AG_GRID_LOCALE_KR[key] ?? defaultValue, api: core.api });
+    const r = fn({ key, defaultValue: R2_GRID_LOCALE_KR[key] ?? defaultValue, api: core.api });
     if (r != null) return r;
   }
-  return AG_GRID_LOCALE_KR[key] ?? defaultValue ?? key;
+  return R2_GRID_LOCALE_KR[key] ?? defaultValue ?? key;
 }

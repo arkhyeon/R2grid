@@ -622,7 +622,7 @@ export class GridCore {
             .sort((a, b) => (a.rowGroupIndex ?? 1e9) - (b.rowGroupIndex ?? 1e9) || leaves.indexOf(a) - leaves.indexOf(b))
         : [null];
       rgCols.forEach((rgc, i) => {
-        // multipleColumns: 그룹 기준 컬럼마다 하나씩 (colId: ag-Grid-AutoColumn-<colId>)
+        // multipleColumns: 그룹 기준 컬럼마다 하나씩 (colId: r2-Grid-AutoColumn-<colId>)
         const colId = rgc ? `${AUTO_GROUP_COL_ID}-${rgc.colId}` : AUTO_GROUP_COL_ID;
         makeAuto(
           colId,
@@ -630,7 +630,7 @@ export class GridCore {
             ...defaultColDef,
             headerName: rgc ? rgc.colDef.headerName ?? camelToHuman(rgc.colDef.field ?? rgc.colId) : localeText(this, 'group'),
             minWidth: 200,
-            cellRenderer: 'agGroupCellRenderer',
+            cellRenderer: 'r2GroupCellRenderer',
             suppressColumnsToolPanel: true,
             ...(g.autoGroupColumnDef || {}),
             colId,
@@ -850,7 +850,7 @@ export class GridCore {
     if (typeof key === 'object') {
       return this.allColumns.find(c => c.userProvidedColDef === key || c.colDef === key) ?? null;
     }
-    // r2-Grid-* 별칭 colId 도 허용 (내부 colId 는 AG 와 같은 ag-Grid-*)
+    // r2-Grid-* 별칭 colId 도 허용 (내부 colId 는 AG 와 같은 r2-Grid-*)
     return this.columnById.get(String(key)) ?? this.columnById.get(canonName(String(key))) ?? null;
   }
 
@@ -2558,18 +2558,18 @@ export class GridCore {
     let popup = sel?.popup ?? cd.cellEditorPopup;
     if (!comp || comp === true) {
       const t = column.dataType;
-      if (t === 'number') comp = 'agNumberCellEditor';
-      else if (t === 'boolean') comp = 'agCheckboxCellEditor';
-      else if (t === 'date') comp = 'agDateCellEditor';
-      else if (t === 'dateString') comp = 'agDateStringCellEditor';
-      else comp = 'agTextCellEditor';
+      if (t === 'number') comp = 'r2NumberCellEditor';
+      else if (t === 'boolean') comp = 'r2CheckboxCellEditor';
+      else if (t === 'date') comp = 'r2DateCellEditor';
+      else if (t === 'dateString') comp = 'r2DateStringCellEditor';
+      else comp = 'r2TextCellEditor';
     }
     if (typeof comp === 'string') {
       const registered = this.gos.components?.[comp];
       if (registered) comp = registered;
     }
     // AG v34: agRichSelect/agSelect 는 isPopup()=false (셀 안 필드 + 목록 팝업), agLargeText 만 팝업
-    if (comp === 'agLargeTextCellEditor') popup = popup ?? true;
+    if (comp === 'r2LargeTextCellEditor') popup = popup ?? true;
     return {
       comp,
       params: editorParams,
@@ -3136,22 +3136,22 @@ export class GridCore {
     const sb = this.gos.sideBar;
     const builtin = rawId => {
       const id = canonName(rawId);
-      if (id === 'columns' || id === 'agColumnsToolPanel') {
+      if (id === 'columns' || id === 'r2ColumnsToolPanel') {
         return {
           id: 'columns',
           labelDefault: localeText(this, 'columns'),
           labelKey: 'columns',
           iconKey: 'columns',
-          toolPanel: 'agColumnsToolPanel',
+          toolPanel: 'r2ColumnsToolPanel',
         };
       }
-      if (id === 'filters' || id === 'agFiltersToolPanel') {
+      if (id === 'filters' || id === 'r2FiltersToolPanel') {
         return {
           id: 'filters',
           labelDefault: localeText(this, 'filters'),
           labelKey: 'filters',
           iconKey: 'filter',
-          toolPanel: 'agFiltersToolPanel',
+          toolPanel: 'r2FiltersToolPanel',
         };
       }
       return null;

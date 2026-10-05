@@ -95,9 +95,36 @@ export default [
     desc: 'exportDataAsCsv / getDataAsCsv. 표시 순서·필터·정렬이 반영되고 valueFormatter 결과로 저장합니다.',
     keywords: ['exportDataAsCsv', 'getDataAsCsv', 'columnSeparator', 'onlySelected', 'skipColumnHeaders', 'processCellCallback', 'fileName', 'defaultCsvExportParams'],
     controls: [
-      { key: 'sep', type: 'select', options: [',', ';', '\t'], default: ',', desc: 'columnSeparator' },
-      { key: 'headers', type: 'boolean', default: true },
-      { key: 'onlySelected', type: 'boolean', default: false },
+      {
+        key: 'sep',
+        type: 'select',
+        default: ',',
+        label: 'columnSeparator',
+        desc: 'CSV 칸 구분 문자. 값에 구분 문자·줄바꿈·따옴표가 있으면 자동으로 따옴표로 감쌉니다.',
+        options: [
+          { value: ',', label: ', (쉼표)', desc: '표준 CSV' },
+          { value: ';', label: '; (세미콜론)', desc: '쉼표를 소수점으로 쓰는 지역(유럽) 엑셀용' },
+          { value: '\t', label: 'Tab', desc: 'TSV — 엑셀에 붙여넣기 좋음' },
+        ],
+      },
+      {
+        key: 'headers',
+        type: 'boolean',
+        default: true,
+        label: 'skipColumnHeaders (반대)',
+        desc: '첫 줄에 컬럼 헤더 이름을 넣을지.',
+        on: '첫 줄 = 헤더',
+        off: '데이터만 (skipColumnHeaders: true)',
+      },
+      {
+        key: 'onlySelected',
+        type: 'boolean',
+        default: false,
+        label: 'onlySelected',
+        desc: '선택된 행만 내보낼지. 기본은 필터·정렬이 적용된 현재 표시 순서의 전체 행입니다.',
+        on: '체크한 행만',
+        off: '표시된 전체 행',
+      },
     ],
     render: (p, ctx) => <Csv p={p} ctx={ctx} />,
     code: p => `api.exportDataAsCsv({
@@ -114,12 +141,36 @@ export default [
     desc: '외부 라이브러리 없이 xlsx 를 직접 생성합니다. 그룹 헤더 병합, prepend/appendContent(mergeAcross), excelStyles, rowHeight, addImageToCell(차트 이미지), 다중 시트.',
     keywords: ['exportDataAsExcel', 'getDataAsExcel', 'getMultipleSheetsAsExcel', 'exportMultipleSheetsAsExcel', 'getSheetDataForExcel', 'excelStyles', 'prependContent', 'appendContent', 'mergeAcross', 'addImageToCell', 'rowHeight', 'sheetName', 'xlsx'],
     controls: [
-      { key: 'title', type: 'boolean', default: true, desc: 'prependContent 제목 행 (병합)' },
-      { key: 'total', type: 'boolean', default: true, desc: 'appendContent 합계 행' },
-      { key: 'onlySelected', type: 'boolean', default: false },
+      {
+        key: 'title',
+        type: 'boolean',
+        default: true,
+        label: 'prependContent',
+        desc: '데이터 위에 넣을 행들 (셀 병합 mergeAcross·스타일 지정 가능). 보고서 제목·조회 조건 표시에 씁니다.',
+        on: '맨 위에 병합된 제목 행',
+        off: '헤더부터 시작',
+      },
+      {
+        key: 'total',
+        type: 'boolean',
+        default: true,
+        label: 'appendContent',
+        desc: '데이터 아래에 붙일 행들. 여기선 행 수 합계를 직접 계산해 넣습니다.',
+        on: '맨 아래 합계 행',
+        off: '데이터에서 끝',
+      },
+      {
+        key: 'onlySelected',
+        type: 'boolean',
+        default: false,
+        label: 'onlySelected',
+        desc: '선택된 행만 엑셀로 내보낼지.',
+        on: '체크한 행만',
+        off: '표시된 전체 행',
+      },
     ],
     render: (p, ctx) => <Excel p={p} ctx={ctx} />,
-    code: () => `<AgGridReact
+    code: () => `<R2Grid
   excelStyles={[
     { id: 'header', font: { bold: true, color: '#FFFFFF' }, interior: { color: '#3E3E3E', pattern: 'Solid' } },
     { id: 'title', font: { bold: true, size: 14 } },
@@ -167,11 +218,34 @@ api.exportDataAsExcel({
     desc: 'enableCharts 후 범위를 선택해 우클릭 → 범위 차트, 또는 api.createRangeChart. 비숫자 첫 컬럼이 카테고리, 숫자 컬럼이 시리즈이며 데이터가 바뀌면 차트도 갱신됩니다. 종류 전환·PNG 저장 지원.',
     keywords: ['enableCharts', 'createRangeChart', 'chartType', 'groupedColumn', 'stackedColumn', 'normalizedColumn', 'groupedBar', 'line', 'area', 'pie', 'donut', 'chartContainer', 'getChartModels', 'getChartRef', 'updateChart', 'downloadChart', 'getChartImageDataURL', 'chartRange', 'onChartCreated'],
     controls: [
-      { key: 'type', type: 'select', options: ['groupedColumn', 'stackedColumn', 'groupedBar', 'line', 'area', 'pie', 'donut'], default: 'groupedColumn' },
-      { key: 'inline', type: 'boolean', default: false, desc: 'chartContainer 로 페이지 안에 표시' },
+      {
+        key: 'type',
+        type: 'select',
+        default: 'groupedColumn',
+        label: 'chartType',
+        desc: '범위 차트 종류. 선택 범위의 첫 문자열 컬럼이 항목(가로축), 숫자 컬럼들이 계열이 됩니다. 셀 범위를 잡고 우클릭 › 범위 차트 로도 만들 수 있습니다.',
+        options: [
+          { value: 'groupedColumn', desc: '묶은 세로 막대 — 계열을 나란히' },
+          { value: 'stackedColumn', desc: '누적 세로 막대 — 계열을 쌓아 합계 비교' },
+          { value: 'groupedBar', desc: '묶은 가로 막대 — 항목 이름이 길 때' },
+          { value: 'line', desc: '꺾은선 — 추세' },
+          { value: 'area', desc: '영역 — 추세 + 크기' },
+          { value: 'pie', desc: '원형 — 첫 숫자 계열의 비율' },
+          { value: 'donut', desc: '도넛 — 원형과 같고 가운데 비움' },
+        ],
+      },
+      {
+        key: 'inline',
+        type: 'boolean',
+        default: false,
+        label: 'chartContainer',
+        desc: '차트를 그릴 DOM 요소. 지정하면 그 자리에 그리고, 없으면 그리드 위 떠 있는 창(끌어서 이동·닫기 가능)으로 띄웁니다.',
+        on: '그리드 아래 영역에 바로 그림',
+        off: '떠 있는 차트 창',
+      },
     ],
     render: (p, ctx) => <Charts p={p} ctx={ctx} />,
-    code: p => `<AgGridReact cellSelection enableCharts ... />
+    code: p => `<R2Grid cellSelection enableCharts ... />
 
 const chartRef = api.createRangeChart({
   cellRange: { rowStartIndex: 0, rowEndIndex: 9, columns: ['owner', 'rowCnt', 'progress'] },

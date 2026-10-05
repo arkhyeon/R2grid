@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { themeQuartz } from '../../grid/index.js';
+import { r2Theme } from '../../grid/index.js';
 import { BASE_COLUMNS, makeRows, SAMPLE } from '../data.js';
 import { Grid, IMPORT_LINE, jsxProps } from './_shared.jsx';
 
@@ -22,7 +22,7 @@ function QuickStart({ p, ctx }) {
 function Theme({ p }) {
   const theme = useMemo(
     () =>
-      themeQuartz.withParams({
+      r2Theme.withParams({
         accentColor: p.accentColor || undefined,
         fontSize: p.fontSize,
         spacing: p.spacing,
@@ -64,50 +64,44 @@ function Locale({ p }) {
   );
 }
 
-function Migration() {
-  return (
-    <div className="pg-doc">
-      <p>
-        CLM30 코드는 그대로 두고 <b>vite alias</b> 로 <code>ag-grid-react</code> · <code>ag-grid-community</code> · <code>ag-grid-enterprise</code> ·{' '}
-        <code>@ag-grid-community/locale</code> import 를 R2grid 로 연결합니다. props / gridOptions / GridApi / 이벤트 이름은 AG-Grid v34 와 동일합니다.
-      </p>
-      <table>
-        <tbody>
-          <tr>
-            <th>바뀌는 것</th>
-            <td>
-              CSS 클래스 접두사 <code>ag-</code> → <code>r2-</code>, CSS 변수 <code>--ag-*</code> → <code>--r2-*</code>, 다크모드 속성 <code>data-ag-theme-mode</code> → <code>data-r2-theme-mode</code>
-            </td>
-          </tr>
-          <tr>
-            <th>그대로인 것</th>
-            <td>
-              컴포넌트/함수 이름(<code>AgGridReact</code>, <code>themeQuartz</code>, <code>AG_GRID_LOCALE_KR</code>…), 내장 컴포넌트 이름(<code>agTextColumnFilter</code>…), 자동 컬럼 id(<code>ag-Grid-SelectionColumn</code>…), 모든 api 메서드
-            </td>
-          </tr>
-          <tr>
-            <th>라이선스</th>
-            <td>
-              <code>LicenseManager.setLicenseKey</code> / <code>ModuleRegistry.registerModules</code> 는 호환용 빈 함수 — 엔터프라이즈 키 불필요 <span className="pg-badge-ok">✓</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 export default [
   {
     id: 'quick-start',
     category: CAT,
     name: '기본 그리드',
     desc: 'columnDefs + rowData 만으로 동작합니다. defaultColDef 로 공통 컬럼 속성을 지정하고, 이벤트는 on<이벤트명> prop 으로 받습니다.',
-    keywords: ['AgGridReact', 'columnDefs', 'rowData', 'defaultColDef', 'onGridReady', 'onRowClicked', 'flex', 'sortable', 'resizable'],
+    keywords: ['R2Grid', 'columnDefs', 'rowData', 'defaultColDef', 'onGridReady', 'onRowClicked', 'flex', 'sortable', 'resizable'],
     controls: [
-      { key: 'rows', type: 'select', options: [20, 1000, 10000], default: 1000, desc: '행 개수' },
-      { key: 'flex', type: 'boolean', default: true, desc: 'defaultColDef.flex — 남는 폭을 비율로 채움' },
-      { key: 'filter', type: 'boolean', default: true, desc: 'defaultColDef.filter — 컬럼 필터 사용' },
+      {
+        key: 'rows',
+        type: 'select',
+        default: 1000,
+        label: '행 개수',
+        desc: '데모용 rowData 길이. 화면에 보이는 행만 그리므로(가상화) 개수가 늘어도 스크롤 성능은 같습니다.',
+        options: [
+          { value: 20, desc: '스크롤 없이 한 화면' },
+          { value: 1000, desc: '일반 목록 규모' },
+          { value: 10000, desc: '대량 — 정렬·필터 속도 확인용' },
+        ],
+      },
+      {
+        key: 'flex',
+        type: 'boolean',
+        default: true,
+        label: 'defaultColDef.flex',
+        desc: '모든 컬럼에 flex: 1 을 줍니다. flex 컬럼은 width 대신 남는 폭을 비율로 나눠 갖고, 그리드 폭이 바뀌면 다시 계산됩니다.',
+        on: '그리드 폭을 컬럼들이 꽉 채움 (minWidth 90 보다 좁아지지 않음)',
+        off: '각 컬럼의 width 를 그대로 사용 — 남는 폭은 비고, 넘치면 가로 스크롤',
+      },
+      {
+        key: 'filter',
+        type: 'boolean',
+        default: true,
+        label: 'defaultColDef.filter',
+        desc: '모든 컬럼에 기본 필터를 켭니다. 헤더 메뉴(≡)에 필터 탭이 생기고, 필터가 걸린 컬럼은 헤더에 필터 아이콘이 표시됩니다.',
+        on: '헤더 메뉴에서 컬럼 값으로 거르기 가능',
+        off: '필터 UI 없음 (api.setFilterModel 로도 걸 수 없음)',
+      },
     ],
     render: (p, ctx) => <QuickStart p={p} ctx={ctx} />,
     code: p => `${IMPORT_LINE}
@@ -123,7 +117,7 @@ export default function Page() {
   const rowData = useMemo(() => makeRows(${p.rows}), []);
   return (
     <div style={{ height: 360 }}>
-      <AgGridReact
+      <R2Grid
         rowData={rowData}
         columnDefs={columnDefs}
         defaultColDef={{ ${p.flex ? 'flex: 1, ' : ''}minWidth: 90, filter: ${p.filter}, sortable: true }}
@@ -134,11 +128,11 @@ export default function Page() {
 }`,
     usage: {
       file: 'components/PageTemplate/Table.jsx',
-      code: `<AgGridReact
+      code: `<R2Grid
   {...props}
   gridOptions={mergedGridOptions}
   columnDefs={processedColDefs}
-  localeText={AG_GRID_LOCALE_KR}
+  localeText={R2_GRID_LOCALE_KR}
   onColumnVisible={saveVisibleColumnsToCookie}
   ref={ref}
   defaultColDef={defaultColDef}
@@ -148,61 +142,44 @@ export default function Page() {
     },
   },
   {
-    id: 'migration',
-    category: CAT,
-    name: 'AG-Grid → R2grid 교체',
-    desc: '기존 코드의 import 경로를 바꾸지 않고 번들러 alias 만으로 교체합니다.',
-    keywords: ['alias', 'vite', 'ag-grid-react', 'ag-grid-community', 'ag-grid-enterprise', 'LicenseManager', 'ModuleRegistry', 'AllEnterpriseModule', 'r2-', 'data-r2-theme-mode'],
-    controls: [],
-    render: () => <Migration />,
-    code: () => `// vite.config.mjs (CLM30 feature/clm-datagrid 브랜치)
-const DATAGRID =
-  process.env.R2GRID_PATH ||
-  ['../r2grid/src/grid', '../clm-datagrid/src/grid']
-    .map(p => path.resolve(__dirname, p))
-    .find(p => fs.existsSync(p));
-
-export default defineConfig({
-  resolve: {
-    alias: [
-      { find: /^(ag-grid-(react|community|enterprise)|@ag-grid-community\\/locale)$/,
-        replacement: \`\${DATAGRID}/index.js\` },
-    ],
-    dedupe: ['react', 'react-dom'], // React 2벌 방지
-  },
-  cacheDir: 'node_modules/.vite-datagrid',
-});`,
-    usage: {
-      file: 'main.jsx',
-      code: `import { AllEnterpriseModule, LicenseManager, ModuleRegistry, provideGlobalGridOptions, themeQuartz } from 'ag-grid-enterprise';
-
-LicenseManager.setLicenseKey(
-  'Using_this_{AG_Grid}_Enterprise_key_...',   // (키 생략) R2grid 에서는 호환용 빈 함수
-);
-ModuleRegistry.registerModules([AllEnterpriseModule]);
-const gridTheme = themeQuartz.withParams({ accentColor: '#4db8ff' }, 'dark');
-provideGlobalGridOptions({ theme: gridTheme });`,
-    },
-  },
-  {
     id: 'theme',
     category: CAT,
     name: '테마 · 다크 모드',
-    desc: 'themeQuartz.withParams 로 색/크기를 바꾸고, 조상 요소의 data-r2-theme-mode="dark" 로 다크 스킴을 켭니다. provideGlobalGridOptions 로 전역 테마를 지정할 수 있습니다.',
-    keywords: ['theme', 'themeQuartz', 'withParams', 'accentColor', 'data-r2-theme-mode', 'dark', 'provideGlobalGridOptions', 'rowHeight', 'headerHeight', 'colorSchemeDark'],
+    desc: 'r2Theme.withParams 로 색/크기를 바꾸고, 조상 요소의 data-r2-theme-mode="dark" 로 다크 스킴을 켭니다. provideGlobalGridOptions 로 전역 테마를 지정할 수 있습니다.',
+    keywords: ['theme', 'r2Theme', 'withParams', 'accentColor', 'data-r2-theme-mode', 'dark', 'provideGlobalGridOptions', 'rowHeight', 'headerHeight', 'colorSchemeDark'],
     controls: [
-      { key: 'dark', type: 'boolean', default: false, desc: '이 그리드 영역만 다크 (페이지 다크는 왼쪽 위 ☾)' },
-      { key: 'accentColor', type: 'text', default: '#fb5b5b', desc: '강조색 (선택/포커스/체크박스)' },
-      { key: 'headerBg', type: 'text', default: '', desc: 'headerBackgroundColor' },
-      { key: 'fontSize', type: 'number', default: 13, desc: '글자 크기(px)' },
-      { key: 'spacing', type: 'number', default: 8, desc: '기본 간격(px) — 패딩/아이콘 간격의 기준' },
-      { key: 'rowHeight', type: 'number', default: 32 },
-      { key: 'headerHeight', type: 'number', default: 36 },
+      {
+        key: 'dark',
+        type: 'boolean',
+        default: false,
+        label: 'data-r2-theme-mode',
+        desc: '그리드 조상 요소에 data-r2-theme-mode="dark" 를 붙이면 그 아래 그리드가 다크 색으로 바뀝니다. 여기선 데모 영역만, 페이지 전체는 왼쪽 위 ☾.',
+        on: '이 데모 영역만 다크',
+        off: '라이트 (부모 페이지 설정을 따름)',
+      },
+      {
+        key: 'accentColor',
+        type: 'text',
+        default: '#fb5b5b',
+        label: 'accentColor',
+        desc: '테마 강조색. 선택 행 배경, 포커스 테두리, 체크박스, 셀 범위 선택, 정렬 아이콘 등 강조 요소 전부에 쓰입니다. CSS 색 값(#hex, rgb()) 입력.',
+      },
+      {
+        key: 'headerBg',
+        type: 'text',
+        default: '',
+        label: 'headerBackgroundColor',
+        desc: '헤더 행 배경색. 비우면 테마 기본(배경색에 아주 옅은 회색).',
+      },
+      { key: 'fontSize', type: 'number', default: 13, label: 'fontSize', desc: '셀·헤더 글자 크기(px). 행 높이는 따로 지정하지 않으면 글자 크기와 spacing 으로 계산됩니다.' },
+      { key: 'spacing', type: 'number', default: 8, label: 'spacing', desc: '간격 기준값(px). 셀 좌우 패딩, 아이콘 사이, 메뉴 여백 등이 이 값의 배수로 정해집니다. 키우면 전체가 성기게 됩니다.' },
+      { key: 'rowHeight', type: 'number', default: 32, label: 'rowHeight', desc: '모든 행의 높이(px). 테마 계산값보다 우선합니다. 행마다 다르게 하려면 getRowHeight.' },
+      { key: 'headerHeight', type: 'number', default: 36, label: 'headerHeight', desc: '컬럼 헤더 행 높이(px). 그룹 헤더 행은 groupHeaderHeight 로 따로 지정.' },
     ],
     render: p => <Theme p={p} />,
-    code: p => `import { themeQuartz } from 'ag-grid-community';
+    code: p => `import { r2Theme } from 'r2grid';
 
-const myTheme = themeQuartz.withParams({
+const myTheme = r2Theme.withParams({
   accentColor: '${p.accentColor}',${p.headerBg ? `\n  headerBackgroundColor: '${p.headerBg}',` : ''}
   fontSize: ${p.fontSize},
   spacing: ${p.spacing},
@@ -210,7 +187,7 @@ const myTheme = themeQuartz.withParams({
 
 // 다크: 조상 요소에 data-r2-theme-mode="dark"
 <div data-r2-theme-mode=${p.dark ? '"dark"' : '{undefined}'}>
-  <AgGridReact
+  <R2Grid
     theme={myTheme}
 ${jsxProps([
   ['rowHeight', p.rowHeight],
@@ -226,7 +203,7 @@ ${jsxProps([
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
   root.setAttribute('data-theme', dark ? 'dark' : 'light');
-  // ag-grid 34 Theming API: 조상 요소의 data-r2-theme-mode 로 다크 스킴 전환
+  // R2grid Theming API: 조상 요소의 data-r2-theme-mode 로 다크 스킴 전환
   if (dark) root.setAttribute('data-r2-theme-mode', 'dark');
   else root.removeAttribute('data-r2-theme-mode');
 };`,
@@ -237,21 +214,37 @@ ${jsxProps([
     category: CAT,
     name: '로케일 (한국어)',
     desc: '기본 문구는 한국어입니다. localeText 로 일부 키만 덮어쓸 수 있고 getLocaleText 콜백도 지원합니다.',
-    keywords: ['localeText', 'AG_GRID_LOCALE_KR', 'getLocaleText', 'noRowsToShow', '@ag-grid-community/locale'],
+    keywords: ['localeText', 'R2_GRID_LOCALE_KR', 'getLocaleText', 'noRowsToShow', '한국어'],
     controls: [
-      { key: 'custom', type: 'boolean', default: true, desc: '일부 문구 덮어쓰기' },
-      { key: 'empty', type: 'boolean', default: false, desc: '빈 데이터 (noRowsToShow 문구 확인)' },
+      {
+        key: 'custom',
+        type: 'boolean',
+        default: true,
+        label: 'localeText',
+        desc: '키별 문구를 덮어씁니다. 준 키만 바뀌고 나머지는 기본 한국어(R2_GRID_LOCALE_KR). 여기선 page·of·to·noRowsToShow 를 바꿉니다 — 아래 페이지 표시줄 확인.',
+        on: "페이지 표시줄 '쪽', 빈 데이터 '조회된 데이터가 없습니다'",
+        off: "기본 문구 '페이지', '표시할 행이 없습니다'",
+      },
+      {
+        key: 'empty',
+        type: 'boolean',
+        default: false,
+        label: '빈 데이터',
+        desc: 'rowData 를 빈 배열로 바꿔 noRowsToShow 오버레이 문구를 보여줍니다.',
+        on: '행 0개 — 가운데 안내 문구 표시',
+        off: '샘플 60행',
+      },
     ],
     render: p => <Locale p={p} />,
-    code: p => `import { AG_GRID_LOCALE_KR } from '@ag-grid-community/locale';
+    code: p => `import { R2_GRID_LOCALE_KR } from 'r2grid';
 
-<AgGridReact
-  localeText={${p.custom ? `{ ...AG_GRID_LOCALE_KR, page: '쪽', noRowsToShow: '조회된 데이터가 없습니다' }` : 'AG_GRID_LOCALE_KR'}}
+<R2Grid
+  localeText={${p.custom ? `{ ...R2_GRID_LOCALE_KR, page: '쪽', noRowsToShow: '조회된 데이터가 없습니다' }` : 'R2_GRID_LOCALE_KR'}}
   pagination
   paginationPageSize={20}
   rowData={${p.empty ? '[]' : 'rowData'}}
   columnDefs={columnDefs}
 />`,
-    usage: { file: 'components/PageTemplate/Table.jsx', code: `import { AG_GRID_LOCALE_KR } from '@ag-grid-community/locale';\n...\nlocaleText={AG_GRID_LOCALE_KR}` },
+    usage: { file: 'components/PageTemplate/Table.jsx', code: `import { R2Grid, R2_GRID_LOCALE_KR } from 'r2grid';\n...\nlocaleText={R2_GRID_LOCALE_KR}` },
   },
 ];

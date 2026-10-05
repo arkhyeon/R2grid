@@ -154,7 +154,7 @@ function MasterDetail({ ctx }) {
   return (
     <Grid
       rowData={rows}
-      columnDefs={[{ field: 'taskName', headerName: '작업명', cellRenderer: 'agGroupCellRenderer', width: 200 }, ...BASE_COLUMNS.slice(2)]}
+      columnDefs={[{ field: 'taskName', headerName: '작업명', cellRenderer: 'r2GroupCellRenderer', width: 200 }, ...BASE_COLUMNS.slice(2)]}
       masterDetail
       detailRowHeight={200}
       onRowGroupOpened={e => ctx.log(`rowGroupOpened: ${e.data.taskName} expanded=${e.expanded}`)}
@@ -178,19 +178,77 @@ export default [
     id: 'row-selection',
     category: CAT,
     name: '행 선택',
-    desc: 'v34 rowSelection 객체: mode(singleRow/multiRow), checkboxes, headerCheckbox, enableClickSelection, enableSelectionWithoutKeys, isRowSelectable, hideDisabledCheckboxes. 레거시 문자열(single/multiple)도 지원합니다.',
-    keywords: ['rowSelection', 'singleRow', 'multiRow', 'checkboxes', 'headerCheckbox', 'enableClickSelection', 'enableSelectionWithoutKeys', 'isRowSelectable', 'hideDisabledCheckboxes', 'getSelectedRows', 'getSelectedNodes', 'selectAll', 'deselectAll', 'onSelectionChanged', 'ag-Grid-SelectionColumn'],
+    desc: 'rowSelection 객체 하나로 선택 방식을 정합니다. 선택 결과는 api.getSelectedRows() / getSelectedNodes(), 변경은 onSelectionChanged 로 받습니다. 체크박스 컬럼 모양(폭·고정)은 선택 › 체크박스 컬럼 참고.',
+    keywords: ['rowSelection', 'singleRow', 'multiRow', 'checkboxes', 'headerCheckbox', 'enableClickSelection', 'enableSelectionWithoutKeys', 'isRowSelectable', 'hideDisabledCheckboxes', 'getSelectedRows', 'getSelectedNodes', 'selectAll', 'deselectAll', 'onSelectionChanged', 'r2-Grid-SelectionColumn'],
     controls: [
-      { key: 'mode', type: 'select', options: ['singleRow', 'multiRow'], default: 'multiRow' },
-      { key: 'checkboxes', type: 'boolean', default: true },
-      { key: 'headerCheckbox', type: 'boolean', default: true, desc: 'multiRow 에서 헤더 전체 선택' },
-      { key: 'enableClickSelection', type: 'boolean', default: false, desc: '행 클릭으로 선택' },
-      { key: 'enableSelectionWithoutKeys', type: 'boolean', default: false, desc: 'Ctrl 없이 클릭으로 다중 토글' },
-      { key: 'onlyActive', type: 'boolean', default: false, desc: 'isRowSelectable: 사용(useYn)=true 행만' },
-      { key: 'hideDisabled', type: 'boolean', default: false, desc: 'hideDisabledCheckboxes' },
+      {
+        key: 'mode',
+        type: 'select',
+        default: 'multiRow',
+        label: 'rowSelection.mode',
+        desc: '한 번에 선택할 수 있는 행 수. getSelectedRows() 결과와 체크박스 동작이 달라집니다.',
+        options: [
+          { value: 'singleRow', desc: '한 행만 — 다른 행을 고르면 이전 선택이 풀림, 헤더 체크박스 없음' },
+          { value: 'multiRow', desc: '여러 행 — 체크박스 누적, Shift+클릭 범위 선택, 헤더 전체 선택 가능' },
+        ],
+      },
+      {
+        key: 'checkboxes',
+        type: 'boolean',
+        default: true,
+        label: 'checkboxes',
+        desc: '행마다 선택 체크박스를 둘지 (맨 앞 체크박스 컬럼). 함수로 행마다 정할 수도 있습니다.',
+        on: '체크박스로 선택',
+        off: '체크박스 없음 — 아래 enableClickSelection 을 켜야 마우스로 선택 가능',
+      },
+      {
+        key: 'headerCheckbox',
+        type: 'boolean',
+        default: true,
+        label: 'headerCheckbox',
+        desc: 'multiRow 에서 헤더에 전체 선택 체크박스를 둘지. singleRow 에선 무시됩니다.',
+        on: '헤더 체크박스로 전체 선택/해제',
+        off: '헤더 비움',
+      },
+      {
+        key: 'enableClickSelection',
+        type: 'boolean',
+        default: false,
+        label: 'enableClickSelection',
+        desc: "행(셀)을 클릭해서 선택할지. true 는 선택·해제 둘 다, 'enableSelection'/'enableDeselection' 로 한쪽만 허용할 수도 있습니다.",
+        on: '행 클릭 = 선택 (Ctrl+클릭 = 추가/해제)',
+        off: '클릭해도 선택 안 바뀜 — 체크박스로만',
+      },
+      {
+        key: 'enableSelectionWithoutKeys',
+        type: 'boolean',
+        default: false,
+        label: 'enableSelectionWithoutKeys',
+        desc: 'multiRow + 클릭 선택에서 Ctrl 없이 클릭만으로 여러 행을 토글할지.',
+        on: '클릭할 때마다 그 행만 선택/해제 (다른 선택 유지)',
+        off: '일반 클릭은 그 행만 남기고 나머지 해제, Ctrl+클릭으로 추가',
+      },
+      {
+        key: 'onlyActive',
+        type: 'boolean',
+        default: false,
+        label: 'isRowSelectable',
+        desc: '행마다 선택 가능 여부를 정하는 함수. 여기선 사용(useYn)=true 인 행만 허용합니다. 선택 불가 행은 체크박스가 비활성되고 전체 선택에서도 빠집니다.',
+        on: "사용 '✓' 행만 선택 가능",
+        off: '모든 행 선택 가능',
+      },
+      {
+        key: 'hideDisabled',
+        type: 'boolean',
+        default: false,
+        label: 'hideDisabledCheckboxes',
+        desc: '선택 불가 행(isRowSelectable=false)의 체크박스를 비활성으로 보여줄지 아예 숨길지.',
+        on: '선택 불가 행은 체크박스 숨김',
+        off: '회색 비활성 체크박스 표시',
+      },
     ],
     render: (p, ctx) => <Selection p={p} ctx={ctx} />,
-    code: p => `<AgGridReact
+    code: p => `<R2Grid
   rowSelection={{
     mode: '${p.mode}',
     checkboxes: ${p.checkboxes},
@@ -218,12 +276,36 @@ export default [
     desc: 'rowDragManaged 는 정렬/필터가 없을 때 그리드가 직접 순서를 바꿉니다. rowDragEntireRow 는 행 어디서나, colDef.rowDrag 는 핸들로 드래그합니다. onRowDragEnd 에서 forEachNode 로 새 순서를 읽습니다.',
     keywords: ['rowDragManaged', 'rowDragEntireRow', 'rowDragMultiRow', 'rowDrag', 'rowDragText', 'onRowDragEnd', 'onRowDragMove', 'onRowDragEnter', 'forEachNode', 'suppressRowDrag'],
     controls: [
-      { key: 'managed', type: 'boolean', default: true, desc: 'rowDragManaged' },
-      { key: 'entireRow', type: 'boolean', default: false, desc: 'rowDragEntireRow (꺼지면 작업명 컬럼의 핸들)' },
-      { key: 'multiRow', type: 'boolean', default: false, desc: 'rowDragMultiRow (선택된 여러 행 함께)' },
+      {
+        key: 'managed',
+        type: 'boolean',
+        default: true,
+        label: 'rowDragManaged',
+        desc: '그리드가 드래그 중에 행 순서를 직접 바꿀지. 정렬·필터·그룹이 걸려 있으면 순서를 정할 수 없어 동작하지 않습니다(AG 동일).',
+        on: '끄는 동안 행이 실제로 이동, 놓으면 그 순서가 rowData 순서',
+        off: '행은 그대로 — onRowDragMove/End 이벤트(overIndex)로 직접 처리',
+      },
+      {
+        key: 'entireRow',
+        type: 'boolean',
+        default: false,
+        label: 'rowDragEntireRow',
+        desc: '드래그를 시작할 수 있는 위치. 켜면 행 어디서나, 끄면 colDef.rowDrag 가 있는 컬럼의 핸들(⋮⋮)에서만 시작합니다. 행 어디서나 끌면 셀 범위 선택과 겹치므로 둘 중 하나만 쓰세요.',
+        on: '행 아무 데나 눌러 끌기',
+        off: '작업명 컬럼의 핸들로만 끌기',
+      },
+      {
+        key: 'multiRow',
+        type: 'boolean',
+        default: false,
+        label: 'rowDragMultiRow',
+        desc: '선택된 행 중 하나를 끌면 선택된 행 전체를 함께 옮깁니다 (여기선 multiRow 선택도 같이 켬).',
+        on: '선택 행들을 묶어서 이동',
+        off: '끈 행 하나만 이동',
+      },
     ],
     render: (p, ctx) => <RowDrag p={p} ctx={ctx} />,
-    code: p => `<AgGridReact
+    code: p => `<R2Grid
   rowDragManaged={${p.managed}}${p.entireRow ? '\n  rowDragEntireRow' : ''}${p.multiRow ? "\n  rowDragMultiRow\n  rowSelection={{ mode: 'multiRow' }}" : ''}
   columnDefs={[{ field: 'taskName', rowDrag: ${!p.entireRow} }, ...]}
   onRowDragEnd={e => {
@@ -252,13 +334,29 @@ export default [
     desc: 'pinnedTopRowData / pinnedBottomRowData 로 스크롤해도 고정되는 행. 편집·스타일 가능하며 이벤트의 rowPinned 로 구분합니다.',
     keywords: ['pinnedTopRowData', 'pinnedBottomRowData', 'rowPinned', 'getPinnedTopRow', 'getPinnedBottomRowCount', 'getRowStyle', 'singleClickEdit'],
     controls: [
-      { key: 'top', type: 'boolean', default: true },
-      { key: 'bottom', type: 'boolean', default: true },
+      {
+        key: 'top',
+        type: 'boolean',
+        default: true,
+        label: 'pinnedTopRowData',
+        desc: '헤더 바로 아래에 고정되는 행 배열. 스크롤·정렬·필터에 영향받지 않습니다. 여기선 클릭 한 번으로 편집 가능한 기본 조건 행.',
+        on: '상단 고정 행 1개',
+        off: '상단 고정 없음',
+      },
+      {
+        key: 'bottom',
+        type: 'boolean',
+        default: true,
+        label: 'pinnedBottomRowData',
+        desc: '맨 아래에 고정되는 행 배열. 합계 행에 주로 씁니다. 값은 그리드가 계산하지 않으므로 직접 넣어야 합니다 (자동 합계는 grandTotalRow).',
+        on: '하단 합계 행 고정',
+        off: '하단 고정 없음',
+      },
     ],
     render: (p, ctx) => <PinnedRows p={p} ctx={ctx} />,
     code: p => `const [top] = useState(() => [defaultCondition]); // 같은 참조 유지 (편집 보존)
 
-<AgGridReact${p.top ? '\n  pinnedTopRowData={top}' : ''}${p.bottom ? '\n  pinnedBottomRowData={[totals]}' : ''}
+<R2Grid${p.top ? '\n  pinnedTopRowData={top}' : ''}${p.bottom ? '\n  pinnedBottomRowData={[totals]}' : ''}
   getRowStyle={p => (p.node.rowPinned ? { fontWeight: 'bold' } : undefined)}
   onCellEditingStopped={e => console.log(e.rowPinned, e.value)}
 />`,
@@ -281,12 +379,30 @@ rowDragManaged`,
     desc: 'rowHeight 고정, getRowHeight 로 행마다 다르게, wrapText + autoHeight 로 내용에 맞춰 자동 계산합니다.',
     keywords: ['rowHeight', 'getRowHeight', 'autoHeight', 'wrapText', 'resetRowHeights', 'onRowHeightChanged', 'setRowHeight'],
     controls: [
-      { key: 'mode', type: 'select', options: ['fixed', 'getRowHeight'], default: 'fixed' },
-      { key: 'rowHeight', type: 'number', default: 32 },
-      { key: 'autoHeight', type: 'boolean', default: true, desc: '메모 컬럼 wrapText + autoHeight' },
+      {
+        key: 'mode',
+        type: 'select',
+        default: 'fixed',
+        label: '높이 지정 방식',
+        desc: '모든 행을 같은 높이로 할지 행마다 다르게 할지. autoHeight 컬럼이 있으면 그 행은 내용 높이가 우선합니다.',
+        options: [
+          { value: 'fixed', desc: 'rowHeight — 전체 행 같은 높이 (아래 숫자)' },
+          { value: 'getRowHeight', desc: 'getRowHeight(params) — 행마다 계산. 여기선 홀수 id 28px, 짝수 48px' },
+        ],
+      },
+      { key: 'rowHeight', type: 'number', default: 32, label: 'rowHeight', desc: "모든 행 높이(px). '높이 지정 방식'이 fixed 일 때만 적용." },
+      {
+        key: 'autoHeight',
+        type: 'boolean',
+        default: true,
+        label: 'wrapText + autoHeight',
+        desc: '메모 컬럼 속성. wrapText 는 긴 글을 줄바꿈하고, autoHeight 는 그 셀 내용 높이에 맞춰 행 높이를 늘립니다. 행마다 높이를 재야 하므로 행이 아주 많으면 느려질 수 있습니다.',
+        on: '긴 메모 행은 여러 줄로 커짐',
+        off: '한 줄로 잘리고 … 표시',
+      },
     ],
     render: p => <RowHeight p={p} />,
-    code: p => `<AgGridReact
+    code: p => `<R2Grid
   ${p.mode === 'fixed' ? `rowHeight={${p.rowHeight}}` : 'getRowHeight={p => (p.data.id % 2 ? 28 : 48)}'}
   columnDefs={[
     { field: 'memo', wrapText: ${p.autoHeight}, autoHeight: ${p.autoHeight} },
@@ -314,7 +430,7 @@ rowDragManaged`,
     keywords: ['isFullWidthRow', 'fullWidthCellRenderer', 'fullWidthCellRendererParams', 'embedFullWidthRows'],
     controls: [],
     render: () => <FullWidth />,
-    code: () => `<AgGridReact
+    code: () => `<R2Grid
   isFullWidthRow={p => !!p.rowNode.data?.banner}
   fullWidthCellRenderer={p => <div className="banner">{p.data.banner}</div>}
 />`,
@@ -327,7 +443,7 @@ rowDragManaged`,
     keywords: ['rowSpan', 'suppressRowTransform', 'r2-cell-span'],
     controls: [],
     render: () => <RowSpan />,
-    code: () => `<AgGridReact
+    code: () => `<R2Grid
   suppressRowTransform
   columnDefs={[
     { field: 'region', rowSpan: params => /* 같은 지역 연속 행 수 */ spanOf(params) },
@@ -341,11 +457,27 @@ rowDragManaged`,
     desc: 'enableCellSpan + colDef.spanRows: 위아래로 같은 값이 이어지면 한 셀로 합칩니다. spanRows 에 함수를 주면 병합 조건을 직접 정합니다.',
     keywords: ['enableCellSpan', 'spanRows', 'valueA', 'valueB', 'cell spanning'],
     controls: [
-      { key: 'enabled', type: 'boolean', default: true, desc: 'enableCellSpan' },
-      { key: 'custom', type: 'boolean', default: true, desc: '상태 컬럼: 같은 DBMS 안에서만 병합 (함수)' },
+      {
+        key: 'enabled',
+        type: 'boolean',
+        default: true,
+        label: 'enableCellSpan',
+        desc: '그리드 옵션. 켜야 colDef.spanRows 가 동작합니다. 병합은 화면 표시만 바꾸고 데이터·선택·복사는 행 단위 그대로입니다.',
+        on: 'DBMS·상태 컬럼에서 연속된 같은 값이 한 칸으로 합쳐짐',
+        off: '모든 셀 따로 표시',
+      },
+      {
+        key: 'custom',
+        type: 'boolean',
+        default: true,
+        label: 'spanRows 함수',
+        desc: 'spanRows 에 true 대신 함수({ valueA, valueB, nodeA, nodeB })를 주면 위아래 두 행을 합칠지 직접 정합니다. 여기선 상태 컬럼을 같은 DBMS 안에서만 합칩니다.',
+        on: 'DBMS 가 바뀌면 같은 상태라도 끊김',
+        off: 'spanRows: true — 값만 같으면 DBMS 경계를 넘어서도 합침',
+      },
     ],
     render: p => <CellSpan p={p} />,
-    code: p => `<AgGridReact
+    code: p => `<R2Grid
   enableCellSpan={${p.enabled}}
   columnDefs={[
     { field: 'dbms', spanRows: true },
@@ -358,13 +490,13 @@ rowDragManaged`,
     category: CAT,
     name: '마스터 / 디테일',
     desc: 'masterDetail + detailCellRendererParams(detailGridOptions, getDetailRowData) 로 행을 펼치면 하위 그리드가 열립니다.',
-    keywords: ['masterDetail', 'detailCellRendererParams', 'detailGridOptions', 'getDetailRowData', 'detailRowHeight', 'detailRowAutoHeight', 'isRowMaster', 'agGroupCellRenderer', 'detailCellRenderer', 'onRowGroupOpened'],
+    keywords: ['masterDetail', 'detailCellRendererParams', 'detailGridOptions', 'getDetailRowData', 'detailRowHeight', 'detailRowAutoHeight', 'isRowMaster', 'r2GroupCellRenderer', 'detailCellRenderer', 'onRowGroupOpened'],
     controls: [],
     render: (p, ctx) => <MasterDetail ctx={ctx} />,
-    code: () => `<AgGridReact
+    code: () => `<R2Grid
   masterDetail
   detailRowHeight={200}
-  columnDefs={[{ field: 'taskName', cellRenderer: 'agGroupCellRenderer' }, ...]}
+  columnDefs={[{ field: 'taskName', cellRenderer: 'r2GroupCellRenderer' }, ...]}
   detailCellRendererParams={{
     detailGridOptions: { columnDefs: detailColumns },
     getDetailRowData: params => params.successCallback(params.data.steps),

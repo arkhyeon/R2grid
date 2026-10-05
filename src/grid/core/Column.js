@@ -1,8 +1,8 @@
 // AG-Grid Column / ColumnGroup 호환 객체.
 // CLM 코드가 column.getColDef(), getColId(), isVisible(), actualWidth, gos.gridOptions.rowHeight 등을 직접 참조한다.
 
-export const SELECTION_COL_ID = 'ag-Grid-SelectionColumn';
-export const ROW_NUMBERS_COL_ID = 'ag-Grid-RowNumbersColumn';
+export const SELECTION_COL_ID = 'r2-Grid-SelectionColumn';
+export const ROW_NUMBERS_COL_ID = 'r2-Grid-RowNumbersColumn';
 export const DEFAULT_COL_WIDTH = 200;
 export const DEFAULT_MIN_WIDTH = 20;
 

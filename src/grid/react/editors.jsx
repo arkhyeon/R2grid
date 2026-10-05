@@ -483,14 +483,14 @@ function SelectListPopup({ anchorRef, getCellEl, count, children }) {
 }
 
 const BUILTIN_EDITORS = {
-  agTextCellEditor: TextEditor,
-  agNumberCellEditor: NumberEditor,
-  agLargeTextCellEditor: LargeTextEditor,
-  agSelectCellEditor: props => <RichSelectEditor {...props} plain />,
-  agRichSelectCellEditor: RichSelectEditor,
-  agCheckboxCellEditor: CheckboxEditor,
-  agDateCellEditor: DateEditor,
-  agDateStringCellEditor: props => <DateEditor {...props} asString />,
+  r2TextCellEditor: TextEditor,
+  r2NumberCellEditor: NumberEditor,
+  r2LargeTextCellEditor: LargeTextEditor,
+  r2SelectCellEditor: props => <RichSelectEditor {...props} plain />,
+  r2RichSelectCellEditor: RichSelectEditor,
+  r2CheckboxCellEditor: CheckboxEditor,
+  r2DateCellEditor: DateEditor,
+  r2DateStringCellEditor: props => <DateEditor {...props} asString />,
 };
 
 // 사용자 에디터 컴포넌트 호스트 — 값은 grid 가 보유(reactive), ref.getValue 도 지원(레거시)

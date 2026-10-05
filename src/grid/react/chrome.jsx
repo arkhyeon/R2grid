@@ -13,7 +13,7 @@ import { ColumnDropZone, PivotModeToggle } from './columnDrop.jsx';
 // ── 사이드바 ───────────────────────────────────────────────
 function ToolPanelContent({ core, tp }) {
   const comp = typeof tp.toolPanel === 'string' && !core.gos.components?.[tp.toolPanel] ? canonName(tp.toolPanel) : tp.toolPanel;
-  if (comp === 'agColumnsToolPanel') {
+  if (comp === 'r2ColumnsToolPanel') {
     // AG 컬럼 툴패널: 피벗 모드 토글 / 컬럼 목록 / 행 그룹·값·열 레이블 드롭 영역 (toolPanelParams 로 개별 숨김)
     const p = tp.toolPanelParams || {};
     const pivot = core.isPivotActive();
@@ -27,7 +27,7 @@ function ToolPanelContent({ core, tp }) {
       </div>
     );
   }
-  if (comp === 'agFiltersToolPanel') return <FiltersToolPanel core={core} />;
+  if (comp === 'r2FiltersToolPanel') return <FiltersToolPanel core={core} />;
   const impl = typeof comp === 'string' ? core.gos.components?.[comp] : comp;
   if (!impl) return null;
   return stableElement(core, `toolPanel:${tp.id}`, impl, {
@@ -118,11 +118,11 @@ export function RowGroupPanel({ core }) {
 
 // ── 상태 표시줄 (statusBar) ───────────────────────────────
 const STATUS_PANEL_CLASS = {
-  agTotalAndFilteredRowCountComponent: 'r2-status-panel-total-and-filtered-row-count',
-  agTotalRowCountComponent: 'r2-status-panel-total-row-count',
-  agFilteredRowCountComponent: 'r2-status-panel-filtered-row-count',
-  agSelectedRowCountComponent: 'r2-status-panel-selected-row-count',
-  agAggregationComponent: 'r2-status-panel-aggregations',
+  r2TotalAndFilteredRowCountComponent: 'r2-status-panel-total-and-filtered-row-count',
+  r2TotalRowCountComponent: 'r2-status-panel-total-row-count',
+  r2FilteredRowCountComponent: 'r2-status-panel-filtered-row-count',
+  r2SelectedRowCountComponent: 'r2-status-panel-selected-row-count',
+  r2AggregationComponent: 'r2-status-panel-aggregations',
 };
 
 function NameValue({ name, value, className }) {
@@ -139,15 +139,15 @@ function BuiltinStatusPanel({ core, def }) {
   const p = def.statusPanelParams || {};
   const c = core.getStatusCounts();
   switch (def.statusPanel) {
-    case 'agTotalAndFilteredRowCountComponent':
+    case 'r2TotalAndFilteredRowCountComponent':
       return <NameValue name={t('totalAndFilteredRows')} value={c.filtered === c.total ? fmt(c.total) : `${fmt(c.filtered)} ${t('of')} ${fmt(c.total)}`} />;
-    case 'agTotalRowCountComponent':
+    case 'r2TotalRowCountComponent':
       return <NameValue name={t('totalRows')} value={fmt(c.total)} />;
-    case 'agFilteredRowCountComponent':
+    case 'r2FilteredRowCountComponent':
       return c.filtered === c.total ? null : <NameValue name={t('filteredRows')} value={fmt(c.filtered)} />;
-    case 'agSelectedRowCountComponent':
+    case 'r2SelectedRowCountComponent':
       return c.selected ? <NameValue name={t('selectedRows')} value={fmt(c.selected)} /> : null;
-    case 'agAggregationComponent': {
+    case 'r2AggregationComponent': {
       const agg = core.getStatusAggregation();
       if (!agg) return null;
       const funcs = p.aggFuncs || ['count', 'sum', 'min', 'max', 'avg'];

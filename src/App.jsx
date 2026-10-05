@@ -70,7 +70,7 @@ function makeRows(n, start = 0) {
   return rows;
 }
 
-// CLM components/AgGridAddOn/SimpleTextEditor.jsx 그대로
+// CLM components/R2GridAddOn/SimpleTextEditor.jsx 그대로
 function SimpleTextEditor({ value, onValueChange, eventKey, column }) {
   const refInput = useRef(null);
   const updateValue = val => onValueChange(val === '' ? null : val);
@@ -154,7 +154,7 @@ export default function App() {
       {
         headerName: '기본',
         children: [
-          { field: 'id', headerName: 'ID', width: 90, flex: 0, pinned: 'left', filter: 'agNumberColumnFilter' },
+          { field: 'id', headerName: 'ID', width: 90, flex: 0, pinned: 'left', filter: 'r2NumberColumnFilter' },
           { field: 'taskName', headerName: '작업명', minWidth: 150, editable: true, tooltipField: 'taskName' },
         ],
       },
@@ -166,14 +166,14 @@ export default function App() {
             headerName: 'DBMS',
             minWidth: 110,
             editable: true,
-            cellEditor: 'agRichSelectCellEditor',
+            cellEditor: 'r2RichSelectCellEditor',
             cellEditorParams: { values: DBMS },
           },
           {
             field: 'owner',
             headerName: '소유자',
             minWidth: 110,
-            filter: 'agTextColumnFilter',
+            filter: 'r2TextColumnFilter',
             editable: true,
             cellEditor: SimpleTextEditor,
             cellEditorPopup: true,
@@ -185,7 +185,7 @@ export default function App() {
         headerName: '행 수',
         minWidth: 120,
         type: 'numericColumn',
-        filter: 'agNumberColumnFilter',
+        filter: 'r2NumberColumnFilter',
         editable: true,
         enableCellChangeFlash: true,
         valueFormatter: ({ value }) => (value == null ? '' : value.toLocaleString('ko-KR')),
@@ -194,10 +194,10 @@ export default function App() {
           'cell-warn': ({ value }) => value > 2_000_000 && value <= 4_000_000,
         },
       },
-      { field: 'progress', headerName: '진행률', minWidth: 150, cellRenderer: ProgressBar, filter: 'agNumberColumnFilter' },
+      { field: 'progress', headerName: '진행률', minWidth: 150, cellRenderer: ProgressBar, filter: 'r2NumberColumnFilter' },
       { field: 'status', headerName: '상태', minWidth: 90, cellRenderer: 'statusBadge' },
       { field: 'useYn', headerName: '사용', width: 80, flex: 0, editable: true },
-      { field: 'memo', headerName: '메모', minWidth: 120, editable: true, cellEditor: 'agLargeTextCellEditor' },
+      { field: 'memo', headerName: '메모', minWidth: 120, editable: true, cellEditor: 'r2LargeTextCellEditor' },
       { field: 'updatedAt', headerName: '수정일시', minWidth: 160 },
       {
         headerName: '',
@@ -218,8 +218,8 @@ export default function App() {
     () => ({
       toolPanels: [
         { id: 'detail', labelDefault: '상세', iconKey: 'menu', toolPanel: DetailPanel, mustHaveSelectedRow: true },
-        { id: 'columns', labelDefault: '컬럼', iconKey: 'columns', toolPanel: 'agColumnsToolPanel', ignoreSelectedRowGuard: true },
-        { id: 'filters', labelDefault: '필터', iconKey: 'filter', toolPanel: 'agFiltersToolPanel', ignoreSelectedRowGuard: true },
+        { id: 'columns', labelDefault: '컬럼', iconKey: 'columns', toolPanel: 'r2ColumnsToolPanel', ignoreSelectedRowGuard: true },
+        { id: 'filters', labelDefault: '필터', iconKey: 'filter', toolPanel: 'r2FiltersToolPanel', ignoreSelectedRowGuard: true },
       ],
     }),
     [],
@@ -376,7 +376,7 @@ function MasterDetailDemo() {
         isRowMaster={d => d.tables.length > 1}
         detailRowHeight={170}
         columnDefs={[
-          { field: 'groupName', headerName: '그룹', cellRenderer: 'agGroupCellRenderer' },
+          { field: 'groupName', headerName: '그룹', cellRenderer: 'r2GroupCellRenderer' },
           { field: 'owner', headerName: '소유자' },
           { headerName: '테이블 수', valueGetter: p => p.data.tables.length, type: 'numericColumn' },
         ]}

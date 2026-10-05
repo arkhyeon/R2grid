@@ -1,7 +1,7 @@
 // CLM30 src/components/PageTemplate/Table.jsx 를 거의 그대로 이식 (emotion/router/zustand 의존만 제거)
 // → 자체 그리드가 CLM 래퍼 사용 방식 그대로 동작하는지 검증용
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { AG_GRID_LOCALE_KR, AgGridReact } from '../grid/index.js';
+import { R2_GRID_LOCALE_KR, R2Grid } from '../grid/index.js';
 
 const alertError = msg => window.alert(msg);
 
@@ -102,11 +102,11 @@ export default function Table({ width, height, ref, gridOptions, menuRole = 2, .
 
   return (
     <div ref={wrapperRef} className="r2-theme-alpine clm-table-wrapper" style={{ width: width ?? '100%', height: height ?? '300px' }}>
-      <AgGridReact
+      <R2Grid
         {...props}
         gridOptions={mergedGridOptions}
         columnDefs={processedColDefs}
-        localeText={AG_GRID_LOCALE_KR}
+        localeText={R2_GRID_LOCALE_KR}
         ref={ref}
         defaultColDef={defaultColDef}
         onCellKeyDown={({ event, api }) => {

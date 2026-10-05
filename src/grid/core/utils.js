@@ -103,12 +103,12 @@ export function downloadFile(fileName, content, mimeType) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// 내장 컴포넌트 이름 정규화: r2 접두 별칭 → AG 이름 (r2TextColumnFilter → agTextColumnFilter,
-// r2-Grid-SelectionColumn → ag-Grid-SelectionColumn). 내부는 AG 이름 하나로 처리하고, 바깥에선 둘 다 받는다.
+// 내장 컴포넌트 이름 정규화: AG 호환 이름 → R2 이름 (agTextColumnFilter → r2TextColumnFilter,
+// ag-Grid-SelectionColumn → r2-Grid-SelectionColumn). 내부는 R2 이름 하나로 처리하고, 옛 AG 이름도 받는다.
 export function canonName(name) {
   if (typeof name !== 'string') return name;
-  if (name.startsWith('r2-Grid-')) return `ag-Grid-${name.slice(8)}`;
-  if (/^r2[A-Z]/.test(name)) return `ag${name.slice(2)}`;
+  if (name.startsWith('ag-Grid-')) return `r2-Grid-${name.slice(8)}`;
+  if (/^ag[A-Z]/.test(name)) return `r2${name.slice(2)}`;
   return name;
 }
 

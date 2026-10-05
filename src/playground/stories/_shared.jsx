@@ -1,14 +1,14 @@
 // 스토리 공용 헬퍼
 import React from 'react';
-import { AgGridReact } from '../../grid/index.js';
+import { R2Grid } from '../../grid/index.js';
 
-export { AgGridReact };
+export { R2Grid };
 
 // 높이 있는 컨테이너 + 그리드 (그리드는 부모 높이를 채움)
 export function Grid({ height = 360, gridRef, style, ...props }) {
   return (
     <div style={{ height, ...style }}>
-      <AgGridReact ref={gridRef} {...props} />
+      <R2Grid ref={gridRef} {...props} />
     </div>
   );
 }
@@ -37,4 +37,4 @@ export function jsxProps(entries, indent = '      ') {
     .join('\n');
 }
 
-export const IMPORT_LINE = `import { AgGridReact } from 'ag-grid-react'; // R2grid: alias 로 같은 이름 사용`;
+export const IMPORT_LINE = `import { R2Grid } from 'r2grid';`;

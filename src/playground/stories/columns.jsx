@@ -118,7 +118,20 @@ function ColumnState({ ctx }) {
 }
 
 function RowNumbers({ p }) {
-  return <Grid rowData={SAMPLE} columnDefs={BASE_COLUMNS} rowNumbers={p.rowNumbers} cellSelection rowSelection={p.checkbox ? { mode: 'multiRow' } : undefined} />;
+  return <Grid key={`${p.width}`} rowData={SAMPLE} columnDefs={BASE_COLUMNS} rowNumbers={p.rowNumbers ? { width: p.width } : false} cellSelection={p.cellSelection} />;
+}
+
+function SelectionColumn({ p, ctx }) {
+  return (
+    <Grid
+      key={`${p.checkboxes}${p.headerCheckbox}${p.pinned}${p.width}`}
+      rowData={SAMPLE}
+      columnDefs={BASE_COLUMNS}
+      rowSelection={{ mode: 'multiRow', checkboxes: p.checkboxes, headerCheckbox: p.headerCheckbox }}
+      selectionColumnDef={{ pinned: p.pinned === 'none' ? null : p.pinned, width: p.width, maxWidth: p.width, minWidth: p.width }}
+      onSelectionChanged={e => ctx.log(`선택 ${e.api.getSelectedRows().length}행`)}
+    />
+  );
 }
 
 function ColSpan() {
@@ -156,9 +169,33 @@ export default [
     desc: 'width / flex / minWidth / hide / pinned / lockPosition / headerTooltip / type(numericColumn) / cellDataType 등 컬럼 속성.',
     keywords: ['columnDefs', 'field', 'headerName', 'width', 'flex', 'minWidth', 'maxWidth', 'hide', 'pinned', 'lockPosition', 'headerTooltip', 'numericColumn', 'cellDataType', 'columnTypes'],
     controls: [
-      { key: 'pinId', type: 'boolean', default: true, desc: "ID 컬럼 pinned: 'left'" },
-      { key: 'pinDate', type: 'boolean', default: false, desc: "수정일 컬럼 pinned: 'right'" },
-      { key: 'hideDbms', type: 'boolean', default: false, desc: 'DBMS 컬럼 hide' },
+      {
+        key: 'pinId',
+        type: 'boolean',
+        default: true,
+        label: "ID pinned: 'left'",
+        desc: "colDef.pinned 는 컬럼을 왼쪽('left') 또는 오른쪽('right') 고정 영역에 둡니다. 고정 컬럼은 가로 스크롤해도 제자리에 남습니다. ID 컬럼엔 lockPosition: 'left' 도 있어 항상 맨 앞입니다.",
+        on: 'ID 가 왼쪽 고정 영역 — 가로 스크롤해도 보임',
+        off: '일반 컬럼 — 가로 스크롤하면 같이 밀려남',
+      },
+      {
+        key: 'pinDate',
+        type: 'boolean',
+        default: false,
+        label: "수정일 pinned: 'right'",
+        desc: '수정일 컬럼을 오른쪽 고정 영역에 둡니다. 헤더 메뉴(≡) › 열 고정 으로 사용자가 직접 바꿀 수도 있습니다 (onColumnPinned 로그 확인).',
+        on: '수정일이 맨 오른쪽에 고정',
+        off: '원래 순서 위치',
+      },
+      {
+        key: 'hideDbms',
+        type: 'boolean',
+        default: false,
+        label: 'DBMS hide',
+        desc: 'colDef.hide 는 처음 표시 여부입니다. 숨긴 컬럼도 데이터·필터·정렬 상태는 그대로이고, 헤더 메뉴 › 열 선택 에서 다시 켤 수 있습니다.',
+        on: 'DBMS 컬럼 숨김',
+        off: 'DBMS 컬럼 표시',
+      },
     ],
     render: (p, ctx) => <ColumnDefs p={p} ctx={ctx} />,
     code: p => `const columnDefs = [
@@ -177,7 +214,17 @@ export default [
     name: '컬럼 그룹 · 접기',
     desc: '그룹 헤더(children), columnGroupShow 로 펼쳤을 때만 보이는 컬럼, marryChildren 으로 그룹 밖 이동 금지. 컬럼의 originalParent.colGroupDef 로 부모 그룹 정의에 접근할 수 있습니다.',
     keywords: ['children', 'columnGroupShow', 'openByDefault', 'marryChildren', 'originalParent', 'colGroupDef', 'setColumnGroupOpened', 'getColumnGroupState', 'onColumnGroupOpened', 'defaultColGroupDef'],
-    controls: [{ key: 'openByDefault', type: 'boolean', default: false, desc: '처음부터 펼친 상태' }],
+    controls: [
+      {
+        key: 'openByDefault',
+        type: 'boolean',
+        default: false,
+        label: 'openByDefault',
+        desc: "그룹(colGroupDef) 속성. 처음 그릴 때 그룹을 펼친 상태로 둘지 정합니다. 펼치면 columnGroupShow: 'open' 컬럼(파기모델·추출방식)이 보이고, 접으면 'closed' 또는 미지정 컬럼만 보입니다. 헤더의 ▸ 로 언제든 토글.",
+        on: '1·2단계 그룹이 펼쳐진 채 시작 (컬럼 4개씩)',
+        off: '접힌 채 시작 (사용·파기구분 2개씩)',
+      },
+    ],
     render: (p, ctx) => <ColumnGroups p={p} ctx={ctx} />,
     code: p => `{
   headerName: '1단계',
@@ -216,9 +263,23 @@ const valueGetter = ({ column, data }) => data[column.originalParent.colGroupDef
     name: '컬럼 크기 · 자동 맞춤',
     desc: '드래그 리사이즈, 더블클릭 자동 맞춤, autoSizeColumns / sizeColumnsToFit, autoSizeStrategy(fitCellContents / fitGridWidth / fitProvidedWidth).',
     keywords: ['autoSizeStrategy', 'fitCellContents', 'fitGridWidth', 'fitProvidedWidth', 'autoSizeColumns', 'autoSizeAllColumns', 'sizeColumnsToFit', 'setColumnWidths', 'skipHeaderOnAutoSize', 'onColumnResized', 'resizable'],
-    controls: [{ key: 'strategy', type: 'select', options: ['none', 'fitCellContents', 'fitGridWidth', 'fitProvidedWidth'], default: 'fitCellContents', desc: 'autoSizeStrategy.type' }],
+    controls: [
+      {
+        key: 'strategy',
+        type: 'select',
+        default: 'fitCellContents',
+        label: 'autoSizeStrategy',
+        desc: '그리드가 컬럼 폭을 자동으로 정하는 방식. colDef 의 width 보다 우선합니다. 사용자가 직접 리사이즈하면 그 폭이 유지됩니다.',
+        options: [
+          { value: 'none', desc: '자동 조정 없음 — colDef 의 width/flex 그대로' },
+          { value: 'fitCellContents', desc: '첫 데이터 렌더 때 1회, 각 컬럼을 헤더·셀 내용 길이에 맞춤 (보이는 행 기준)' },
+          { value: 'fitGridWidth', desc: '컬럼 폭 합계를 그리드 폭에 맞춤 (비율 유지). 그리드 크기가 바뀔 때마다 다시 맞춤' },
+          { value: 'fitProvidedWidth', desc: '컬럼 폭 합계를 지정한 width(여기선 900px)에 맞춤' },
+        ],
+      },
+    ],
     render: (p, ctx) => <Sizing p={p} ctx={ctx} />,
-    code: p => `<AgGridReact
+    code: p => `<R2Grid
   autoSizeStrategy={${p.strategy === 'none' ? 'undefined' : p.strategy === 'fitProvidedWidth' ? "{ type: 'fitProvidedWidth', width: 900 }" : `{ type: '${p.strategy}' }`}}
   onColumnResized={e => e.finished && console.log(e.column?.getActualWidth())}
   ...
@@ -265,7 +326,13 @@ gridRef.current.api.moveColumns(['updatedAt'], 1);
 gridRef.current.api.resetColumnState();`,
     usage: {
       file: 'components/PageTemplate/Table.jsx',
-      code: `// 숨김 컬럼을 쿠키에 저장해 다음 방문 때 복원
+      code: `const saveVisibleColumnsToCookie = (event, id) => {
+  if (!id) return;
+  const allColumns = event.api.getColumns();
+  ...
+  setCookie(id, headerNames);
+};
+...
 onColumnVisible={saveVisibleColumnsToCookie}`,
     },
   },
@@ -273,19 +340,81 @@ onColumnVisible={saveVisibleColumnsToCookie}`,
     id: 'row-numbers',
     category: CAT,
     name: '행 번호 컬럼',
-    desc: 'rowNumbers 로 행 번호 컬럼(ag-Grid-RowNumbersColumn)을 추가합니다. 셀 범위 선택 시 행 번호 클릭으로 행 전체 범위를 선택합니다.',
-    keywords: ['rowNumbers', 'ag-Grid-RowNumbersColumn', 'selectionColumnDef'],
+    desc: 'rowNumbers 로 맨 앞에 행 번호 컬럼(colId r2-Grid-RowNumbersColumn)을 추가합니다. 정렬·필터 후의 표시 순서대로 1부터 매기고, 셀 범위 선택(cellSelection)이 켜져 있으면 번호를 눌러 그 행 전체를 범위로 잡습니다.',
+    keywords: ['rowNumbers', 'r2-Grid-RowNumbersColumn', '행 번호'],
     controls: [
-      { key: 'rowNumbers', type: 'boolean', default: true },
-      { key: 'checkbox', type: 'boolean', default: true, desc: "rowSelection: { mode: 'multiRow' } (체크박스 컬럼)" },
+      {
+        key: 'rowNumbers',
+        type: 'boolean',
+        default: true,
+        label: 'rowNumbers',
+        desc: 'true 또는 옵션 객체 { width, headerName, valueFormatter, cellClass … } 로 행 번호 컬럼을 켭니다. 옵션은 그 컬럼의 colDef 처럼 적용됩니다.',
+        on: '맨 앞 행 번호 컬럼 표시',
+        off: '행 번호 없음',
+      },
+      { key: 'width', type: 'number', default: 60, label: 'rowNumbers.width', desc: '행 번호 컬럼 폭(px). 행 수가 많아 자릿수가 늘면 키우세요.' },
+      {
+        key: 'cellSelection',
+        type: 'boolean',
+        default: true,
+        label: 'cellSelection',
+        desc: '셀 범위 선택 기능. 켜져 있을 때만 행 번호 클릭/드래그가 행 단위 범위 선택이 됩니다 (Ctrl+C 로 그 행들 복사 가능).',
+        on: '번호 클릭 → 그 행 전체 범위 선택',
+        off: '번호는 표시만',
+      },
     ],
     render: p => <RowNumbers p={p} />,
-    code: p => `<AgGridReact
-  rowNumbers={${p.rowNumbers}}
-  cellSelection${p.checkbox ? "\n  rowSelection={{ mode: 'multiRow' }}" : ''}
+    code: p => `<R2Grid
+  rowNumbers={${p.rowNumbers ? `{ width: ${p.width} }` : 'false'}}${p.cellSelection ? '\n  cellSelection' : ''}
   ...
 />`,
     usage: { file: 'page/work/workGroup/WorkGroupList.jsx', code: `<Table\n  id="WorkGroupListTable"\n  ref={gridRef}\n  rowNumbers\n  rowData={workList}\n  columnDefs={columnDefs}\n  ...` },
+  },
+  {
+    id: 'selection-column',
+    category: CAT,
+    name: '체크박스 컬럼',
+    desc: "rowSelection 의 checkboxes 가 켜지면 맨 앞에 선택 체크박스 컬럼(colId r2-Grid-SelectionColumn)이 생깁니다. 이 컬럼의 폭·고정·헤더 등은 selectionColumnDef 로 바꿉니다. 그룹 컬럼 안에 넣으려면 checkboxLocation: 'autoGroupColumn'.",
+    keywords: ['selectionColumnDef', 'r2-Grid-SelectionColumn', 'checkboxes', 'headerCheckbox', 'checkboxLocation', '체크박스'],
+    controls: [
+      {
+        key: 'checkboxes',
+        type: 'boolean',
+        default: true,
+        label: 'rowSelection.checkboxes',
+        desc: '각 행에 선택 체크박스를 둘지. 함수로 행마다 정할 수도 있습니다 (예: 잠긴 행 제외).',
+        on: '체크박스 컬럼 표시',
+        off: '체크박스 컬럼 없음 — 행 클릭(enableClickSelection)이나 api 로만 선택',
+      },
+      {
+        key: 'headerCheckbox',
+        type: 'boolean',
+        default: true,
+        label: 'rowSelection.headerCheckbox',
+        desc: '헤더의 전체 선택 체크박스. 누르면 전체 행(또는 selectAll 옵션에 따라 필터된 행/현재 페이지)을 선택합니다. 일부만 선택되면 − 표시.',
+        on: '헤더에 전체 선택 체크박스',
+        off: '헤더 비움',
+      },
+      {
+        key: 'pinned',
+        type: 'select',
+        default: 'left',
+        label: 'selectionColumnDef.pinned',
+        desc: '체크박스 컬럼 고정 위치. 이동은 항상 잠겨 있습니다(lockPosition).',
+        options: [
+          { value: 'left', desc: '왼쪽 고정 — 가로 스크롤해도 체크박스가 보임' },
+          { value: 'none', desc: '고정 안 함 — 가로 스크롤하면 밀려남' },
+          { value: 'right', desc: '오른쪽 고정' },
+        ],
+      },
+      { key: 'width', type: 'number', default: 48, label: 'selectionColumnDef.width', desc: '체크박스 컬럼 폭(px). 기본 48 고정폭(min=max).' },
+    ],
+    render: (p, ctx) => <SelectionColumn p={p} ctx={ctx} />,
+    code: p => `<R2Grid
+  rowSelection={{ mode: 'multiRow', checkboxes: ${p.checkboxes}, headerCheckbox: ${p.headerCheckbox} }}
+  selectionColumnDef={{ pinned: ${p.pinned === 'none' ? 'null' : `'${p.pinned}'`}, width: ${p.width}, maxWidth: ${p.width}, minWidth: ${p.width} }}
+  ...
+/>`,
   },
   {
     id: 'col-span',
@@ -312,7 +441,7 @@ onColumnVisible={saveVisibleColumnsToCookie}`,
     code: () => `const top = useRef(null);
 const bottom = useRef(null);
 
-<AgGridReact ref={top} alignedGrids={[bottom]} rowData={rows} columnDefs={columnDefs} />
-<AgGridReact ref={bottom} alignedGrids={[top]} rowData={totals} columnDefs={columnDefs} headerHeight={0} />`,
+<R2Grid ref={top} alignedGrids={[bottom]} rowData={rows} columnDefs={columnDefs} />
+<R2Grid ref={bottom} alignedGrids={[top]} rowData={totals} columnDefs={columnDefs} headerHeight={0} />`,
   },
 ];

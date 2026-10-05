@@ -113,8 +113,25 @@ export default [
     desc: '행/컬럼 가상화로 화면에 보이는 셀만 그립니다. 50만 행에서도 DOM 행 수가 일정하고, 정렬은 타입별 키 정렬(숫자 Float64Array, 문자열 순위)로 처리합니다.',
     keywords: ['virtualization', '가상화', 'rowBuffer', 'suppressColumnVirtualisation', '100000', '500000', 'performance', '성능'],
     controls: [
-      { key: 'rows', type: 'select', options: [10000, 100000, 500000], default: 100000 },
-      { key: 'rowBuffer', type: 'number', default: 10, desc: '화면 밖에 미리 그려둘 행 수' },
+      {
+        key: 'rows',
+        type: 'select',
+        default: 100000,
+        label: '행 개수',
+        desc: '생성할 데모 행 수. 위 버튼으로 정렬·필터·전체 선택 시간을 재면 이벤트 로그에 ms 로 찍힙니다.',
+        options: [
+          { value: 10000, desc: '1만 — 일반 대량 목록' },
+          { value: 100000, desc: '10만 — 정렬 수십 ms 수준' },
+          { value: 500000, desc: '50만 — 데이터 생성에 1~2초, 정렬은 수백 ms' },
+        ],
+      },
+      {
+        key: 'rowBuffer',
+        type: 'number',
+        default: 10,
+        label: 'rowBuffer',
+        desc: '보이는 영역 위·아래에 미리 그려 둘 행 수. 크게 하면 빠른 스크롤 때 빈 행이 덜 보이지만 DOM 이 늘어 렌더가 무거워집니다. 0 이면 보이는 행만.',
+      },
     ],
     render: (p, ctx) => <BigData p={p} ctx={ctx} />,
     code: p => `${IMPORT_LINE}
@@ -122,7 +139,7 @@ export default [
 const rowData = useMemo(() => makeRows(${p.rows}), []);
 
 <div style={{ height: 420 }}>   {/* 부모에 높이가 있어야 가상화됨 */}
-  <AgGridReact rowData={rowData} columnDefs={columnDefs} rowBuffer={${p.rowBuffer}} />
+  <R2Grid rowData={rowData} columnDefs={columnDefs} rowBuffer={${p.rowBuffer}} />
 </div>`,
   },
   {
@@ -133,7 +150,7 @@ const rowData = useMemo(() => makeRows(${p.rows}), []);
     keywords: ['applyTransaction', 'applyTransactionAsync', 'getRowId', 'add', 'update', 'remove', 'addIndex', 'onRowDataUpdated', 'getSelectedRows'],
     controls: [],
     render: (p, ctx) => <Transactions ctx={ctx} />,
-    code: () => `<AgGridReact
+    code: () => `<R2Grid
   ref={gridRef}
   rowData={rowData}
   columnDefs={columnDefs}
@@ -159,12 +176,20 @@ gridRef.current.api.applyTransaction({ remove: gridRef.current.api.getSelectedRo
     desc: 'enableCellChangeFlash 가 켜진 컬럼은 값이 바뀌면 배경이 깜빡입니다. api.flashCells 로 직접 깜빡이게 할 수도 있습니다.',
     keywords: ['enableCellChangeFlash', 'flashCells', 'cellFlashDuration', 'cellFadeDuration', 'setDataValue', 'r2-cell-data-changed'],
     controls: [
-      { key: 'flash', type: 'boolean', default: true, desc: 'defaultColDef.enableCellChangeFlash' },
-      { key: 'duration', type: 'number', default: 500, desc: 'cellFlashDuration (ms)' },
-      { key: 'fade', type: 'number', default: 1000, desc: 'cellFadeDuration (ms)' },
+      {
+        key: 'flash',
+        type: 'boolean',
+        default: true,
+        label: 'enableCellChangeFlash',
+        desc: '컬럼 속성(여기선 defaultColDef 로 전체). 셀 값이 setDataValue·트랜잭션·편집으로 바뀌면 그 셀 배경을 잠깐 강조합니다. api.flashCells 는 이 값과 상관없이 동작합니다.',
+        on: "'임의 행 값 변경' 시 바뀐 셀이 깜빡임",
+        off: '값은 바뀌지만 강조 없음',
+      },
+      { key: 'duration', type: 'number', default: 500, label: 'cellFlashDuration', desc: '강조색이 유지되는 시간(ms). 이 시간이 지나면 사라지기 시작합니다.' },
+      { key: 'fade', type: 'number', default: 1000, label: 'cellFadeDuration', desc: '강조색이 사라지는 데 걸리는 시간(ms). 0 이면 바로 꺼집니다.' },
     ],
     render: (p, ctx) => <Flash p={p} ctx={ctx} />,
-    code: p => `<AgGridReact
+    code: p => `<R2Grid
   defaultColDef={{ enableCellChangeFlash: ${p.flash} }}
   cellFlashDuration={${p.duration}}
   cellFadeDuration={${p.fade}}

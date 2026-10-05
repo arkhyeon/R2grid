@@ -168,7 +168,7 @@ html[data-theme='dark'] .log {
   }
 }
 
-/* ── CLM Table.jsx / index.scss 의 ag-grid override 일부 재현 (클래스 호환성 검증용) ── */
+/* ── CLM Table.jsx / index.scss 의 R2grid override 일부 재현 (클래스 호환성 검증용) ── */
 .clm-table-wrapper .r2-header-cell-label {
   font-size: 12px;
   justify-content: center !important;

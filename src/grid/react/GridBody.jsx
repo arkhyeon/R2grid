@@ -30,7 +30,7 @@ function CheckboxCellRenderer({ core, node, column, value }) {
   );
 }
 
-// agGroupCellRenderer: 마스터/디테일 펼침 + 행그룹/트리 들여쓰기·펼침·자식수
+// r2GroupCellRenderer: 마스터/디테일 펼침 + 행그룹/트리 들여쓰기·펼침·자식수
 function GroupCellRenderer({ core, node, column, params, extra }) {
   const text = params.valueFormatted ?? params.value;
   const innerRenderer = extra?.innerRenderer;
@@ -189,11 +189,11 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
         rendererParams = sel.params ?? rendererParams;
       }
     }
-    if (!comp && col.dataType === 'boolean') comp = 'agCheckboxCellRenderer';
+    if (!comp && col.dataType === 'boolean') comp = 'r2CheckboxCellRenderer';
     const extra = typeof rendererParams === 'function' ? rendererParams(base) : rendererParams;
     // 내장 이름은 r2 별칭도 허용 (사용자 등록 컴포넌트가 같은 이름이면 그쪽 우선)
     const bi = typeof comp === 'string' && !g.components?.[comp] ? canonName(comp) : comp;
-    if (bi === 'agSparklineCellRenderer') {
+    if (bi === 'r2SparklineCellRenderer') {
       content = (
         <SparklineCell
           value={value}
@@ -202,11 +202,11 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
           options={extra?.sparklineOptions}
         />
       );
-    } else if (bi === 'agCheckboxCellRenderer') {
+    } else if (bi === 'r2CheckboxCellRenderer') {
       content = <CheckboxCellRenderer core={core} node={node} column={col} value={value} />;
-    } else if (bi === 'agGroupCellRenderer' || bi === 'group') {
+    } else if (bi === 'r2GroupCellRenderer' || bi === 'group') {
       content = <GroupCellRenderer core={core} node={node} column={col} params={{ ...base, ...(extra || {}) }} extra={extra} />;
-    } else if (bi && bi !== 'agAnimateShowChangeCellRenderer' && bi !== 'agAnimateSlideCellRenderer') {
+    } else if (bi && bi !== 'r2AnimateShowChangeCellRenderer' && bi !== 'r2AnimateSlideCellRenderer') {
       const impl = typeof comp === 'string' ? g.components?.[comp] ?? g.frameworkComponents?.[comp] : comp;
       if (impl) {
         const params = {
@@ -557,7 +557,7 @@ function DetailRow({ core, node, top, height }) {
   const master = node.parent;
   const g = core.gos;
   const p = g.detailCellRendererParams || {};
-  const Grid = core.__AgGridReact;
+  const Grid = core.__R2Grid;
   const [rows, setRows] = useState(null);
   const ref = useRef(null);
   useEffect(() => {

@@ -1,5 +1,5 @@
-// ag-grid-react AgGridReact 호환 컴포넌트
-//  <AgGridReact ref={ref} columnDefs rowData gridOptions ... onGridReady ... />  → ref.current.api
+// R2Grid 컴포넌트 (AG-Grid AgGridReact 와 같은 props / ref.current.api)
+//  <R2Grid ref={ref} columnDefs rowData gridOptions ... onGridReady ... />  → ref.current.api
 import React, {
   forwardRef,
   useEffect,
@@ -28,14 +28,14 @@ function isEditableEl(t) {
 function GridView({ core }) {
   const g = core.gos;
   const rootRef = useRef(null);
-  const agRootRef = useRef(null);
+  const gridRootRef = useRef(null);
   const headerVpRef = useRef(null);
   const [sbw, setSbw] = useState(0);
   const tooltip = useTooltip(core);
 
   useLayoutEffect(() => {
     core.eRoot = rootRef.current;
-    core.eFocusSink = agRootRef.current;
+    core.eFocusSink = gridRootRef.current;
   });
 
   const headerHeight = g.headerHeight ?? DEFAULT_HEADER_HEIGHT;
@@ -50,7 +50,7 @@ function GridView({ core }) {
   const owns = e => {
     const t = e.target;
     if (!(t instanceof Element)) return false;
-    if (t.closest('.r2-root') === agRootRef.current) return true;
+    if (t.closest('.r2-root') === gridRootRef.current) return true;
     return !!core.editing && !!t.closest('.r2-popup-editor') && !t.closest('.r2-root');
   };
 
@@ -58,14 +58,14 @@ function GridView({ core }) {
     if (!owns(e)) return;
     const t = e.target;
     const inEditor = !!core.editing && t instanceof Element && !!t.closest('.r2-cell-inline-editing,.r2-popup-editor');
-    if (!core.editing && t !== agRootRef.current && isEditableEl(t)) return;
-    if (core.editing && !inEditor && t !== agRootRef.current && isEditableEl(t)) return;
+    if (!core.editing && t !== gridRootRef.current && isEditableEl(t)) return;
+    if (core.editing && !inEditor && t !== gridRootRef.current && isEditableEl(t)) return;
     if (core.handleKeyDown(e.nativeEvent)) {
       e.preventDefault();
       e.stopPropagation();
     }
   };
-  const canClipboard = e => owns(e) && !core.editing && !(isEditableEl(e.target) && e.target !== agRootRef.current);
+  const canClipboard = e => owns(e) && !core.editing && !(isEditableEl(e.target) && e.target !== gridRootRef.current);
 
   return (
     <div
@@ -91,7 +91,7 @@ function GridView({ core }) {
       <div className={cx('r2-root-wrapper-body r2-focus-managed', autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal')} role="presentation">
         {core.sideBarPosition === 'left' && <SideBar core={core} />}
         <div
-          ref={agRootRef}
+          ref={gridRootRef}
           className={cx(
             'r2-root',
             !g.enableCellTextSelection && 'r2-unselectable',
@@ -120,12 +120,12 @@ function GridView({ core }) {
           onBlur={e => {
             if (!core.editing || !g.stopEditingWhenCellsLoseFocus) return;
             const next = e.relatedTarget;
-            if (next instanceof Element && (agRootRef.current?.contains(next) || next.closest('[data-r2-popup]'))) return;
+            if (next instanceof Element && (gridRootRef.current?.contains(next) || next.closest('[data-r2-popup]'))) return;
             // 팝업 에디터로 포커스 이동 중일 수 있어 한 틱 뒤 재확인
             setTimeout(() => {
               if (!core.editing) return;
               const a = document.activeElement;
-              if (a instanceof Element && (agRootRef.current?.contains(a) || a.closest('[data-r2-popup]'))) return;
+              if (a instanceof Element && (gridRootRef.current?.contains(a) || a.closest('[data-r2-popup]'))) return;
               core.stopEditing(false);
             }, 0);
           }}
@@ -139,7 +139,7 @@ function GridView({ core }) {
               headerVpRef.current = el;
             }}
           />
-          <GridBody core={core} headerVpRef={headerVpRef} focusSinkRef={agRootRef} onScrollbarWidth={setSbw} />
+          <GridBody core={core} headerVpRef={headerVpRef} focusSinkRef={gridRootRef} onScrollbarWidth={setSbw} />
           {overlay && (
             <div className="r2-overlay-host" style={{ top: headerTotal }}>
               <Overlay core={core} type={overlay} />
@@ -158,11 +158,11 @@ function GridView({ core }) {
   );
 }
 
-export const AgGridReact = forwardRef(function AgGridReact(props, ref) {
+export const R2Grid = forwardRef(function R2Grid(props, ref) {
   const coreRef = useRef(null);
   if (coreRef.current === null) coreRef.current = new GridCore(props);
   const core = coreRef.current;
-  core.__AgGridReact = AgGridReact;
+  core.__R2Grid = R2Grid;
   useSyncExternalStore(core.subscribe, core.getVersion, core.getVersion);
 
   const mounted = useRef(false);
@@ -188,4 +188,4 @@ export const AgGridReact = forwardRef(function AgGridReact(props, ref) {
   return <GridView core={core} />;
 });
 
-export default AgGridReact;
+export default R2Grid;
