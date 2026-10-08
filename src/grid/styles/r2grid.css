@@ -1,38 +1,39 @@
 /* =====================================================================
- * R2grid 기본 스타일
+ * R2grid 기본 스타일 — Moon 테마
  *  - 테마 변수(--r2-accent-color …) / 클래스(.r2-row-selected …)
  *  - 다크: 조상 요소 data-r2-theme-mode="dark" (동일 메커니즘)
  * ===================================================================== */
 
 .r2-theme-vars {
-  --r2-background-color: #fff;
-  --r2-foreground-color: #181d1f;
+  /* Moon — 낮: 차가운 은빛 슬레이트 + 인디고 강조 */
+  --r2-background-color: #ffffff;
+  --r2-foreground-color: #1e2235;
   --r2-text-color: var(--r2-foreground-color);
-  --r2-accent-color: #2196f3;
-  --r2-invalid-color: #e02525;
-  --r2-border-color: color-mix(in srgb, transparent, var(--r2-foreground-color) 15%);
-  --r2-chrome-background-color: color-mix(in srgb, transparent, var(--r2-foreground-color) 2%);
+  --r2-accent-color: #6366f1;
+  --r2-invalid-color: #ef4444;
+  --r2-border-color: color-mix(in srgb, transparent, #3b4466 13%);
+  --r2-chrome-background-color: #f7f8fc;
   --r2-header-background-color: var(--r2-chrome-background-color);
-  --r2-header-text-color: var(--r2-text-color);
-  --r2-header-font-weight: 500;
+  --r2-header-text-color: color-mix(in srgb, var(--r2-background-color), var(--r2-foreground-color) 72%);
+  --r2-header-font-weight: 600;
   --r2-header-row-border: solid 1px var(--r2-border-color);
-  --r2-header-column-resize-handle-color: var(--r2-border-color);
-  --r2-subtle-text-color: color-mix(in srgb, transparent, var(--r2-text-color) 50%);
+  --r2-header-column-resize-handle-color: color-mix(in srgb, transparent, var(--r2-accent-color) 35%);
+  --r2-subtle-text-color: color-mix(in srgb, transparent, var(--r2-text-color) 52%);
   --r2-cell-text-color: var(--r2-text-color);
   --r2-odd-row-background-color: var(--r2-background-color);
-  --r2-row-border: solid 1px var(--r2-border-color);
-  --r2-row-hover-color: color-mix(in srgb, transparent, var(--r2-accent-color) 8%);
-  --r2-selected-row-background-color: color-mix(in srgb, transparent, var(--r2-accent-color) 8%);
+  --r2-row-border: solid 1px color-mix(in srgb, transparent, #3b4466 8%);
+  --r2-row-hover-color: color-mix(in srgb, transparent, var(--r2-accent-color) 6%);
+  --r2-selected-row-background-color: color-mix(in srgb, transparent, var(--r2-accent-color) 11%);
   --r2-range-selection-border-color: var(--r2-accent-color);
-  --r2-range-selection-background-color: color-mix(in srgb, transparent, var(--r2-accent-color) 20%);
-  --r2-range-selection-highlight-color: color-mix(in srgb, transparent, var(--r2-accent-color) 50%);
-  --r2-value-change-value-highlight-background-color: #16a08580;
+  --r2-range-selection-background-color: color-mix(in srgb, transparent, var(--r2-accent-color) 14%);
+  --r2-range-selection-highlight-color: color-mix(in srgb, transparent, var(--r2-accent-color) 40%);
+  --r2-value-change-value-highlight-background-color: #22c55e40;
   --r2-pinned-column-border: solid 1px var(--r2-border-color);
   --r2-wrapper-border: solid 1px var(--r2-border-color);
-  --r2-wrapper-border-radius: 8px;
-  --r2-border-radius: 4px;
-  --r2-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Oxygen-Sans', Ubuntu, Cantarell,
-    'Helvetica Neue', 'Malgun Gothic', sans-serif;
+  --r2-wrapper-border-radius: 12px;
+  --r2-border-radius: 6px;
+  --r2-font-family: Pretendard, 'Pretendard Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR',
+    'Malgun Gothic', sans-serif;
   --r2-font-size: 14px;
   --r2-spacing: 8px;
   --r2-cell-horizontal-padding: calc(var(--r2-spacing) * 2);
@@ -41,42 +42,54 @@
   --r2-icon-color: inherit;
   --r2-row-height: 42px;
   --r2-header-height: 48px;
-  --r2-list-item-height: 28px;
+  --r2-list-item-height: 30px;
   --r2-input-border: solid 1px var(--r2-border-color);
   --r2-input-background-color: var(--r2-background-color);
   --r2-input-focus-border-color: var(--r2-accent-color);
-  --r2-input-focus-shadow: 0 0 0 3px color-mix(in srgb, transparent, var(--r2-accent-color) 47%);
+  --r2-input-focus-shadow: 0 0 0 3px color-mix(in srgb, transparent, var(--r2-accent-color) 25%);
   --r2-checkbox-checked-background-color: var(--r2-accent-color);
-  --r2-checkbox-checked-shape-color: var(--r2-background-color);
+  --r2-checkbox-checked-shape-color: #ffffff;
   --r2-checkbox-unchecked-background-color: var(--r2-background-color);
-  --r2-checkbox-unchecked-border-color: color-mix(in srgb, var(--r2-background-color), var(--r2-foreground-color) 30%);
-  --r2-menu-background-color: color-mix(in srgb, var(--r2-background-color), var(--r2-foreground-color) 3%);
-  --r2-menu-text-color: color-mix(in srgb, var(--r2-background-color), var(--r2-foreground-color) 95%);
-  --r2-menu-border: solid 1px color-mix(in srgb, transparent, var(--r2-foreground-color) 20%);
-  --r2-menu-shadow: 0 0 16px #00000026;
-  --r2-popup-shadow: 0 0 16px #00000026;
+  --r2-checkbox-unchecked-border-color: color-mix(in srgb, var(--r2-background-color), var(--r2-foreground-color) 28%);
+  --r2-menu-background-color: var(--r2-background-color);
+  --r2-menu-text-color: var(--r2-text-color);
+  --r2-menu-border: solid 1px var(--r2-border-color);
+  --r2-menu-shadow: 0 1px 2px #1e223514, 0 12px 32px -4px #1e223529;
+  --r2-popup-shadow: 0 1px 2px #1e223514, 0 12px 32px -4px #1e223529;
   --r2-side-bar-background-color: var(--r2-chrome-background-color);
   --r2-side-button-selected-background-color: var(--r2-background-color);
   --r2-tool-panel-background-color: var(--r2-background-color);
-  --r2-icon-button-hover-color: color-mix(in srgb, transparent, var(--r2-foreground-color) 10%);
-  --r2-tooltip-background-color: var(--r2-chrome-background-color);
+  --r2-icon-button-hover-color: color-mix(in srgb, transparent, var(--r2-accent-color) 12%);
+  --r2-tooltip-background-color: var(--r2-foreground-color);
+  --r2-tooltip-text-color: var(--r2-background-color);
   color-scheme: light;
 }
 
+/* Moon — 밤: 깊은 밤하늘 남색 + 라벤더 달빛 강조 */
 :where([data-r2-theme-mode^='dark']) .r2-theme-vars,
 .r2-theme-vars[data-r2-theme-mode^='dark'] {
-  --r2-background-color: hsl(217, 0%, 17%);
-  --r2-foreground-color: #fff;
-  --r2-border-color: color-mix(in srgb, transparent, var(--r2-foreground-color) 16%);
-  --r2-chrome-background-color: color-mix(in srgb, var(--r2-background-color), var(--r2-foreground-color) 5%);
-  --r2-row-hover-color: color-mix(in srgb, transparent, var(--r2-accent-color) 15%);
-  --r2-selected-row-background-color: color-mix(in srgb, transparent, var(--r2-accent-color) 20%);
-  --r2-menu-background-color: color-mix(in srgb, var(--r2-background-color), var(--r2-foreground-color) 10%);
-  --r2-checkbox-unchecked-background-color: color-mix(in srgb, var(--r2-background-color), var(--r2-foreground-color) 10%);
-  --r2-checkbox-unchecked-border-color: color-mix(in srgb, var(--r2-background-color), var(--r2-foreground-color) 35%);
-  --r2-input-background-color: color-mix(in srgb, var(--r2-background-color), var(--r2-foreground-color) 6%);
-  --r2-popup-shadow: 0 0 20px #000a;
-  --r2-menu-shadow: 0 0 20px #000a;
+  --r2-background-color: #12141c;
+  --r2-foreground-color: #e6e8f2;
+  --r2-accent-color: #8b8cf8;
+  --r2-invalid-color: #f87171;
+  --r2-border-color: color-mix(in srgb, transparent, #c7cce8 12%);
+  --r2-chrome-background-color: #171a25;
+  --r2-header-text-color: color-mix(in srgb, var(--r2-background-color), var(--r2-foreground-color) 78%);
+  --r2-row-border: solid 1px color-mix(in srgb, transparent, #c7cce8 7%);
+  --r2-row-hover-color: color-mix(in srgb, transparent, var(--r2-accent-color) 9%);
+  --r2-selected-row-background-color: color-mix(in srgb, transparent, var(--r2-accent-color) 18%);
+  --r2-range-selection-background-color: color-mix(in srgb, transparent, var(--r2-accent-color) 20%);
+  --r2-value-change-value-highlight-background-color: #22c55e55;
+  --r2-menu-background-color: #1b1f2c;
+  --r2-checkbox-checked-shape-color: #12141c;
+  --r2-checkbox-unchecked-background-color: color-mix(in srgb, var(--r2-background-color), var(--r2-foreground-color) 6%);
+  --r2-checkbox-unchecked-border-color: color-mix(in srgb, var(--r2-background-color), var(--r2-foreground-color) 32%);
+  --r2-input-background-color: color-mix(in srgb, var(--r2-background-color), var(--r2-foreground-color) 5%);
+  --r2-icon-button-hover-color: color-mix(in srgb, transparent, var(--r2-accent-color) 18%);
+  --r2-tooltip-background-color: #262b3d;
+  --r2-tooltip-text-color: var(--r2-foreground-color);
+  --r2-popup-shadow: 0 0 0 1px #00000040, 0 16px 40px -6px #000000b3;
+  --r2-menu-shadow: 0 0 0 1px #00000040, 0 16px 40px -6px #000000b3;
   color-scheme: dark;
 }
 
@@ -2004,6 +2017,7 @@
   max-width: 320px;
   padding: 6px 10px;
   background-color: var(--r2-tooltip-background-color);
+  color: var(--r2-tooltip-text-color);
   border: var(--r2-menu-border);
   border-radius: var(--r2-border-radius);
   box-shadow: var(--r2-popup-shadow);

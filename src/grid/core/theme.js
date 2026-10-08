@@ -8,11 +8,11 @@ const toVarName = name => `--r2-${name.replace(/[A-Z]/g, m => `-${m.toLowerCase(
 
 // 다크 모드 기본값 (light 전용 파라미터를 다크에서 되돌릴 때 사용)
 const DARK_DEFAULTS = {
-  backgroundColor: '#2b2b2b',
-  foregroundColor: '#ffffff',
-  accentColor: '#2196f3',
-  borderColor: 'rgba(255, 255, 255, 0.16)',
-  chromeBackgroundColor: 'color-mix(in srgb, var(--r2-background-color), var(--r2-foreground-color) 5%)',
+  backgroundColor: '#12141c',
+  foregroundColor: '#e6e8f2',
+  accentColor: '#8b8cf8',
+  borderColor: 'color-mix(in srgb, transparent, #c7cce8 12%)',
+  chromeBackgroundColor: '#171a25',
   headerBackgroundColor: 'var(--r2-chrome-background-color)',
   oddRowBackgroundColor: 'var(--r2-background-color)',
 };
