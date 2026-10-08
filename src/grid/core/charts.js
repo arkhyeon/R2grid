@@ -226,7 +226,9 @@ export const chartMethods = {
     const textCols = [];
     const sample = this.displayedNodes.slice(rowStartIndex, rowEndIndex + 1).filter(n => n && !n.detail);
     for (const c of columns) {
-      const numeric = sample.some(n => typeof this.getCellValue(n, c) === 'number') || c.dataType === 'number';
+      const cdt = c.colDef.chartDataType;
+      if (cdt === 'excluded') continue;
+      const numeric = cdt === 'series' || (cdt !== 'category' && cdt !== 'time' && (sample.some(n => typeof this.getCellValue(n, c) === 'number') || c.dataType === 'number'));
       if (numeric && c.autoType !== 'group') numCols.push(c);
       else textCols.push(c);
     }

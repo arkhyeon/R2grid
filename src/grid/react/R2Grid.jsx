@@ -14,6 +14,7 @@ import { copySelectionToEvent } from '../core/clipboard.js';
 import { cx } from '../core/utils.js';
 import { GridHeader } from './GridHeader.jsx';
 import { GridBody } from './GridBody.jsx';
+import { IconsContext } from './common.jsx';
 import { Overlay, PagingPanel, RowGroupPanel, SideBar, StatusBar, useTooltip } from './chrome.jsx';
 import { Popups } from './menus.jsx';
 import { CustomFilterHost } from './filters.jsx';
@@ -38,8 +39,10 @@ function GridView({ core }) {
     core.eFocusSink = gridRootRef.current;
   });
 
-  const headerHeight = g.headerHeight ?? DEFAULT_HEADER_HEIGHT;
-  const groupHeaderHeight = g.groupHeaderHeight ?? headerHeight;
+  // autoHeaderHeight: 줄바꿈된 헤더 글자 높이에 맞춰 늘림 (GridHeader 가 재서 core.autoHeaderPx 에 둠)
+  const baseHeaderHeight = g.headerHeight ?? DEFAULT_HEADER_HEIGHT;
+  const headerHeight = core.autoHeaderPx && g.headerHeight !== 0 ? Math.max(baseHeaderHeight, core.autoHeaderPx) : baseHeaderHeight;
+  const groupHeaderHeight = g.groupHeaderHeight ?? baseHeaderHeight;
   const headerTotal =
     g.headerHeight === 0 ? 0 : core.headerGroupDepth * groupHeaderHeight + headerHeight + core.getFloatingFiltersHeight(headerHeight);
   const rowHeight = core.getDefaultRowHeight();
@@ -85,6 +88,7 @@ function GridView({ core }) {
       }}
       onMouseOver={tooltip.onOver}
       onMouseOut={tooltip.onOut}
+      onMouseMove={tooltip.onMove}
     >
       <RowGroupPanel core={core} />
       <AdvancedFilterBar core={core} />
@@ -185,7 +189,11 @@ export const R2Grid = forwardRef(function R2Grid(props, ref) {
     core.maybeFireFirstDataRendered();
   });
 
-  return <GridView core={core} />;
+  return (
+    <IconsContext.Provider value={core.gos.icons || null}>
+      <GridView core={core} />
+    </IconsContext.Provider>
+  );
 });
 
 export default R2Grid;

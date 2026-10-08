@@ -301,6 +301,10 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
   if (!col.autoType && !node.stub && (cd.tooltipField || cd.tooltipValueGetter)) {
     const t = core.getCellTooltip(node, col);
     if (t != null && t !== '') tooltip = String(t);
+  } else if (!col.autoType && !node.stub && (cd.tooltipComponent || cd.tooltipComponentSelector)) {
+    // 툴팁 컴포넌트만 있으면 셀 값으로 표시 (AG 동일)
+    const v = formatted ?? value;
+    if (v != null && v !== '') tooltip = String(v);
   }
 
   return (
@@ -338,7 +342,7 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
         spanHeight && 'r2-cell-span',
         userCls,
       )}
-      role="gridcell"
+      role={cd.cellAriaRole || 'gridcell'}
       col-id={col.colId}
       aria-colindex={core.displayedIndex.get(col.colId) + 1}
       aria-colspan={colSpan > 1 ? colSpan : undefined}
@@ -734,11 +738,20 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
+  // bodyScrollEnd: 스크롤이 멈추고 100ms 뒤 (AG 동일)
+  const scrollEndTimer = useRef(null);
+  const scrollEnd = params => {
+    clearTimeout(scrollEndTimer.current);
+    scrollEndTimer.current = setTimeout(() => core.dispatch('bodyScrollEnd', params), 100);
+  };
+  useEffect(() => () => clearTimeout(scrollEndTimer.current), []);
   const onHScroll = e => {
     const left = e.currentTarget.scrollLeft;
     syncLeft(left);
     schedule();
-    core.dispatch('bodyScroll', { direction: 'horizontal', left: Math.abs(left), top: core.viewport?.getScrollTop() ?? 0 });
+    const params = { direction: 'horizontal', left: Math.abs(left), top: core.viewport?.getScrollTop() ?? 0 };
+    core.dispatch('bodyScroll', params);
+    scrollEnd(params);
   };
   const onCenterScroll = e => {
     const left = e.currentTarget.scrollLeft;
@@ -747,7 +760,9 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
   };
   const onBodyScroll = () => {
     schedule();
-    core.dispatch('bodyScroll', { direction: 'vertical', top: core.viewport?.getScrollTop() ?? 0, left: hScrollRef.current?.scrollLeft ?? 0 });
+    const params = { direction: 'vertical', top: core.viewport?.getScrollTop() ?? 0, left: hScrollRef.current?.scrollLeft ?? 0 };
+    core.dispatch('bodyScroll', params);
+    scrollEnd(params);
   };
 
   // ── 범위 드래그 (+ 가장자리 자동 스크롤) ──
@@ -1050,16 +1065,34 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     if (prev != null) sel(prev).forEach(el => el.classList.remove('r2-column-hover'));
     if (colId != null) sel(colId).forEach(el => el.closest('.r2-root') === root && el.classList.add('r2-column-hover'));
   };
+  // cellMouseOver / cellMouseOut (AG 동일 — 셀이 바뀔 때만)
+  const setMouseCell = (rowKey, colId, e) => {
+    const prev = core.__mouseCell;
+    const key = rowKey != null && colId != null ? `${rowKey}|${colId}` : null;
+    if ((prev?.key ?? null) === key) return;
+    const fire = (type, c) => {
+      const node = core.nodeFromRowKey(c.rowKey);
+      const column = core.getColumn(c.colId);
+      if (node && column) core.dispatch(type, { ...core.cellEventParams(node, column, e) });
+    };
+    if (prev) fire('cellMouseOut', prev);
+    core.__mouseCell = key ? { key, rowKey, colId } : null;
+    if (key) fire('cellMouseOver', core.__mouseCell);
+  };
   const onMouseOver = e => {
     const t = e.target instanceof Element ? e.target : null;
     if (!t || t.closest('.r2-root') !== focusSinkRef.current) return;
     const row = t.closest('.r2-row[row-index]');
-    setHover(row && !row.classList.contains('r2-full-width-row') ? row.getAttribute('row-index') : null);
-    setColHover(t.closest('.r2-cell[col-id]')?.getAttribute('col-id') ?? null);
+    const rowKey = row && !row.classList.contains('r2-full-width-row') ? row.getAttribute('row-index') : null;
+    setHover(rowKey);
+    const colId = t.closest('.r2-cell[col-id]')?.getAttribute('col-id') ?? null;
+    setColHover(colId);
+    setMouseCell(rowKey, colId, e);
   };
-  const onMouseLeave = () => {
+  const onMouseLeave = e => {
     setHover(null);
     setColHover(null);
+    setMouseCell(null, null, e);
   };
 
   // ── 렌더 범위 계산 ──
@@ -1096,6 +1129,27 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       }
     }
   }
+
+  // 렌더 범위가 바뀌면 viewportChanged / virtualRowRemoved / virtualColumnsChanged (렌더 뒤 effect 에서)
+  const renderedNow = useRef(null);
+  renderedNow.current = { first: core.renderedRange.first, last: core.renderedRange.last, cols: center.map(c => c.colId).join('|') };
+  const renderedPrev = useRef({ first: -1, last: -1, cols: '' });
+  useEffect(() => {
+    const now = renderedNow.current;
+    const prev = renderedPrev.current;
+    if (now.first !== prev.first || now.last !== prev.last) {
+      if (prev.first >= 0 && core.hasEventListener('virtualRowRemoved')) {
+        for (let i = prev.first; i <= prev.last; i++) {
+          if (i >= now.first && i <= now.last) continue;
+          const n = core.displayedNodes[i];
+          if (n) core.dispatch('virtualRowRemoved', { node: n, rowIndex: i, data: n.data });
+        }
+      }
+      core.dispatch('viewportChanged', { firstRow: now.first, lastRow: now.last });
+    }
+    if (now.cols !== prev.cols) core.dispatch('virtualColumnsChanged', { afterScroll: prev.cols !== '' });
+    renderedPrev.current = now;
+  });
 
   const leftRows = [];
   const centerRows = [];

@@ -173,6 +173,8 @@ function SetFilterUI({ core, column, onClose }) {
   const commit = sel => {
     const model = toModel(sel);
     setSelected(model ? new Set(model.values) : null);
+    core.dispatch('filterModified', { column, filterInstance: null });
+    core.dispatch('filterUiChanged', { column });
     if (!needApply) core.setColumnFilterModel(column, model);
   };
   const toggleKey = key => {
@@ -331,6 +333,8 @@ function ConditionFilterUI({ core, column, kind, onClose }) {
   };
   const update = next => {
     setState(next);
+    core.dispatch('filterModified', { column, filterInstance: null });
+    core.dispatch('filterUiChanged', { column });
     if (needApply) return;
     clearTimeout(timer.current);
     if (debounceMs) timer.current = setTimeout(() => applyNow(next), debounceMs);
@@ -569,6 +573,7 @@ function ConditionFloatingInput({ core, column, kind }) {
   const onChange = e => {
     const v = e.target.value;
     setText(v);
+    core.dispatch('floatingFilterUiChanged', { column });
     clearTimeout(timer.current);
     if (debounceMs) timer.current = setTimeout(() => apply(v), debounceMs);
     else apply(v);

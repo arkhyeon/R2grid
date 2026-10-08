@@ -70,6 +70,7 @@ export function createApi(core) {
     onRowHeightChanged: () => core.onRowHeightChanged(),
     setRowNodeExpanded: (node, expanded) => node && core.setNodeExpanded(node, !!expanded),
     expandAll: () => {
+      core.dispatch('expandOrCollapseAll', { source: 'expandAll' });
       core.rootNodes.forEach(n => {
         if (n.master || n.group) n.expanded = true;
       });
@@ -79,6 +80,7 @@ export function createApi(core) {
       core.refreshModel({ skipFilter: true, keepRenderedRows: true });
     },
     collapseAll: () => {
+      core.dispatch('expandOrCollapseAll', { source: 'collapseAll' });
       core.rootNodes.forEach(n => {
         n.expanded = false;
       });

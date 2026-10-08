@@ -55,7 +55,8 @@ export const fillHandleMethods = {
     const opts = this.getFillHandleOpts();
     if (opts && this.ranges.length === 1 && !this.rangeDragging && !this.editing) {
       const b = this.rangeBounds(this.ranges[0]);
-      if (b) fh = { rowIndex: b.r1, colId: this.displayedColumns[b.c1]?.colId, mode: opts.mode };
+      const col = b && this.displayedColumns[b.c1];
+      if (b && !col?.colDef.suppressFillHandle) fh = { rowIndex: b.r1, colId: col?.colId, mode: opts.mode };
     }
     this.__fh = fh;
     this.__fhVersion = this.version;

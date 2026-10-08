@@ -1,5 +1,5 @@
 // 공용 소형 컴포넌트: 아이콘(인라인 SVG, currentColor), 체크박스 (AG-Grid DOM/클래스 구조 동일)
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { createContext, useContext, useLayoutEffect, useRef } from 'react';
 import { cx } from '../core/utils.js';
 
 // viewBox 0 0 32 32 stroke 아이콘 (Quartz 아이콘셋 근사)
@@ -51,7 +51,54 @@ const ICONS = {
   search: 'M14 6a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM20 20l6.5 6.5',
 };
 
+// gridOptions.icons / colDef.icons: { [AG 아이콘 이름]: HTML 문자열 | () => 문자열 | HTMLElement }
+export const IconsContext = createContext(null);
+const AG_ICON_NAME = {
+  asc: 'sortAscending',
+  desc: 'sortDescending',
+  none: 'sortUnSort',
+  menu: 'menu',
+  'menu-alt': 'menuAlt',
+  filter: 'filter',
+  'filter-active': 'filterActive',
+  columns: 'columns',
+  'tree-open': 'groupExpanded',
+  'tree-closed': 'groupContracted',
+  expanded: 'columnGroupOpened',
+  contracted: 'columnGroupClosed',
+  first: 'first',
+  last: 'last',
+  previous: 'previous',
+  next: 'next',
+  tick: 'check',
+  cross: 'close',
+  copy: 'clipboardCopy',
+  cut: 'clipboardCut',
+  paste: 'clipboardPaste',
+  save: 'save',
+  csv: 'csvExport',
+  excel: 'excelExport',
+  pin: 'menuPin',
+  grip: 'rowDrag',
+  group: 'rowGroupPanel',
+  aggregation: 'valuePanel',
+  pivot: 'pivotPanel',
+  chart: 'chart',
+  settings: 'chartsMenu',
+  search: 'smallSearch',
+  arrows: 'columnMoveMove',
+  maximize: 'maximize',
+  minimize: 'minimize',
+};
+
 export function Icon({ name, className, ...rest }) {
+  const icons = useContext(IconsContext);
+  const custom = icons && (icons[AG_ICON_NAME[name]] ?? icons[name]);
+  if (custom != null) {
+    const v = typeof custom === 'function' ? custom() : custom;
+    const html = v instanceof Element ? v.outerHTML : String(v ?? '');
+    return <span className={cx('r2-icon', `r2-icon-${name}`, className)} unselectable="on" role="presentation" {...rest} dangerouslySetInnerHTML={{ __html: html }} />;
+  }
   const d = ICONS[name];
   return (
     <span className={cx('r2-icon', `r2-icon-${name}`, className)} unselectable="on" role="presentation" {...rest}>

@@ -45,6 +45,8 @@ const BUILTIN_COLUMN_TYPES = {
 
 let gridSeq = 0;
 
+const COL_DEF_EVENTS = new Set(['cellClicked', 'cellDoubleClicked', 'cellContextMenu', 'cellValueChanged']);
+
 // 값이 바뀌어도 화면을 다시 그릴 필요가 없는 콜백 옵션
 const SILENT_OPTION_KEYS = new Set([
   'getContextMenuItems',
@@ -214,9 +216,19 @@ export class GridCore {
   }
 
   // ── 이벤트 ───────────────────────────────────────────────
+  // 이 이벤트를 듣는 곳이 있는지 (gridOptions.on* 또는 addEventListener)
+  hasEventListener(type) {
+    return typeof this.gos[eventPropName(type)] === 'function' || !!this.events.hasListeners?.(type);
+  }
+
   dispatch(type, params = {}) {
     if (this.destroyed || this.__muteEvents) return;
     const event = { type, api: this.api, context: this.gos.context, ...params };
+    // 컬럼 단위 콜백 (colDef.onCellClicked 등 — AG 동일하게 그리드 이벤트보다 먼저)
+    if (COL_DEF_EVENTS.has(type)) {
+      const h = params.column?.colDef?.[eventPropName(type)];
+      if (typeof h === 'function') h(event);
+    }
     const handler = this.gos[eventPropName(type)];
     if (typeof handler === 'function') handler(event);
     this.events.dispatch(event);
@@ -283,6 +295,9 @@ export class GridCore {
     }
     Object.assign(merged, this.overrides);
     this.applyGos(merged, initial);
+    const diff = this.pendingStateChange;
+    this.pendingStateChange = null;
+    if (!initial && diff) this.dispatch('componentStateChanged', diff);
   }
 
   setGridOption(key, value) {
@@ -293,6 +308,7 @@ export class GridCore {
   updateGridOptions(options) {
     Object.assign(this.overrides, options);
     this.applyGos({ ...this.gos, ...options }, false);
+    this.pendingStateChange = null;
   }
 
   applyGos(next, initial) {
@@ -314,6 +330,14 @@ export class GridCore {
       return;
     }
     const changed = k => prev[k] !== next[k];
+    // componentStateChanged: 바뀐 옵션 { key: { previousValue, currentValue } } (AG 동일)
+    {
+      const diff = {};
+      for (const k of new Set([...Object.keys(prev || {}), ...Object.keys(next || {})])) {
+        if (k !== 'gridOptions' && prev?.[k] !== next?.[k]) diff[k] = { previousValue: prev?.[k], currentValue: next?.[k] };
+      }
+      if (Object.keys(diff).length) this.pendingStateChange = diff;
+    }
     // 바뀐 키가 이벤트 핸들러/콜백뿐이면 재렌더 없이 옵션만 갱신 (인라인 함수 props 대응)
     let renderRelevant = false;
     for (const k in next) {
@@ -369,7 +393,10 @@ export class GridCore {
       this.__findKey = null;
       this.dispatchFindChanged();
     }
-    if (changed('pinnedTopRowData') || changed('pinnedBottomRowData')) this.buildPinnedRows();
+    if (changed('pinnedTopRowData') || changed('pinnedBottomRowData')) {
+      this.buildPinnedRows();
+      this.dispatch('pinnedRowDataChanged', {});
+    }
     if (changed('enableRowPinning') && this.manualPins) {
       const m = this.manualPins;
       this.setManualPins({ top: this.rowPinningAllowed('top') ? m.top : [], bottom: this.rowPinningAllowed('bottom') ? m.bottom : [] }, 'gridOptionsChanged');
@@ -683,6 +710,7 @@ export class GridCore {
     if (!initial) {
       if (this.sortSignature() !== prevSortSig) this.refreshModel({});
       this.dispatch('newColumnsLoaded', { source: 'gridOptionsUpdated' });
+      this.dispatch('gridColumnsChanged', {});
       this.dispatch('displayedColumnsChanged', { source: 'gridOptionsUpdated' });
     }
   }
@@ -1122,6 +1150,7 @@ export class GridCore {
     this.refreshModel({});
     this.notify();
     this.dispatch('displayedColumnsChanged', { source: 'api' });
+    this.dispatch('columnsReset', { source: 'api' });
   }
 
   // ── 값 ───────────────────────────────────────────────────
@@ -3323,8 +3352,14 @@ export class GridCore {
   }
 
   openPopup(popup) {
+    const prev = this.popup;
     this.popup = popup;
     this.notify();
+    if (prev?.type === 'advancedFilterBuilder' && popup?.type !== 'advancedFilterBuilder') this.dispatch('advancedFilterBuilderVisibleChanged', { visible: false, source: 'api' });
+    if (popup?.type === 'filter' || (popup?.type === 'columnMenu' && popup.tab === 'filterMenuTab')) {
+      this.dispatch('filterOpened', { column: popup.column, source: popup.source || 'COLUMN_MENU', eGui: null });
+    }
+    if (popup?.type === 'advancedFilterBuilder') this.dispatch('advancedFilterBuilderVisibleChanged', { visible: true, source: 'ui' });
   }
 
   closePopup() {
@@ -3332,6 +3367,7 @@ export class GridCore {
     const p = this.popup;
     this.popup = null;
     this.notify();
+    if (p.type === 'advancedFilterBuilder') this.dispatch('advancedFilterBuilderVisibleChanged', { visible: false, source: 'ui' });
     if (p.type === 'columnMenu' || p.type === 'filter') {
       this.dispatch('columnMenuVisibleChanged', { visible: false, switchingTab: false, key: p.tab ?? null, column: p.column ?? null });
     }
@@ -3346,7 +3382,9 @@ export class GridCore {
     // 통합 차트: 범위가 있으면 "범위 차트" (AG 동일)
     if (this.gos.enableCharts && this.ranges.length) defaultItems.push('separator', 'chartRange');
     if (this.gos.enableCharts && this.isPivotActive?.()) defaultItems.push('separator', 'pivotChart');
-    const getItems = this.gos.getContextMenuItems;
+    // colDef.contextMenuItems 가 있으면 그 컬럼에선 그리드 설정보다 우선 (AG v33.1+)
+    const colItems = column?.colDef?.contextMenuItems;
+    const getItems = colItems !== undefined ? (Array.isArray(colItems) ? () => colItems : colItems) : this.gos.getContextMenuItems;
     const items = typeof getItems === 'function'
       ? getItems({ node: node ?? null, column: column ?? null, value, api: this.api, context: this.gos.context, defaultItems })
       : defaultItems;
@@ -3571,6 +3609,14 @@ export class GridCore {
     });
     this.afterColumnLayoutChange();
     this.dispatch('columnResized', { columns: fit, column: null, finished: true, source: 'sizeColumnsToFit' });
+  }
+
+  // 화면 행 키(row-index 속성: 'n' | 't-n' | 'b-n') → 노드
+  nodeFromRowKey(key) {
+    if (key == null) return null;
+    const m = /^([tb])-(\d+)$/.exec(key);
+    if (m) return (m[1] === 't' ? this.pinnedTop : this.pinnedBottom)[+m[2]] || null;
+    return this.displayedNodes[+key] || null;
   }
 
   // ── 툴팁 ─────────────────────────────────────────────────

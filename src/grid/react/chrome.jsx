@@ -325,33 +325,114 @@ export function PagingPanel({ core }) {
 }
 
 // ── 툴팁 ───────────────────────────────────────────────────
-// 셀/헤더에서 data-r2-tooltip 속성을 읽어 지연 표시 (AG 기본 tooltipShowDelay 2000ms)
+// 셀/헤더의 data-r2-tooltip 을 지연 표시 (AG 기본 tooltipShowDelay 2000ms)
+//  tooltipShowMode 'whenTruncated' (잘린 글자만), tooltipMouseTrack (마우스 따라감), tooltipInteraction (툴팁 위에 올려도 유지),
+//  tooltipTrigger 'focus' (키보드로 셀에 포커스하면 표시), colDef.tooltipComponent / tooltipComponentSelector / tooltipComponentParams
+function tooltipTarget(core, el) {
+  const cell = el.closest('.r2-cell[col-id], .r2-header-cell[col-id], .r2-header-group-cell[col-id]');
+  if (!cell) return null;
+  const colId = cell.getAttribute('col-id');
+  if (cell.classList.contains('r2-cell')) {
+    const row = cell.closest('.r2-row[row-index]');
+    const node = row ? core.nodeFromRowKey(row.getAttribute('row-index')) : null;
+    const column = core.getColumn(colId);
+    return node && column ? { location: 'cell', node, column, colDef: column.colDef } : null;
+  }
+  const column = core.getColumn(colId);
+  if (column) return { location: 'header', column, colDef: column.colDef };
+  const group = core.groupById?.get(colId);
+  return group ? { location: 'headerGroup', columnGroup: group, colDef: group.colGroupDef } : null;
+}
+
 export function useTooltip(core) {
   const [tip, setTip] = useState(null);
   const timer = useRef(null);
   const hideTimer = useRef(null);
-  const onOver = e => {
-    if (core.gos.enableBrowserTooltips) return;
-    const el = e.target instanceof Element ? e.target.closest('[data-r2-tooltip]') : null;
-    if (!el) return;
+  const overTip = useRef(false);
+  const g = () => core.gos;
+  const hide = () => {
+    clearTimeout(timer.current);
+    clearTimeout(hideTimer.current);
+    setTip(prev => {
+      if (prev) core.dispatch('tooltipHide', { parentGui: prev.el });
+      return null;
+    });
+  };
+  const show = (el, x, y) => {
     const text = el.getAttribute('data-r2-tooltip');
     if (!text) return;
+    // 잘린 경우에만 (AG tooltipShowMode: 'whenTruncated')
+    if (g().tooltipShowMode === 'whenTruncated') {
+      const box = el.querySelector('.r2-cell-wrapper, .r2-header-cell-text, .r2-group-value') || el;
+      if (box.scrollWidth <= box.clientWidth && box.scrollHeight <= box.clientHeight + 1) return;
+    }
+    const target = tooltipTarget(core, el);
+    const cd = target?.colDef || {};
+    const sel = typeof cd.tooltipComponentSelector === 'function' ? cd.tooltipComponentSelector({ ...target, value: text, api: core.api, context: g().context }) : null;
+    let comp = sel?.component ?? cd.tooltipComponent;
+    if (typeof comp === 'string') comp = g().components?.[comp];
+    const params = comp
+      ? {
+          ...target,
+          value: text,
+          valueFormatted: text,
+          data: target?.node?.data,
+          rowIndex: target?.node?.rowIndex,
+          api: core.api,
+          context: g().context,
+          hideTooltipCallback: hide,
+          ...(cd.tooltipComponentParams || {}),
+          ...(sel?.params || {}),
+        }
+      : null;
+    setTip({ text, x, y: y + 20, el, comp, params });
+    core.dispatch('tooltipShow', { parentGui: el });
+    clearTimeout(hideTimer.current);
+    if (!g().tooltipInteraction) hideTimer.current = setTimeout(hide, g().tooltipHideDelay ?? 10000);
+  };
+  const onOver = e => {
+    if (g().enableBrowserTooltips || g().tooltipTrigger === 'focus') return;
+    const el = e.target instanceof Element ? e.target.closest('[data-r2-tooltip]') : null;
+    if (!el || !el.getAttribute('data-r2-tooltip')) return;
+    if (tip && tip.el === el) return;
     clearTimeout(timer.current);
-    const delay = core.gos.tooltipShowDelay ?? 2000;
     const { clientX, clientY } = e;
-    timer.current = setTimeout(() => {
-      setTip({ text, x: clientX, y: clientY + 20, el });
-      clearTimeout(hideTimer.current);
-      hideTimer.current = setTimeout(() => setTip(null), core.gos.tooltipHideDelay ?? 10000);
-    }, delay);
+    timer.current = setTimeout(() => show(el, clientX, clientY), g().tooltipShowDelay ?? 2000);
   };
   const onOut = e => {
     const el = e.target instanceof Element ? e.target.closest('[data-r2-tooltip]') : null;
     if (!el) return;
     if (e.relatedTarget instanceof Node && el.contains(e.relatedTarget)) return;
     clearTimeout(timer.current);
-    setTip(null);
+    // 상호작용: 툴팁으로 옮겨가는 동안 잠시 유지
+    if (g().tooltipInteraction && tip) {
+      setTimeout(() => !overTip.current && hide(), 200);
+      return;
+    }
+    hide();
   };
+  const onMove = e => {
+    if (!g().tooltipMouseTrack || !tip) return;
+    setTip(t => (t ? { ...t, x: e.clientX, y: e.clientY + 20 } : t));
+  };
+  // tooltipTrigger 'focus': 셀 포커스 시 바로 표시
+  useEffect(() => {
+    if (g().tooltipTrigger !== 'focus') return undefined;
+    const onFocus = ev => {
+      setTimeout(() => {
+        const root = core.eRoot;
+        const col = ev.column?.colId;
+        if (!root || !col || ev.rowIndex == null) return hide();
+        const key = ev.rowPinned ? `${ev.rowPinned[0]}-${ev.rowIndex}` : String(ev.rowIndex);
+        const el = root.querySelector(`.r2-row[row-index="${key}"] .r2-cell[col-id="${CSS.escape(col)}"][data-r2-tooltip]`);
+        if (!el) return hide();
+        const r = el.getBoundingClientRect();
+        show(el, r.left + 8, r.bottom - 14);
+      }, 0);
+    };
+    core.events.addEventListener('cellFocused', onFocus);
+    return () => core.events.removeEventListener('cellFocused', onFocus);
+  });
   useEffect(
     () => () => {
       clearTimeout(timer.current);
@@ -362,12 +443,20 @@ export function useTooltip(core) {
   const node = tip
     ? createPortal(
         <PopupLayer core={core}>
-          <div className="r2-tooltip r2-popup-child" style={{ position: 'fixed', left: tip.x, top: tip.y }}>
-            {tip.text}
+          <div
+            className={cx('r2-tooltip r2-popup-child', tip.comp && 'r2-tooltip-custom', g().tooltipInteraction && 'r2-tooltip-interactive')}
+            style={{ position: 'fixed', left: tip.x, top: tip.y }}
+            onMouseEnter={() => (overTip.current = true)}
+            onMouseLeave={() => {
+              overTip.current = false;
+              if (g().tooltipInteraction) hide();
+            }}
+          >
+            {tip.comp ? React.createElement(tip.comp, tip.params) : tip.text}
           </div>
         </PopupLayer>,
         document.body,
       )
     : null;
-  return { onOver, onOut, node };
+  return { onOver, onOut, onMove, node };
 }

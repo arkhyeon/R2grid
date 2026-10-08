@@ -1,8 +1,8 @@
 // 헤더: 좌고정 / 중앙(가로 스크롤 동기화) / 우고정 + 그룹 헤더 행
-import React, { useRef } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { cx, resolveClassValue } from '../core/utils.js';
-import { Checkbox, Icon } from './common.jsx';
+import { Checkbox, Icon, IconsContext } from './common.jsx';
 import { stableElement } from './renderComponent.js';
 import { PopupLayer } from './popup.jsx';
 import { FloatingFilterCell } from './filters.jsx';
@@ -44,9 +44,21 @@ function HeaderGroupCell({ core, seg, level, height }) {
       role="columnheader"
       col-id={seg.group?.groupId}
       style={{ ...core.colPos(seg.left), width: seg.width, height }}
-      data-r2-tooltip={def?.headerTooltip}
+      data-r2-tooltip={headerTooltipOf(core, def, null, seg.group)}
     >
-      {seg.group && (
+      {seg.group && def.headerGroupComponent && (
+        <div className="r2-header-group-cell-label" role="presentation">
+          {stableElement(core, `hgroup:${seg.group.groupId}`, typeof def.headerGroupComponent === 'string' ? core.gos.components?.[def.headerGroupComponent] : def.headerGroupComponent, {
+            displayName: def.headerName ?? '',
+            columnGroup: seg.group,
+            setExpanded: v => core.setColumnGroupOpened(seg.group, !!v, 'uiColumnExpanded'),
+            api: core.api,
+            context: core.gos.context,
+            ...(def.headerGroupComponentParams || {}),
+          })}
+        </div>
+      )}
+      {seg.group && !def.headerGroupComponent && (
         <div className="r2-header-group-cell-label" role="presentation">
           <span className="r2-header-group-text" role="presentation">
             {def.headerName ?? ''}
@@ -71,8 +83,19 @@ function HeaderGroupCell({ core, seg, level, height }) {
   );
 }
 
+// 헤더 툴팁: headerTooltipValueGetter 우선 (AG v33+)
+function headerTooltipOf(core, def, column, columnGroup) {
+  if (!def) return undefined;
+  if (typeof def.headerTooltipValueGetter === 'function') {
+    const v = def.headerTooltipValueGetter({ colDef: def, column, columnGroup, location: 'header', api: core.api, context: core.gos.context });
+    return v == null || v === '' ? undefined : String(v);
+  }
+  return def.headerTooltip;
+}
+
 function SortIndicator({ col, multi }) {
   const s = col.sort;
+  const unSortIcon = !!col.colDef.unSortIcon && !s;
   return (
     <span className="r2-sort-indicator-container" role="presentation">
       <span className={cx('r2-sort-indicator-icon r2-sort-order', !(multi && s) && 'r2-hidden')} aria-hidden="true">
@@ -87,7 +110,7 @@ function SortIndicator({ col, multi }) {
       <span className="r2-sort-indicator-icon r2-sort-mixed-icon r2-hidden" aria-hidden="true">
         <Icon name="none" />
       </span>
-      <span className="r2-sort-indicator-icon r2-sort-none-icon r2-hidden" aria-hidden="true">
+      <span className={cx('r2-sort-indicator-icon r2-sort-none-icon', !unSortIcon && 'r2-hidden')} aria-hidden="true">
         <Icon name="none" />
       </span>
     </span>
@@ -121,12 +144,14 @@ function HeaderCell({ core, col, height: rowHeight, groupHeaderHeight, multiSort
     const startX = e.clientX;
     const startW = col.actualWidth;
     const dir = core.isRtl() ? -1 : 1;
+    core.dispatch('dragStarted', { target: el });
     const onMove = ev => core.setColumnWidth(col, startW + (ev.clientX - startX) * dir, false, 'uiColumnResized');
     const onUp = ev => {
       el.removeEventListener('pointermove', onMove);
       el.removeEventListener('pointerup', onUp);
       el.removeEventListener('pointercancel', onUp);
       core.setColumnWidth(col, startW + (ev.clientX - startX) * dir, true, 'uiColumnResized');
+      core.dispatch(ev.type === 'pointercancel' ? 'dragCancelled' : 'dragStopped', { target: el });
     };
     el.addEventListener('pointermove', onMove);
     el.addEventListener('pointerup', onUp);
@@ -237,7 +262,7 @@ function HeaderCell({ core, col, height: rowHeight, groupHeaderHeight, multiSort
     );
   }
 
-  return (
+  const cell = (
     <div
       className={cx(
         'r2-header-cell r2-focus-managed',
@@ -249,6 +274,7 @@ function HeaderCell({ core, col, height: rowHeight, groupHeaderHeight, multiSort
         col.autoType === 'rowNumbers' && 'r2-row-number-header',
         (menuOpen || filterOpen) && 'r2-header-active',
         cd.wrapHeaderText && 'r2-header-cell-wrap-text',
+        cd.autoHeaderHeight && 'r2-header-cell-auto-height',
         spanPx > 0 && 'r2-header-span-height',
         spanLevels > 0 && spanLevels === core.headerGroupDepth && 'r2-header-span-total',
         headerCls,
@@ -257,10 +283,17 @@ function HeaderCell({ core, col, height: rowHeight, groupHeaderHeight, multiSort
       role="columnheader"
       aria-sort={s === 'asc' ? 'ascending' : s === 'desc' ? 'descending' : 'none'}
       style={style}
-      data-r2-tooltip={cd.headerTooltip}
-      onClick={onClick}
+      data-r2-tooltip={headerTooltipOf(core, cd, col)}
+      onClick={e => {
+        core.dispatch('columnHeaderClicked', { column: col });
+        onClick(e);
+      }}
       onPointerDown={onPointerDown}
+      onMouseEnter={() => core.dispatch('columnHeaderMouseOver', { column: col })}
+      onMouseLeave={() => core.dispatch('columnHeaderMouseLeave', { column: col })}
       onContextMenu={e => {
+        core.dispatch('columnHeaderContextMenu', { column: col, event: e });
+        if (cd.suppressHeaderContextMenu) return;
         if (!legacy && showMenuBtn) {
           e.preventDefault();
           core.openPopup({ type: 'columnMenu', column: col, x: e.clientX, y: e.clientY });
@@ -283,6 +316,13 @@ function HeaderCell({ core, col, height: rowHeight, groupHeaderHeight, multiSort
       </div>
     </div>
   );
+  // colDef.icons: 이 컬럼 헤더 아이콘만 교체
+  return cd.icons ? <IconsContextMerge icons={cd.icons}>{cell}</IconsContextMerge> : cell;
+}
+
+function IconsContextMerge({ icons, children }) {
+  const parent = React.useContext(IconsContext);
+  return <IconsContext.Provider value={{ ...(parent || {}), ...icons }}>{children}</IconsContext.Provider>;
 }
 
 function HeaderRows({ core, cols, width, headerHeight, groupHeaderHeight, floatingHeight, drag }) {
@@ -349,6 +389,7 @@ function useColumnDrag(core) {
       if (!dragging) {
         if (Math.abs(ev.clientX - startX) < 5 && Math.abs(ev.clientY - startY) < 5) return;
         dragging = true;
+        core.dispatch('dragStarted', { target: e.target });
         state.current.ghost = { name: core.getDisplayName(col), x: ev.clientX, y: ev.clientY, hidden: false };
         document.body.classList.add('r2-dnd-dragging');
       }
@@ -427,14 +468,39 @@ function useColumnDrag(core) {
   return [state, ghost];
 }
 
+// autoHeaderHeight 컬럼 헤더의 실제 글자 높이를 재서 헤더 행 높이로 (바뀌면 다시 그림)
+function useAutoHeaderHeight(core, ref) {
+  useLayoutEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    const cells = root.querySelectorAll('.r2-header-cell-auto-height');
+    let need = 0;
+    cells.forEach(cell => {
+      const text = cell.querySelector('.r2-header-cell-text');
+      const label = cell.querySelector('.r2-header-cell-label');
+      if (!text || !label) return;
+      const cs = getComputedStyle(cell);
+      const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      need = Math.max(need, Math.ceil(text.scrollHeight + pad + 8));
+    });
+    const next = cells.length ? need : 0;
+    if (next !== (core.autoHeaderPx || 0)) {
+      core.autoHeaderPx = next;
+      core.notify();
+    }
+  });
+}
+
 export function GridHeader({ core, headerHeight, groupHeaderHeight, scrollbarWidth, registerHeaderViewport }) {
+  const autoRef = useRef(null);
+  useAutoHeaderHeight(core, autoRef);
   const depth = core.headerGroupDepth;
   const floatingHeight = core.getFloatingFiltersHeight(headerHeight);
   const total = depth * groupHeaderHeight + headerHeight + floatingHeight;
   const [drag, ghost] = useColumnDrag(core);
   if (core.gos.headerHeight === 0) return null;
   return (
-    <div className="r2-header r2-pivot-off r2-header-allow-overflow" role="presentation" style={{ height: total, minHeight: total }}>
+    <div ref={autoRef} className="r2-header r2-pivot-off r2-header-allow-overflow" role="presentation" style={{ height: total, minHeight: total }}>
       <div className={cx('r2-pinned-left-header', !core.leftWidth && 'r2-hidden')} role="rowgroup" style={{ width: core.leftWidth, minWidth: core.leftWidth, maxWidth: core.leftWidth }}>
         <HeaderRows core={core} cols={core.displayedLeft} width={core.leftWidth} headerHeight={headerHeight} groupHeaderHeight={groupHeaderHeight} floatingHeight={floatingHeight} drag={drag} />
       </div>

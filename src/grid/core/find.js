@@ -22,7 +22,9 @@ export const findMethods = {
       const node = this.displayedNodes[i];
       if (!node || node.detail || node.stub) continue;
       for (const column of cols) {
-        let text = this.getCellText(node, column);
+        const gft = column.colDef.getFindText;
+        let text = typeof gft === 'function' ? gft({ ...this.makeValueParams(node, column), value: this.getCellValue(node, column) }) : this.getCellText(node, column);
+        text = text == null ? '' : String(text);
         if (!text) continue;
         if (!cs) text = text.toLowerCase();
         let k = 0;

@@ -48,7 +48,7 @@ function builtinItem(core, key, params) {
     case 'contractAll':
       return { name: t('collapseAll'), action: () => core.api.collapseAll() };
     case 'pinSubMenu':
-      if (!col) return null;
+      if (!col || col.colDef.lockPinned) return null;
       return {
         name: t('pinColumn'),
         icon: 'pin',
@@ -382,7 +382,11 @@ export function ColumnChooserList({ core, showSearch = true, toolPanel = false }
             key={c.colId}
             data-insert-before={insertAt === i || undefined}
             data-insert-after={insertAt === shown.length && i === shown.length - 1 ? true : undefined}
-            className={cx('r2-column-select-column', canDrag(c) && 'r2-column-select-column-draggable')}
+            className={cx(
+              'r2-column-select-column',
+              canDrag(c) && 'r2-column-select-column-draggable',
+              typeof c.colDef?.toolPanelClass === 'function' ? c.colDef.toolPanelClass({ colDef: c.colDef, column: c, api: core.api, context: core.gos.context }) : c.colDef?.toolPanelClass,
+            )}
             style={{ paddingLeft: 8 + c.groupChain.length * 16 }}
             role="treeitem"
             draggable={canDrag(c) || undefined}

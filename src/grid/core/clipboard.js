@@ -231,6 +231,8 @@ export function pasteTextIntoGrid(core, text) {
   const write = (node, col, str) => {
     if (!node || node.detail || !col || col.isAuto) return;
     if (!core.isCellEditable(col, node)) return;
+    const sp = col.colDef.suppressPaste;
+    if (sp === true || (typeof sp === 'function' && sp({ ...core.makeValueParams(node, col) }))) return;
     core.writeCell(node, col, importValue(core, node, col, str), 'paste');
     touchedNodes.add(node);
     touchedCols.add(col);

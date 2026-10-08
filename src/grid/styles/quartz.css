@@ -2032,3 +2032,14 @@ body.r2-dnd-dragging * {
   cursor: move !important;
   user-select: none !important;
 }
+
+/* 툴팁 컴포넌트 / 상호작용 툴팁 */
+.r2-tooltip-custom {
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+.r2-tooltip-interactive {
+  pointer-events: auto;
+}
