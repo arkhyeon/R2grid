@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { r2Theme } from '../../grid/index.js';
+import { moonTheme } from '../../grid/index.js';
 import { BASE_COLUMNS, makeRows, SAMPLE } from '../data.js';
 import { Grid, IMPORT_LINE, jsxProps } from './_shared.jsx';
 
@@ -22,7 +22,7 @@ function QuickStart({ p, ctx }) {
 function Theme({ p }) {
   const theme = useMemo(
     () =>
-      r2Theme.withParams({
+      moonTheme.withParams({
         accentColor: p.accentColor || undefined,
         fontSize: p.fontSize,
         spacing: p.spacing,
@@ -145,8 +145,8 @@ export default function Page() {
     id: 'theme',
     category: CAT,
     name: '테마 · 다크 모드',
-    desc: 'r2Theme.withParams 로 색/크기를 바꾸고, 조상 요소의 data-r2-theme-mode="dark" 로 다크 스킴을 켭니다. provideGlobalGridOptions 로 전역 테마를 지정할 수 있습니다.',
-    keywords: ['theme', 'r2Theme', 'withParams', 'accentColor', 'data-r2-theme-mode', 'dark', 'provideGlobalGridOptions', 'rowHeight', 'headerHeight', 'colorSchemeDark'],
+    desc: 'moonTheme.withParams 로 색/크기를 바꾸고, 조상 요소의 data-r2-theme-mode="dark" 로 다크 스킴을 켭니다. provideGlobalGridOptions 로 전역 테마를 지정할 수 있습니다.',
+    keywords: ['theme', 'moonTheme', 'withParams', 'accentColor', 'data-r2-theme-mode', 'dark', 'provideGlobalGridOptions', 'rowHeight', 'headerHeight', 'colorSchemeDark'],
     controls: [
       {
         key: 'dark',
@@ -177,9 +177,9 @@ export default function Page() {
       { key: 'headerHeight', type: 'number', default: 36, label: 'headerHeight', desc: '컬럼 헤더 행 높이(px). 그룹 헤더 행은 groupHeaderHeight 로 따로 지정.' },
     ],
     render: p => <Theme p={p} />,
-    code: p => `import { r2Theme } from 'r2grid';
+    code: p => `import { moonTheme } from 'r2grid';
 
-const myTheme = r2Theme.withParams({
+const myTheme = moonTheme.withParams({
   accentColor: '${p.accentColor}',${p.headerBg ? `\n  headerBackgroundColor: '${p.headerBg}',` : ''}
   fontSize: ${p.fontSize},
   spacing: ${p.spacing},

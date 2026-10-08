@@ -1,4 +1,4 @@
-// 테마: r2Theme.withParams(params, mode?)
+// 테마: moonTheme.withParams(params, mode?)
 // 파라미터 → CSS 변수(--r2-accent-color 등)로 변환해 테마별 <style> 을 주입한다.
 // 다크 전환은 조상 요소의 data-r2-theme-mode="dark" 로 한다.
 
@@ -117,7 +117,7 @@ class Theme {
   }
 }
 
-export const r2Theme = new Theme('r2');
+export const moonTheme = new Theme('moon');
 export const createTheme = () => new Theme('custom');
 
 // Part 스텁 (withPart 체이닝 호환)
@@ -136,5 +136,5 @@ export const createPart = () => part('custom');
 
 export function resolveTheme(theme) {
   if (theme && theme instanceof Theme) return theme;
-  return r2Theme;
+  return moonTheme;
 }

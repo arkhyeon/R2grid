@@ -8,7 +8,7 @@ import { cx } from '../core/utils.js';
 export function PopupLayer({ core, children }) {
   return (
     <div
-      className={cx('r2-popup r2-theme-vars r2-theme-default', core.theme?.className)}
+      className={cx('r2-popup r2-theme-vars r2-theme-moon', core.theme?.className)}
       data-r2-popup=""
       style={{ position: 'absolute', left: 0, top: 0, width: 0, height: 0, zIndex: 1000 }}
     >

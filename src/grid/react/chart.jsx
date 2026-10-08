@@ -527,7 +527,7 @@ function ContainerChart({ core, model }) {
     return () => ro.disconnect();
   }, [model.container]);
   return createPortal(
-    <div className={`r2-popup r2-theme-vars r2-theme-default ${core.theme?.className || ''}`} style={{ position: 'static', width: '100%', height: '100%' }}>
+    <div className={`r2-popup r2-theme-vars r2-theme-moon ${core.theme?.className || ''}`} style={{ position: 'static', width: '100%', height: '100%' }}>
       <ChartPanel core={core} model={model} width={size.w} height={size.h} />
     </div>,
     model.container,

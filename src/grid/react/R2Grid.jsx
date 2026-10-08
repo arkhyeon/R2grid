@@ -75,7 +75,7 @@ function GridView({ core }) {
     <div
       ref={rootRef}
       className={cx(
-        'r2-root-wrapper r2-theme-vars r2-theme-default',
+        'r2-root-wrapper r2-theme-vars r2-theme-moon',
         core.isRtl() ? 'r2-rtl' : 'r2-ltr',
         core.theme?.className,
         autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal',
