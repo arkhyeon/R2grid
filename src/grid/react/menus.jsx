@@ -88,6 +88,14 @@ function builtinItem(core, key, params) {
             subMenu: CHART_TYPES.map(([k, label]) => ({ name: label, action: () => core.createRangeChart({ chartType: k }) })),
           }
         : null;
+    case 'pivotChart':
+      return core.gos.enableCharts && core.isPivotActive?.()
+        ? {
+            name: t('pivotChart', '피벗 차트'),
+            icon: 'chart',
+            subMenu: CHART_TYPES.map(([k, label]) => ({ name: label, action: () => core.createPivotChart({ chartType: k }) })),
+          }
+        : null;
     case 'separator':
       return 'separator';
     default:

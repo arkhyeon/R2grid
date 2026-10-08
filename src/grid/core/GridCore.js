@@ -3345,6 +3345,7 @@ export class GridCore {
     if (this.gos.enableRowPinning && node && (node.manualPinned || this.isRowPinnableNode(node))) defaultItems.unshift('pinRowSubMenu', 'separator');
     // 통합 차트: 범위가 있으면 "범위 차트" (AG 동일)
     if (this.gos.enableCharts && this.ranges.length) defaultItems.push('separator', 'chartRange');
+    if (this.gos.enableCharts && this.isPivotActive?.()) defaultItems.push('separator', 'pivotChart');
     const getItems = this.gos.getContextMenuItems;
     const items = typeof getItems === 'function'
       ? getItems({ node: node ?? null, column: column ?? null, value, api: this.api, context: this.gos.context, defaultItems })

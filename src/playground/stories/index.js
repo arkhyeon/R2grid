@@ -87,6 +87,8 @@ const MENU = [
   ['내보내기 · 차트', '내보내기', 'csv-export', 'CSV'],
   ['내보내기 · 차트', '내보내기', 'excel-export', 'Excel'],
   ['내보내기 · 차트', '차트', 'integrated-charts', '범위 차트'],
+  ['내보내기 · 차트', '차트', 'pivot-chart', '피벗 차트'],
+  ['내보내기 · 차트', '차트', 'cross-filter-chart', '크로스 필터'],
 
   ['CLM 화면', '화면 재현', 'clm-all-in-one', '종합 데모'],
   ['CLM 화면', '화면 재현', 'clm-workgroup-list', '업무 그룹 목록'],

@@ -102,6 +102,7 @@ export const R2_GRID_LOCALE_KR = {
 
   footerTotal: '합계',
   chartRange: '범위 차트',
+  pivotChart: '피벗 차트',
   rowGroupColumnsEmptyMessage: '여기로 컬럼을 끌어 행 그룹 지정',
   pivotColumnsEmptyMessage: '여기로 컬럼을 끌어 피벗 지정',
 

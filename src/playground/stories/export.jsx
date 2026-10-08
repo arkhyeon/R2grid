@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { BASE_COLUMNS, SAMPLE } from '../data.js';
+import React, { useEffect, useRef, useState } from 'react';
+import { BASE_COLUMNS, SALES, SAMPLE } from '../data.js';
 import { Grid } from './_shared.jsx';
 
 const CAT = '내보내기 · 차트';
@@ -56,6 +56,76 @@ function Excel({ p, ctx }) {
           { id: 'header', font: { bold: true, color: '#FFFFFF' }, interior: { color: '#3E3E3E', pattern: 'Solid' } },
           { id: 'title', font: { bold: true, size: 14 }, alignment: { horizontal: 'Center' } },
         ]}
+      />
+    </>
+  );
+}
+
+// 피벗 차트: 피벗 모드 그리드 + 아래에 차트 (데이터·피벗 키가 바뀌면 차트도 갱신)
+function PivotChartDemo({ p, ctx }) {
+  const ref = useRef(null);
+  const box = useRef(null);
+  const chart = useRef(null);
+  const make = api => {
+    chart.current?.destroyChart();
+    chart.current = api.createPivotChart({ chartType: p.type, chartContainer: box.current });
+    ctx.log(`createPivotChart → ${chart.current?.chartId}`);
+  };
+  useEffect(() => () => chart.current?.destroyChart(), []);
+  return (
+    <>
+      <Grid
+        key={`${p.type}${p.pivotCol}`}
+        gridRef={ref}
+        height={240}
+        rowData={SALES}
+        enableCharts
+        pivotMode
+        columnDefs={[
+          { field: 'region', headerName: '지역', rowGroup: true },
+          { field: 'year', headerName: '연도', pivot: p.pivotCol === 'year' },
+          { field: 'product', headerName: '제품', pivot: p.pivotCol === 'product' },
+          { field: 'sales', headerName: '매출', aggFunc: 'sum' },
+        ]}
+        autoGroupColumnDef={{ minWidth: 140 }}
+        onGridReady={e => make(e.api)}
+        onFilterChanged={() => ctx.log('filterChanged → 차트 갱신')}
+      />
+      <div ref={box} style={{ height: 300, marginTop: 10 }} />
+    </>
+  );
+}
+
+// 크로스 필터 차트: 차트를 누르면 그리드가 걸러지고, 다른 차트도 같이 바뀜
+function CrossFilterDemo({ p, ctx }) {
+  const ref = useRef(null);
+  const left = useRef(null);
+  const right = useRef(null);
+  const charts = useRef([]);
+  const make = api => {
+    charts.current.forEach(c => c?.destroyChart());
+    charts.current = [
+      api.createCrossFilterChart({ chartType: p.type, cellRange: { columns: ['dbms', 'rowCnt'] }, aggFunc: p.agg, chartContainer: left.current }),
+      api.createCrossFilterChart({ chartType: 'pie', cellRange: { columns: ['status'] }, aggFunc: 'count', chartContainer: right.current }),
+    ];
+  };
+  useEffect(() => () => charts.current.forEach(c => c?.destroyChart()), []);
+  return (
+    <>
+      <div className="pg-split">
+        <div ref={left} style={{ height: 280 }} />
+        <div ref={right} style={{ height: 280 }} />
+      </div>
+      <Grid
+        key={`${p.type}${p.agg}`}
+        gridRef={ref}
+        height={260}
+        style={{ marginTop: 10 }}
+        rowData={SAMPLE}
+        columnDefs={BASE_COLUMNS.map(c => (c.field === 'dbms' || c.field === 'status' ? { ...c, filter: 'r2SetColumnFilter' } : c))}
+        enableCharts
+        onGridReady={e => make(e.api)}
+        onFilterChanged={e => ctx.log(`filterChanged → ${JSON.stringify(e.api.getFilterModel())}`)}
       />
     </>
   );
@@ -252,5 +322,103 @@ const chartRef = api.createRangeChart({
   chartType: '${p.type}',${p.inline ? '\n  chartContainer: containerRef.current,' : ''}
 });
 chartRef.destroyChart();`,
+  },
+  {
+    id: 'pivot-chart',
+    category: CAT,
+    name: '피벗 차트',
+    desc: 'api.createPivotChart — 피벗 모드의 표시 행(행 그룹)이 항목, 피벗 결과 컬럼(피벗 값 × 값 컬럼)이 계열이 됩니다. 그룹을 펼치거나 피벗 컬럼·필터를 바꾸면 차트도 따라 바뀝니다. 피벗 모드에서 우클릭 › 피벗 차트 로도 만들 수 있습니다.',
+    keywords: ['createPivotChart', 'pivotMode', 'pivot', 'enableCharts', 'chartContainer', 'pivotChart', 'getChartModels'],
+    controls: [
+      {
+        key: 'pivotCol',
+        type: 'select',
+        default: 'year',
+        label: '피벗 컬럼',
+        desc: 'pivot: true 인 컬럼. 이 컬럼의 값마다 결과 컬럼이 생기고, 차트에서는 계열(색)이 됩니다.',
+        options: [
+          { value: 'year', label: '연도', desc: '2024 · 2025 두 계열' },
+          { value: 'product', label: '제품', desc: '노트북 · 모니터 · 키보드 세 계열' },
+        ],
+      },
+      {
+        key: 'type',
+        type: 'select',
+        default: 'groupedColumn',
+        label: 'chartType',
+        desc: '피벗 차트 종류. 누적형은 지역별 합계 비교, 묶은형은 계열끼리 비교에 맞습니다.',
+        options: [
+          { value: 'groupedColumn', desc: '묶은 세로 막대' },
+          { value: 'stackedColumn', desc: '누적 세로 막대 — 지역 합계 + 구성' },
+          { value: 'normalizedColumn', desc: '100% 누적 — 구성 비율' },
+          { value: 'line', desc: '꺾은선' },
+        ],
+      },
+    ],
+    render: (p, ctx) => <PivotChartDemo p={p} ctx={ctx} />,
+    code: p => `<R2Grid
+  enableCharts
+  pivotMode
+  columnDefs={[
+    { field: 'region', rowGroup: true },
+    { field: '${p.pivotCol}', pivot: true },
+    { field: 'sales', aggFunc: 'sum' },
+  ]}
+  onGridReady={e => {
+    chartRef = e.api.createPivotChart({
+      chartType: '${p.type}',
+      chartContainer: containerRef.current, // 없으면 떠 있는 창
+    });
+  }}
+/>`,
+  },
+  {
+    id: 'cross-filter-chart',
+    category: CAT,
+    name: '크로스 필터 차트',
+    desc: 'api.createCrossFilterChart — 첫 컬럼 값별로 나머지 숫자 컬럼을 집계해 그립니다. 막대·조각을 누르면 그 값으로 그리드에 Set 필터가 걸리고, 같은 그리드의 다른 크로스 필터 차트도 걸러진 값으로 바뀝니다. 전체 값은 옅게, 걸러진 값은 진하게 표시됩니다.',
+    keywords: ['createCrossFilterChart', 'crossFilter', 'aggFunc', 'cellRange', 'enableCharts', 'r2SetColumnFilter', 'chartContainer', 'filterChanged'],
+    controls: [
+      {
+        key: 'type',
+        type: 'select',
+        default: 'groupedColumn',
+        label: 'chartType',
+        desc: '왼쪽 차트(DBMS별 행 수) 종류. 크로스 필터는 누적형을 지원하지 않습니다. 오른쪽은 상태별 개수 원형 차트로 고정.',
+        options: [
+          { value: 'groupedColumn', desc: '세로 막대' },
+          { value: 'groupedBar', desc: '가로 막대' },
+          { value: 'line', desc: '꺾은선 — 점을 눌러 필터' },
+          { value: 'donut', desc: '도넛' },
+        ],
+      },
+      {
+        key: 'agg',
+        type: 'select',
+        default: 'sum',
+        label: 'aggFunc',
+        desc: '같은 카테고리 행들의 값을 합치는 방법. 값 컬럼 없이 카테고리만 주면 개수(count)를 셉니다.',
+        options: [
+          { value: 'sum', desc: '합계' },
+          { value: 'avg', desc: '평균' },
+          { value: 'count', desc: '행 개수' },
+          { value: 'max', desc: '최댓값' },
+        ],
+      },
+    ],
+    render: (p, ctx) => <CrossFilterDemo p={p} ctx={ctx} />,
+    code: p => `// 막대 클릭 = 그 값만, Ctrl/⌘+클릭 = 추가·제외, 선택된 하나를 다시 클릭 = 해제
+api.createCrossFilterChart({
+  chartType: '${p.type}',
+  cellRange: { columns: ['dbms', 'rowCnt'] }, // [카테고리, 값...]
+  aggFunc: '${p.agg}',
+  chartContainer: leftRef.current,
+});
+api.createCrossFilterChart({
+  chartType: 'pie',
+  cellRange: { columns: ['status'] },          // 값 컬럼 없음 → 개수
+  aggFunc: 'count',
+  chartContainer: rightRef.current,
+});`,
   },
 ];

@@ -426,6 +426,8 @@ export function createApi(core) {
 
     // ── 통합 차트 ──
     createRangeChart: params => core.createRangeChart(params),
+    createPivotChart: params => core.createPivotChart(params),
+    createCrossFilterChart: params => core.createCrossFilterChart(params),
     getChartModels: () => core.getChartModels(),
     getChartRef: id => core.getChartRef(id),
     updateChart: params => core.updateChart(params),

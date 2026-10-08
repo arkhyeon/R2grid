@@ -254,6 +254,16 @@ const STORY_DOCS = {
   'excel-export': {
     whenToUse: ['제목·합계·서식이 있는 엑셀 보고서', '여러 그리드를 시트별로 한 파일에 — exportMultipleSheetsAsExcel'],
   },
+  'pivot-chart': {
+    badge: 'NEW',
+    whenToUse: ['피벗 결과(지역 × 연도 매출 등)를 표와 함께 그래프로 볼 때'],
+    notes: ['피벗 모드가 켜져 있어야 만들어집니다 (아니면 undefined).', '항목은 현재 표시된 그룹 행 기준이라, 그룹을 펼치면 하위 그룹도 항목으로 추가됩니다.'],
+  },
+  'cross-filter-chart': {
+    badge: 'NEW',
+    whenToUse: ['대시보드처럼 차트를 눌러 목록을 거르고, 다른 차트도 같이 바뀌게 할 때'],
+    notes: ['필터는 카테고리 컬럼의 Set 필터 모델로 걸립니다 (filterType: "set"). 컬럼 메뉴의 필터와 같은 상태입니다.', '전체 값(옅은 막대)은 필터와 무관한 모든 행 기준입니다.'],
+  },
   'integrated-charts': {
     whenToUse: ['선택한 범위를 바로 막대·선·원 그래프로 볼 때'],
   },

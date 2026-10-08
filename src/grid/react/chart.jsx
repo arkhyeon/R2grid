@@ -1,7 +1,7 @@
 // 통합 차트 렌더러 (SVG) + 차트 창
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CHART_TYPES } from '../core/charts.js';
+import { CHART_TYPES, CROSS_FILTER_TYPES } from '../core/charts.js';
 import { downloadFile } from '../core/utils.js';
 import { Icon } from './common.jsx';
 import { PopupLayer, usePopupPosition } from './popup.jsx';
@@ -27,7 +27,10 @@ function niceScale(min, max, ticks = 5) {
 const fmt = v => (Math.abs(v) >= 1e6 ? `${+(v / 1e6).toFixed(1)}M` : Math.abs(v) >= 1e3 ? `${+(v / 1e3).toFixed(1)}K` : `${+v.toFixed(2)}`);
 
 export function ChartSvg({ data, type, width, height, title }) {
-  const { categories, series } = data;
+  const { categories, series, cross } = data;
+  // 크로스 필터: 전체(옅게) 위에 걸러진 값(진하게), 누르면 그 카테고리로 필터
+  const click = ci => (cross ? { onClick: e => cross.onClick(ci, e), style: { cursor: 'pointer' } } : {});
+  const dim = ci => cross && cross.selected.size > 0 && !cross.selected.has(ci);
   const top = title ? 34 : 14;
   const legendH = 28;
   const pad = { top, right: 16, bottom: 44 + legendH, left: 56 };
@@ -51,7 +54,7 @@ export function ChartSvg({ data, type, width, height, title }) {
   }
 
   if (type === 'pie' || type === 'donut') {
-    const s = series[0];
+    const s = cross ? { ...series[0], values: series[0].totals } : series[0];
     const total = s.values.reduce((a, v) => a + Math.max(0, v), 0) || 1;
     const cx = pad.left + pw / 2;
     const cy = pad.top + ph / 2;
@@ -62,14 +65,27 @@ export function ChartSvg({ data, type, width, height, title }) {
       const a1 = a0 + (Math.max(0, v) / total) * Math.PI * 2;
       const large = a1 - a0 > Math.PI ? 1 : 0;
       const p = (rad, ang) => `${cx + rad * Math.cos(ang)},${cy + rad * Math.sin(ang)}`;
-      const d = ri
-        ? `M${p(r, a0)}A${r},${r} 0 ${large} 1 ${p(r, a1)}L${p(ri, a1)}A${ri},${ri} 0 ${large} 0 ${p(ri, a0)}Z`
-        : `M${cx},${cy}L${p(r, a0)}A${r},${r} 0 ${large} 1 ${p(r, a1)}Z`;
+      const slice = ro =>
+        ri
+          ? `M${p(ro, a0)}A${ro},${ro} 0 ${large} 1 ${p(ro, a1)}L${p(ri, a1)}A${ri},${ri} 0 ${large} 0 ${p(ri, a0)}Z`
+          : `M${cx},${cy}L${p(ro, a0)}A${ro},${ro} 0 ${large} 1 ${p(ro, a1)}Z`;
+      const tip = cross
+        ? `${categories[i]}: 전체 ${v.toLocaleString()} / 필터 ${series[0].values[i].toLocaleString()}`
+        : `${categories[i]}: ${v.toLocaleString()} (${((v / total) * 100).toFixed(1)}%)`;
+      // 크로스 필터: 조각 = 전체(옅게), 안쪽부터 걸러진 비율만큼 진하게 (넓이 비례)
+      const ratio = cross ? Math.max(0, Math.min(1, v > 0 ? series[0].values[i] / v : 0)) : 1;
       els.push(
-        <path key={i} d={d} fill={color(i)} stroke="var(--r2-background-color, #fff)" strokeWidth="1">
-          <title>{`${categories[i]}: ${v.toLocaleString()} (${((v / total) * 100).toFixed(1)}%)`}</title>
+        <path key={i} d={slice(r)} fill={color(i)} opacity={cross ? 0.25 : 1} stroke="var(--r2-background-color, #fff)" strokeWidth="1" {...click(i)}>
+          <title>{tip}</title>
         </path>,
       );
+      if (cross && ratio > 0) {
+        els.push(
+          <path key={`f${i}`} d={slice(Math.sqrt(ri * ri + (r * r - ri * ri) * ratio))} fill={color(i)} {...click(i)}>
+            <title>{tip}</title>
+          </path>,
+        );
+      }
       a0 = a1;
     });
     legend = categories.map((c, i) => ({ name: c, color: color(i) }));
@@ -94,7 +110,7 @@ export function ChartSvg({ data, type, width, height, title }) {
         min = Math.min(min, neg);
       });
     } else {
-      series.forEach(s => s.values.forEach(v => {
+      series.forEach(s => [...s.values, ...(cross ? s.totals : [])].forEach(v => {
         max = Math.max(max, v);
         min = Math.min(min, v);
       }));
@@ -144,7 +160,7 @@ export function ChartSvg({ data, type, width, height, title }) {
         els.push(<path key={`l${si}`} d={line} fill="none" stroke={color(si)} strokeWidth="2" />);
         ys.forEach((y, ci) =>
           els.push(
-            <circle key={`p${si}-${ci}`} cx={cx(ci)} cy={y} r="3" fill={color(si)}>
+            <circle key={`p${si}-${ci}`} cx={cx(ci)} cy={y} r={cross ? 5 : 3} fill={color(si)} opacity={dim(ci) ? 0.3 : 1} {...click(ci)}>
               <title>{`${s.name} · ${categories[ci]}: ${s.values[ci].toLocaleString()}`}</title>
             </circle>,
           ),
@@ -177,13 +193,24 @@ export function ChartSvg({ data, type, width, height, title }) {
             thick = inner / series.length;
             off = band * ci + (band - inner) / 2 + thick * si;
           }
-          const a = vpos(Math.min(v0, v1));
-          const len = Math.max(1, Math.abs(vpos(v1) - vpos(v0)));
-          const rect = horizontal
-            ? { x: pad.left + a, y: pad.top + off, width: len, height: Math.max(1, thick - 1) }
-            : { x: pad.left + off, y: pad.top + ph - a - len, width: Math.max(1, thick - 1), height: len };
+          const toRect = (w0, w1) => {
+            const a = vpos(Math.min(w0, w1));
+            const len = Math.max(1, Math.abs(vpos(w1) - vpos(w0)));
+            return horizontal
+              ? { x: pad.left + a, y: pad.top + off, width: len, height: Math.max(1, thick - 1) }
+              : { x: pad.left + off, y: pad.top + ph - a - len, width: Math.max(1, thick - 1), height: len };
+          };
+          const rect = toRect(v0, v1);
+          if (cross) {
+            const t = s.totals[ci];
+            els.push(
+              <rect key={`t${si}-${ci}`} {...toRect(0, t)} fill={color(si)} opacity="0.25" {...click(ci)}>
+                <title>{`${s.name} · ${categories[ci]}: 전체 ${t.toLocaleString()} / 필터 ${raw.toLocaleString()}`}</title>
+              </rect>,
+            );
+          }
           els.push(
-            <rect key={`b${si}-${ci}`} {...rect} fill={color(si)}>
+            <rect key={`b${si}-${ci}`} {...rect} fill={color(si)} {...click(ci)}>
               <title>{`${s.name} · ${categories[ci]}: ${raw.toLocaleString()}${normalized ? ` (${v.toFixed(1)}%)` : ''}`}</title>
             </rect>,
           );
@@ -263,13 +290,15 @@ function ChartPanel({ core, model, width, height, floating, onHeaderDown }) {
   return (
     <div className={floating ? 'r2-chart-window r2-popup-child' : 'r2-chart-wrapper'} style={{ width }}>
       <div className="r2-panel-title-bar r2-chart-title-bar" onPointerDown={onHeaderDown}>
-        <span className="r2-panel-title-bar-title">{model.title || `${data.categoryName || '범위'} 차트`}</span>
+        <span className="r2-panel-title-bar-title">
+          {model.title || `${data.categoryName || '범위'} ${model.modelType === 'pivot' ? '피벗 차트' : model.modelType === 'crossFilter' ? '크로스 필터' : '차트'}`}
+        </span>
         <select
           value={model.chartType}
           onPointerDown={e => e.stopPropagation()}
           onChange={e => core.updateChart({ chartId: model.chartId, chartType: e.target.value })}
         >
-          {CHART_TYPES.map(([k, label]) => (
+          {CHART_TYPES.filter(([k]) => model.modelType !== 'crossFilter' || CROSS_FILTER_TYPES.includes(k)).map(([k, label]) => (
             <option key={k} value={k}>
               {label}
             </option>
