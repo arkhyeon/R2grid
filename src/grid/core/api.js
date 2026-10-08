@@ -540,11 +540,15 @@ export function createApi(core) {
     isQuickFilterPresent: () => !!core.gos.quickFilterText,
     isColumnHovered: key => !!core.hoveredColId && core.getColumn(key)?.colId === core.hoveredColId,
     setFocusedHeader: (colKey, floatingFilter) => {
-      const col = core.getColumn(colKey);
-      const el = col && core.eRoot?.querySelector(`.r2-header-cell[col-id="${CSS.escape(col.colId)}"]`);
-      el?.focus?.();
-      if (col) core.dispatch('headerFocused', { column: col, floatingFilter: !!floatingFilter });
+      const depth = core.headerGroupDepth || 0;
+      const group = typeof colKey === 'string' ? core.groupById?.get(colKey) : colKey?.children ? colKey : null;
+      if (group) {
+        const leaf = core.displayedColumns.find(c => c.groupChain?.includes(group));
+        if (leaf) core.setHeaderFocus(group.level ?? 0, leaf.colId, 'api');
+      } else core.setHeaderFocus(floatingFilter ? depth + 1 : depth, colKey, 'api');
+      core.eFocusSink?.focus?.({ preventScroll: true });
     },
+    getFocusedHeader: () => core.headerPosition(core.headerFocus),
     expireValueCache: () => core.notify(),
     onGroupExpandedOrCollapsed: () => core.refreshModel({ skipFilter: true, keepRenderedRows: true }),
     isModuleRegistered: () => true,

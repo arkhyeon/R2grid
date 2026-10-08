@@ -38,6 +38,7 @@ function HeaderGroupCell({ core, seg, level, height }) {
     <div
       className={cx(
         'r2-header-group-cell r2-focus-managed',
+        seg.group && core.headerFocus?.rowIndex === level && core.getColumn(core.headerFocus.colId)?.groupChain?.[level] === seg.group && 'r2-header-cell-focus',
         seg.group ? 'r2-header-group-cell-with-group' : 'r2-header-group-cell-no-group',
         cls,
       )}
@@ -290,6 +291,7 @@ function HeaderCell({ core, col, height: rowHeight, groupHeaderHeight, multiSort
         (menuOpen || filterOpen) && 'r2-header-active',
         cd.wrapHeaderText && 'r2-header-cell-wrap-text',
         cd.autoHeaderHeight && 'r2-header-cell-auto-height',
+        core.headerFocus?.colId === col.colId && core.headerFocus.rowIndex === core.headerGroupDepth && 'r2-header-cell-focus',
         spanPx > 0 && 'r2-header-span-height',
         spanLevels > 0 && spanLevels === core.headerGroupDepth && 'r2-header-span-total',
         headerCls,
@@ -301,6 +303,10 @@ function HeaderCell({ core, col, height: rowHeight, groupHeaderHeight, multiSort
       data-r2-tooltip={headerTooltipOf(core, cd, col)}
       onClick={e => {
         core.dispatch('columnHeaderClicked', { column: col });
+        if (!core.gos.suppressHeaderFocus && !(e.target instanceof Element && e.target.closest('input'))) {
+          core.setHeaderFocus(core.headerGroupDepth, col.colId, 'ui');
+          core.eFocusSink?.focus?.({ preventScroll: true });
+        }
         onClick(e);
       }}
       onPointerDown={onPointerDown}

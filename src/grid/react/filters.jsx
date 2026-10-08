@@ -656,7 +656,7 @@ export function FloatingFilterCell({ core, col, height }) {
   const showButton = enabled && !cd.suppressFloatingFilterButton && !cd.floatingFilterComponentParams?.suppressFilterButton;
   return (
     <div
-      className="r2-header-cell r2-floating-filter r2-focus-managed"
+      className={`r2-header-cell r2-floating-filter r2-focus-managed${core.headerFocus?.colId === col.colId && core.headerFocus.rowIndex === (core.headerGroupDepth || 0) + 1 ? ' r2-header-cell-focus' : ''}`}
       role="gridcell"
       col-id={col.colId}
       style={{ ...core.colPos(col.left), width: col.actualWidth, height }}

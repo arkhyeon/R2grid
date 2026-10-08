@@ -171,6 +171,7 @@ export const pinnedMethods = {
   },
 
   focusPinned(pos, rowIndex, colId) {
+    this.headerFocus = null;
     this.focus = { rowIndex, colId, rowPinned: pos };
     this.ranges = [];
     this.ensureColumnVisible(colId);

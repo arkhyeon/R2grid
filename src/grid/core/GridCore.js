@@ -32,6 +32,7 @@ import { findMethods } from './find.js';
 import { pivotMethods } from './pivot.js';
 import { advancedFilterMethods } from './advancedFilter.js';
 import { chartMethods } from './charts.js';
+import { headerNavMethods } from './headerNav.js';
 import { stateMethods } from './state.js';
 
 export const DEFAULT_ROW_HEIGHT = 42;
@@ -2433,7 +2434,8 @@ export class GridCore {
     const limit = rowPinned === 'top' ? this.pinnedTop.length : rowPinned === 'bottom' ? this.pinnedBottom.length : this.displayedNodes.length;
     if (!col || rowIndex == null || rowIndex < 0 || rowIndex >= limit) return;
     const prev = this.focus;
-    if (prev && prev.rowIndex === rowIndex && prev.colId === col.colId && (prev.rowPinned || null) === rowPinned) return;
+    if (prev && prev.rowIndex === rowIndex && prev.colId === col.colId && (prev.rowPinned || null) === rowPinned && !this.headerFocus) return;
+    this.headerFocus = null;
     this.focus = { rowIndex, colId: col.colId, rowPinned };
     this.notify();
     this.dispatch('cellFocused', {
@@ -2874,6 +2876,7 @@ export class GridCore {
   }
 
   moveFocusTo(rowIndex, colId, { extendRange = false } = {}) {
+    this.headerFocus = null;
     rowIndex = clamp(rowIndex, this.pageFirstRow, Math.max(this.pageFirstRow, this.pageLastRow - 1));
     const prevFocus = this.focus;
     this.focus = { rowIndex, colId, rowPinned: null };
@@ -2924,6 +2927,7 @@ export class GridCore {
     const ed = this.editing;
     // RTL: 화면상 왼쪽 = 다음 컬럼
     const key = this.isRtl() && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') ? (e.key === 'ArrowLeft' ? 'ArrowRight' : 'ArrowLeft') : e.key;
+    if (!ed && this.headerFocus) return this.handleHeaderKey(e);
     if (ed) {
       const node = ed.node;
       const column = ed.column;
@@ -3018,6 +3022,7 @@ export class GridCore {
         case 'ArrowUp':
           if (focus.rowIndex > 0) this.focusPinned(pos, focus.rowIndex - 1, column.colId);
           else if (pos === 'bottom' && hasBody) this.moveFocusTo(last, column.colId);
+          else if (pos === 'top' && !this.gos.suppressHeaderFocus && this.gos.headerHeight !== 0) this.setHeaderFocus(this.headerRowCount() - 1, column.colId, 'ui');
           return true;
         default:
           break;
@@ -3038,6 +3043,10 @@ export class GridCore {
         if (!ctrl && !shift && baseRow <= first && this.pinnedTop.length) {
           this.focusPinned('top', this.pinnedTop.length - 1, cols[baseColIdx].colId);
           return true;
+        }
+        // 첫 행에서 ↑ → 헤더 (AG 동일, suppressHeaderFocus 로 끔)
+        if (!ctrl && !shift && baseRow <= first && !this.gos.suppressHeaderFocus && this.gos.headerHeight !== 0) {
+          return this.setHeaderFocus(this.headerRowCount() - 1, cols[baseColIdx].colId, 'ui');
         }
         this.moveFocusTo(ctrl ? first : this.nextRowIndex(baseRow, -1), cols[baseColIdx].colId, { extendRange: shift });
         return true;
@@ -3734,4 +3743,4 @@ export class GridCore {
 }
 
 // 기능별 mixin 결합 (그룹핑 / SSRM / 행드래그 / undo / 고정행)
-Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods, statusBarMethods, findMethods, pivotMethods, advancedFilterMethods, chartMethods, stateMethods);
+Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods, statusBarMethods, findMethods, pivotMethods, advancedFilterMethods, chartMethods, stateMethods, headerNavMethods);

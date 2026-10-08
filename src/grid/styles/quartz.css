@@ -2051,3 +2051,10 @@ body.r2-dnd-dragging * {
   pointer-events: none;
   z-index: 10001;
 }
+
+/* 헤더 키보드 포커스 */
+.r2-header-cell.r2-header-cell-focus,
+.r2-header-group-cell.r2-header-cell-focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--r2-input-focus-border-color, var(--r2-accent-color));
+}
