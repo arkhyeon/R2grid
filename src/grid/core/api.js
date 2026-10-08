@@ -475,8 +475,7 @@ export function createApi(core) {
     isLastRowIndexKnown: () => (core.isSsrm() ? !!core.ssrm?.lastRowKnown : undefined),
     setRowCount: (count, lastRowIndexKnown) => core.setInfiniteRowCount(count, lastRowIndexKnown),
     getCacheBlockState: () => core.getCacheBlockState(),
-    getServerSideGroupLevelState: () =>
-      core.ssrm ? [{ route: [], rowCount: core.ssrm.rowCount, lastRowIndexKnown: core.ssrm.lastRowKnown }] : [],
+    getServerSideGroupLevelState: () => core.getServerSideGroupLevelState(),
     applyServerSideTransaction: tx => core.applyServerSideTransaction(tx),
     applyServerSideTransactionAsync: (tx, callback) => core.applyServerSideTransactionAsync(tx, callback),
     flushServerSideAsyncTransactions: () => core.flushServerSideAsyncTransactions(),

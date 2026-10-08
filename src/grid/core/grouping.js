@@ -61,7 +61,7 @@ export const groupingMethods = {
   wantsAutoGroupColumn(leaves) {
     const g = this.gos;
     if (g.groupDisplayType === 'custom' || g.groupDisplayType === 'groupRows') return false;
-    if (g.treeData && typeof g.getDataPath === 'function') return true;
+    if (g.treeData && (typeof g.getDataPath === 'function' || (g.rowModelType === 'serverSide' && typeof g.isServerSideGroup === 'function'))) return true;
     // 컬럼 상태 기준 (api/패널로 바뀐 그룹 반영)
     if (leaves) return leaves.some(c => c.rowGroup);
     return (g.columnDefs || []).some(function hasGroup(d) {
@@ -488,7 +488,7 @@ export const groupingMethods = {
       if (this.gos.groupHideOpenParents && this.isFirstDisplayedDescendant(node, anc)) return anc.key;
       return undefined;
     }
-    if (node.group || this.groupMode === 'tree') return node.key;
+    if (node.group || this.groupMode === 'tree' || node.__ssrmTree) return node.key;
     const cd = col.colDef;
     if (typeof cd.valueGetter === 'function') return cd.valueGetter(this.makeValueParams(node, col));
     if (cd.field) return getFieldValue(node.data, cd.field);

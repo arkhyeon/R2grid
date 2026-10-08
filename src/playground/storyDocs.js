@@ -201,7 +201,15 @@ const STORY_DOCS = {
     notes: [
       '트랜잭션은 이미 불러온 행에만 적용됩니다. 서버 데이터를 먼저 바꾼 뒤 그리드에 알려야 다음 로드와 어긋나지 않습니다.',
       '불러오는 중이면 applyServerSideTransaction 은 적용하지 않고 StoreLoading 을 돌려줍니다 — Async 판을 쓰세요.',
-      '서버 그룹(route) 트랜잭션은 아직 지원하지 않습니다.',
+    ],
+  },
+  'server-side-group': {
+    badge: 'NEW',
+    whenToUse: ['그룹·소계를 서버(DB GROUP BY)가 계산해야 할 만큼 데이터가 많을 때', '그룹을 펼칠 때만 하위 행을 불러와 첫 화면을 가볍게 할 때'],
+    notes: [
+      '서버는 groupKeys 길이로 단계를 판단해 그룹 행(그룹 필드 + 집계값) 또는 리프 행을 돌려줘야 합니다.',
+      '그룹 행 id 를 getRowId 로 직접 정할 땐 params.parentKeys 를 포함해 단계 사이에 겹치지 않게 하세요.',
+      '그룹 행 선택은 그 행 자체만 선택합니다 (하위 전체 선택 groupSelects 는 아직 지원하지 않음).',
     ],
   },
   infinite: {

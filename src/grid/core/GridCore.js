@@ -1482,6 +1482,10 @@ export class GridCore {
   }
 
   setNodeExpanded(node, expanded) {
+    if (node?.__ssrmGroup) {
+      this.ssrmSetExpanded(node, !!expanded);
+      return;
+    }
     const expandable = node.master || (node.group && !!node.childrenAll?.length);
     if (!expandable || node.expanded === expanded) return;
     node.expanded = expanded;
@@ -1513,7 +1517,9 @@ export class GridCore {
   } = {}) {
     this.spanEpoch = (this.spanEpoch || 0) + 1;
     if (this.isSsrm()) {
-      this.ssrmRefreshView();
+      // 행 그룹·값 컬럼이 바뀌면 서버에 다시 요청 (setRowGroupColumns·드롭 영역 등 어느 경로든)
+      if (this.ssrm && this.ssrmModelSig() !== this.ssrm.modelSig) this.ssrmReset('columns');
+      else this.ssrmRefreshView();
       return;
     }
     // 피벗: 데이터 변화로 피벗 키가 바뀌면 결과 컬럼 재구성

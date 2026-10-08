@@ -100,7 +100,7 @@ export class RowNode {
   }
 
   isExpandable() {
-    return this.master || (this.group && !!this.childrenAll?.length);
+    return this.master || (this.group && (!!this.childrenAll?.length || !!this.__ssrmGroup));
   }
 
   isRowPinned() {

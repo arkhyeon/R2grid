@@ -117,6 +117,72 @@ function Ssrm({ p, ctx }) {
   );
 }
 
+// 가짜 서버 (그룹): groupKeys 단계면 그룹 행 + 집계, 마지막 단계면 리프 (지연 300ms)
+function groupServer(request, all = SERVER_ROWS) {
+  const { startRow, endRow, rowGroupCols, valueCols, groupKeys, sortModel = [] } = request;
+  let rows = all.filter(r => groupKeys.every((k, i) => r[rowGroupCols[i].field] === k));
+  const lvl = groupKeys.length;
+  if (lvl < rowGroupCols.length) {
+    const f = rowGroupCols[lvl].field;
+    const map = new Map();
+    for (const r of rows) {
+      let g = map.get(r[f]);
+      if (!g) map.set(r[f], (g = { [f]: r[f], childCount: 0 }));
+      g.childCount++;
+      for (const v of valueCols) g[v.field] = (g[v.field] || 0) + r[v.field]; // 데모는 sum 만
+    }
+    rows = [...map.values()];
+  }
+  if (sortModel.length) {
+    const { colId, sort } = sortModel[0];
+    rows = [...rows].sort((a, b) => (a[colId] > b[colId] ? 1 : a[colId] < b[colId] ? -1 : 0) * (sort === 'asc' ? 1 : -1));
+  }
+  return new Promise(res => setTimeout(() => res({ rows: rows.slice(startRow, endRow), total: rows.length }), 300));
+}
+
+const GROUP_LEVELS = { dbms: ['dbms'], 'dbms-status': ['dbms', 'status'], 'dept-dbms-status': ['dept', 'dbms', 'status'] };
+
+function SsrmGroup({ p, ctx }) {
+  const groups = GROUP_LEVELS[p.levels];
+  const groupProps = f => (groups.includes(f) ? { rowGroup: true, rowGroupIndex: groups.indexOf(f), hide: true } : {});
+  const columnDefs = useMemo(
+    () => [
+      { field: 'dept', headerName: '부서', enableRowGroup: true, ...groupProps('dept') },
+      { field: 'dbms', headerName: 'DBMS', enableRowGroup: true, ...groupProps('dbms') },
+      { field: 'status', headerName: '상태', enableRowGroup: true, ...groupProps('status') },
+      { field: 'taskName', headerName: '작업명', width: 140 },
+      { field: 'owner', headerName: '소유자', width: 110 },
+      { field: 'rowCnt', headerName: '행 수', type: 'numericColumn', aggFunc: 'sum', valueFormatter: x => x.value?.toLocaleString() },
+    ],
+    [p.levels],
+  );
+  const datasource = useMemo(
+    () => ({
+      getRows: params => {
+        const r = params.request;
+        ctx.log(`getRows groupKeys=${JSON.stringify(r.groupKeys)} ${r.startRow}~${r.endRow} rowGroupCols=[${r.rowGroupCols.map(c => c.id)}]`);
+        groupServer(r).then(({ rows, total }) => params.success({ rowData: rows, rowCount: total }));
+      },
+    }),
+    [],
+  );
+  return (
+    <Grid
+      key={p.levels}
+      height={420}
+      rowModelType="serverSide"
+      serverSideDatasource={datasource}
+      cacheBlockSize={50}
+      columnDefs={columnDefs}
+      autoGroupColumnDef={{ headerName: '그룹', minWidth: 200 }}
+      groupDefaultExpanded={p.expanded}
+      getChildCount={p.childCount ? data => data.childCount : undefined}
+      rowGroupPanelShow={p.panel ? 'always' : 'never'}
+      onRowGroupOpened={e => ctx.log(`rowGroupOpened ${JSON.stringify(e.node.key)} expanded=${e.expanded}`)}
+    />
+  );
+}
+
 function Infinite({ p, ctx }) {
   const ref = useRef(null);
   const datasource = useMemo(
@@ -287,6 +353,86 @@ const { selectAll, toggledNodes } = gridRef.current.api.getServerSideSelectionSt
           sql: selectedSql.sql_stmt_user ?? selectedSql.sql_stmt_auto,
           ...`,
     },
+  },
+  {
+    id: 'server-side-group',
+    category: CAT,
+    name: '서버 사이드 행 그룹',
+    desc: "SSRM 에서 rowGroup 컬럼이 있으면 그룹을 서버가 만듭니다. 처음엔 1단계 그룹 행만 요청하고, 그룹을 펼칠 때마다 request.groupKeys(펼친 그룹 키 경로)로 그 그룹의 하위 행을 따로 요청합니다. 그룹 행의 값 컬럼은 서버가 계산해 보낸 집계값을 그대로 보여줍니다. 펼친 그룹은 기억해서 정렬·필터로 다시 불러와도 그대로 펼쳐집니다.",
+    keywords: ['rowModelType', 'serverSide', 'rowGroup', 'request.groupKeys', 'request.rowGroupCols', 'request.valueCols', 'getChildCount', 'groupDefaultExpanded', 'isServerSideGroup', 'getServerSideGroupKey', 'getServerSideGroupLevelState', 'refreshServerSide', 'route', 'rowGroupPanelShow'],
+    controls: [
+      {
+        key: 'levels',
+        type: 'select',
+        default: 'dbms-status',
+        label: '그룹 단계',
+        desc: 'rowGroup: true 인 컬럼 순서(rowGroupIndex)가 그룹 단계가 됩니다. 단계가 바뀌면 그리드가 캐시를 비우고 처음부터 다시 요청합니다.',
+        options: [
+          { value: 'dbms', label: 'DBMS', desc: '1단계 — DBMS 그룹을 펼치면 바로 작업 행' },
+          { value: 'dbms-status', label: 'DBMS › 상태', desc: '2단계 — DBMS → 상태 → 작업 행' },
+          { value: 'dept-dbms-status', label: '부서 › DBMS › 상태', desc: '3단계 — 펼칠 때마다 groupKeys 가 한 칸씩 길어짐' },
+        ],
+      },
+      {
+        key: 'expanded',
+        type: 'select',
+        default: 0,
+        label: 'groupDefaultExpanded',
+        desc: '처음 받은 그룹 행을 몇 단계까지 자동으로 펼칠지. 펼친 그룹마다 하위 요청이 바로 나가므로 서버 요청 수가 늘어납니다.',
+        options: [
+          { value: 0, desc: '모두 접힌 채로 (기본)' },
+          { value: 1, desc: '1단계 그룹을 펼쳐 바로 하위 요청' },
+          { value: -1, desc: '전부 펼침 — 모든 단계를 연달아 요청' },
+        ],
+      },
+      {
+        key: 'childCount',
+        type: 'boolean',
+        default: true,
+        label: 'getChildCount',
+        desc: '그룹 행 data 에서 하위 행 수를 꺼내는 콜백. 그룹 이름 옆 (n) 으로 표시됩니다. 서버가 그룹 행에 개수를 실어 보내야 합니다.',
+        on: '그룹 이름 옆에 (하위 행 수)',
+        off: '개수 표시 없음 (아직 하위를 안 받았으므로 그리드는 모름)',
+      },
+      {
+        key: 'panel',
+        type: 'boolean',
+        default: true,
+        label: "rowGroupPanelShow: 'always'",
+        desc: '헤더 위 그룹 패널. enableRowGroup 컬럼(부서·DBMS·상태)을 끌어 넣거나 × 로 빼면 rowGroupCols 가 바뀌고 서버에 다시 요청합니다.',
+        on: '그룹 패널 표시 — 끌어서 그룹 변경',
+        off: '패널 숨김',
+      },
+    ],
+    render: (p, ctx) => <SsrmGroup p={p} ctx={ctx} />,
+    code: p => `const datasource = {
+  getRows: params => {
+    const { groupKeys, rowGroupCols, valueCols, startRow, endRow, sortModel, filterModel } = params.request;
+    // groupKeys.length < rowGroupCols.length → 그 단계의 그룹 행(+ 집계값) 반환
+    // groupKeys.length === rowGroupCols.length → 그 그룹의 리프 행 반환
+    api.post('/rows/group', params.request)
+      .then(res => params.success({ rowData: res.rows, rowCount: res.total }))
+      .catch(() => params.fail());
+  },
+};
+
+const columnDefs = [
+${GROUP_LEVELS[p.levels].map((f, i) => `  { field: '${f}', rowGroup: true, rowGroupIndex: ${i}, hide: true, enableRowGroup: true },`).join('\n')}
+  { field: 'taskName' },
+  { field: 'rowCnt', aggFunc: 'sum' },   // request.valueCols 로 전달 → 서버가 그룹 행에 합계를 담아 보냄
+];
+
+<R2Grid
+  rowModelType="serverSide"
+  serverSideDatasource={datasource}
+  columnDefs={columnDefs}${p.expanded ? `\n  groupDefaultExpanded={${p.expanded}}` : ''}${p.childCount ? '\n  getChildCount={data => data.childCount}' : ''}${p.panel ? '\n  rowGroupPanelShow="always"' : ''}
+/>
+
+// 특정 그룹만 다시 불러오기 / 그 그룹에 행 추가
+api.refreshServerSide({ route: ['Oracle'], purge: true });
+api.applyServerSideTransaction({ route: ['Oracle', '진행'], add: [newRow] });
+
+// 서버 트리: treeData + isServerSideGroup(data) + getServerSideGroupKey(data)`,
   },
   {
     id: 'infinite',

@@ -39,7 +39,7 @@ function GroupCellRenderer({ core, node, column, params, extra }) {
     : text == null
       ? ''
       : toText(text);
-  const grouping = !!core.groupMode && column.autoType === 'group';
+  const grouping = (!!core.groupMode || core.isServerGrouping()) && column.autoType === 'group';
   // multipleColumns: 이 컬럼 레벨의 그룹(또는 groupHideOpenParents 로 숨은 부모)만 펼침 표시, 들여쓰기 없음
   const multi = grouping && column.groupIndex != null;
   let target = node;
@@ -47,7 +47,7 @@ function GroupCellRenderer({ core, node, column, params, extra }) {
     target = node.group && node.level === column.groupIndex ? node : params.value != null && params.value !== '' ? core.ancestorAtLevel(node, column.groupIndex) : null;
   }
   // 피벗 모드: 리프만 가진 최하위 그룹은 펼칠 것이 없음
-  const hasKids = t => (core.isPivotActive() ? !!t?.childrenAll?.some(c => c.group) : !!t?.childrenAll?.length);
+  const hasKids = t => (t?.__ssrmGroup ? true : core.isPivotActive() ? !!t?.childrenAll?.some(c => c.group) : !!t?.childrenAll?.length);
   const expandable = multi ? hasKids(target) : node.master || (node.group && hasKids(node));
   const level = grouping && !multi ? node.uiLevel ?? node.level ?? 0 : 0;
   const leafIndent = grouping && !multi && !expandable ? GROUP_INDENT : 0;
@@ -390,7 +390,7 @@ function rowProps(core, node, rowCount) {
     node.selected && 'r2-row-selected',
     focusRow ? 'r2-row-focus' : 'r2-row-no-focus',
     editing ? 'r2-row-editing r2-row-inline-editing' : 'r2-row-not-inline-editing',
-    (node.master || (node.group && node.childrenAll?.length)) && (node.expanded ? 'r2-row-group-expanded' : 'r2-row-group-contracted'),
+    (node.master || (node.group && (node.childrenAll?.length || node.__ssrmGroup))) && (node.expanded ? 'r2-row-group-expanded' : 'r2-row-group-contracted'),
     node.__dragging && 'r2-row-dragging',
     core.hoveredRowIndex === rowKey(node) && 'r2-row-hover',
     resolveClassValue(g.rowClass, p),
@@ -995,7 +995,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       core.dispatch('cellDoubleClicked', { ...core.cellEventParams(node, col, e) });
       if (core.getEditingCell(node, col)) return;
       if (!g.suppressClickEdit && !g.singleClickEdit && core.isCellEditable(col, node)) core.startEdit(node, col, null);
-      else if (node.group && col.autoType === 'group' && !g.suppressGroupDoubleClickExpand && node.childrenAll?.length) {
+      else if (node.group && col.autoType === 'group' && !g.suppressGroupDoubleClickExpand && (node.childrenAll?.length || node.__ssrmGroup)) {
         node.setExpanded(!node.expanded);
       }
     },
