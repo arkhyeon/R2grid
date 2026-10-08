@@ -33,15 +33,39 @@ export function dropIntoZone(core, kind, col, index) {
     return;
   }
   const list = zoneColumns(core, kind).filter(c => c !== col);
-  list.splice(index == null ? list.length : Math.min(index, list.length), 0, col);
-  if (kind === 'rowGroup') core.api.setRowGroupColumns(list);
-  else core.setPivotColumns(list, 'toolPanelUi');
+  // groupLockGroupColumns: 앞쪽 잠긴 그룹 컬럼은 자리 고정
+  const locked = kind === 'rowGroup' ? lockedGroupCount(core) : 0;
+  if (kind === 'rowGroup' && isGroupLocked(core, col)) return;
+  list.splice(index == null ? list.length : Math.max(locked, Math.min(index, list.length)), 0, col);
+  if (kind === 'rowGroup') {
+    const wasGrouped = !!col.rowGroup;
+    core.api.setRowGroupColumns(list);
+    // 그룹으로 끌어 넣으면 컬럼 숨김 (AG 기본, suppressGroupChangesColumnVisibility 로 끔)
+    const sv = core.gos.suppressGroupChangesColumnVisibility;
+    if (!wasGrouped && col.visible && !(sv === true || sv === 'suppressHideOnGroup' || core.gos.suppressRowGroupHidesColumns)) core.setColumnsVisible([col], false, 'toolPanelUi');
+  } else core.setPivotColumns(list, 'toolPanelUi');
+}
+
+export function lockedGroupCount(core) {
+  const n = core.gos.groupLockGroupColumns ?? 0;
+  const total = core.rowGroupColumns().length;
+  return n < 0 ? total : Math.min(n, total);
+}
+
+export function isGroupLocked(core, col) {
+  const i = core.rowGroupColumns().indexOf(col);
+  return i >= 0 && i < lockedGroupCount(core);
 }
 
 export function removeFromZone(core, kind, col) {
   if (kind === 'values') core.removeValueColumns([col], 'toolPanelUi');
-  else if (kind === 'rowGroup') core.api.removeRowGroupColumns([col]);
-  else core.setPivotColumns(core.pivotColumns().filter(c => c !== col), 'toolPanelUi');
+  else if (kind === 'rowGroup') {
+    if (isGroupLocked(core, col)) return;
+    core.api.removeRowGroupColumns([col]);
+    // 그룹에서 빼면 다시 표시 (AG 기본, suppressGroupChangesColumnVisibility / suppressMakeColumnVisibleAfterUnGroup 로 끔)
+    const sv = core.gos.suppressGroupChangesColumnVisibility;
+    if (!col.visible && !(sv === true || sv === 'suppressShowOnUngroup' || core.gos.suppressMakeColumnVisibleAfterUnGroup)) core.setColumnsVisible([col], true, 'toolPanelUi');
+  } else core.setPivotColumns(core.pivotColumns().filter(c => c !== col), 'toolPanelUi');
 }
 
 export function setDragColumn(e, col, fromZone) {
@@ -148,9 +172,11 @@ export function ColumnDropZone({ core, kind, horizontal = false }) {
                 {core.getDisplayName(c, true)}
                 {kind === 'values' && typeof c.colDef.aggFunc === 'string' ? ')' : null}
               </span>
-              <span className="r2-column-drop-cell-button" role="button" aria-label="remove" onClick={() => removeFromZone(core, kind, c)}>
-                <Icon name="cross" />
-              </span>
+              {!(kind === 'rowGroup' && isGroupLocked(core, c)) && (
+                <span className="r2-column-drop-cell-button" role="button" aria-label="remove" onClick={() => removeFromZone(core, kind, c)}>
+                  <Icon name="cross" />
+                </span>
+              )}
               {aggMenu === c.colId && (
                 <span className="r2-column-drop-agg-menu" role="listbox">
                   {aggOptions(c).map(fn => (

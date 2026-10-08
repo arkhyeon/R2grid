@@ -1180,7 +1180,7 @@ export class GridCore {
     // 그룹 노드: 집계값 우선 (트리데이터의 데이터 보유 부모도 동일)
     if (node.group && node.aggData && column.colId in node.aggData) {
       // 합계 행이 아래에 따로 보이면 펼친 그룹 행은 집계값을 비움 (AG 동일)
-      if (node.__footerShown && node.expanded && !node.footer) return undefined;
+      if (node.__footerShown && node.expanded && !node.footer && !this.gos.groupSuppressBlankHeader) return undefined;
       return node.aggData[column.colId];
     }
     if (node.footer) return undefined;
@@ -1308,6 +1308,24 @@ export class GridCore {
 
   setRowData(rowData, initial) {
     if (this.isSsrm()) return;
+    // treeDataChildrenField: 중첩된 children 배열을 펼친 목록으로 (부모는 treeChildParent 에 기억, AG v33.1+)
+    this.treeChildParent = null;
+    if (rowData && this.gos.treeData && this.gos.treeDataChildrenField && typeof this.gos.getDataPath !== 'function') {
+      const f = this.gos.treeDataChildrenField;
+      const parentOf = new Map();
+      const flat = [];
+      const walk = (list, parent) => {
+        for (const d of list || []) {
+          flat.push(d);
+          if (parent) parentOf.set(d, parent);
+          const kids = getFieldValue(d, f);
+          if (Array.isArray(kids)) walk(kids, d);
+        }
+      };
+      walk(rowData, null);
+      this.treeChildParent = parentOf;
+      rowData = flat;
+    }
     const getRowId = this.gos.getRowId;
     let selectionChanged = false;
     this.editing = null;

@@ -53,7 +53,7 @@ export const groupingMethods = {
   computeGroupMode() {
     if (!this.isClientSide()) return null;
     const g = this.gos;
-    if (g.treeData && typeof g.getDataPath === 'function') return 'tree';
+    if (g.treeData && (typeof g.getDataPath === 'function' || g.treeDataChildrenField || g.treeDataParentIdField)) return 'tree';
     if (this.allColumns.some(c => c.rowGroup)) return 'group';
     return null;
   },
@@ -61,7 +61,7 @@ export const groupingMethods = {
   wantsAutoGroupColumn(leaves) {
     const g = this.gos;
     if (g.groupDisplayType === 'custom' || g.groupDisplayType === 'groupRows') return false;
-    if (g.treeData && (typeof g.getDataPath === 'function' || (g.rowModelType === 'serverSide' && typeof g.isServerSideGroup === 'function'))) return true;
+    if (g.treeData && (typeof g.getDataPath === 'function' || g.treeDataChildrenField || g.treeDataParentIdField || (g.rowModelType === 'serverSide' && typeof g.isServerSideGroup === 'function'))) return true;
     // 컬럼 상태 기준 (api/패널로 바뀐 그룹 반영)
     if (leaves) return leaves.some(c => c.rowGroup);
     return (g.columnDefs || []).some(function hasGroup(d) {
@@ -143,6 +143,35 @@ export const groupingMethods = {
     return node;
   },
 
+  // 트리 경로: getDataPath 또는 (AG v33+) treeDataParentIdField / treeDataChildrenField 에서 id 경로를 만듦
+  treeDataPathFn() {
+    const g = this.gos;
+    if (typeof g.getDataPath === 'function') return g.getDataPath;
+    const idOf = new Map(this.rootNodes.map(n => [n.data, n.id]));
+    if (g.treeDataParentIdField) {
+      const byId = new Map(this.rootNodes.map(n => [String(n.id), n.data]));
+      const f = g.treeDataParentIdField;
+      return data => {
+        const path = [];
+        const seen = new Set();
+        for (let d = data; d && !seen.has(d); ) {
+          seen.add(d);
+          path.unshift(String(idOf.get(d)));
+          const pid = getFieldValue(d, f);
+          d = pid == null || pid === '' ? null : byId.get(String(pid));
+        }
+        return path;
+      };
+    }
+    // treeDataChildrenField: setRowData 에서 펼친 부모 링크 사용
+    const parentOf = this.treeChildParent || new Map();
+    return data => {
+      const path = [];
+      for (let d = data; d; d = parentOf.get(d)) path.unshift(String(idOf.get(d)));
+      return path;
+    };
+  },
+
   buildGroups() {
     if (!this.groupNodeCache) this.groupNodeCache = new Map();
     const cache = new Map();
@@ -156,7 +185,7 @@ export const groupingMethods = {
       n.level = 0;
     }
     if (this.groupMode === 'tree') {
-      const getDataPath = this.gos.getDataPath;
+      const getDataPath = this.treeDataPathFn();
       const ROOT = { childrenAll: [] };
       const childMap = new Map([[ROOT, new Map()]]);
       const kidsOf = n => {
@@ -247,6 +276,7 @@ export const groupingMethods = {
             : v == null || v === ''
               ? null
               : toText(v);
+          if (key == null && this.gos.groupAllowUnbalanced) break;
           const id = `${prefix}-${col.colId}-${key}`;
           let g = byId.get(id);
           if (!g) {
@@ -259,7 +289,7 @@ export const groupingMethods = {
           siblings = g.childrenAll;
           prefix = id;
         }
-        leaf.level = cols.length;
+        leaf.level = parentNode ? parentNode.level + 1 : 0;
         leaf.parent = parentNode;
         siblings.push(leaf);
       }
@@ -309,7 +339,28 @@ export const groupingMethods = {
 
   aggregateNode(n, aggCols, recurse = true) {
     if (!n.group || !n.childrenAfterFilter) return;
-    if (recurse) for (const c of n.childrenAfterFilter) this.aggregateNode(c, aggCols);
+    // suppressAggFilteredOnly: 필터와 무관하게 전체 자식으로 집계
+    const all = this.gos.suppressAggFilteredOnly && n.childrenAll ? n.childrenAll : null;
+    if (recurse) for (const c of all || n.childrenAfterFilter) this.aggregateNode(c, aggCols);
+    if (all) {
+      const saved = n.childrenAfterFilter;
+      n.childrenAfterFilter = all;
+      try {
+        this.aggregateOwn(n, aggCols);
+      } finally {
+        n.childrenAfterFilter = saved;
+      }
+      return;
+    }
+    this.aggregateOwn(n, aggCols);
+  },
+
+  aggregateOwn(n, aggCols) {
+    // getGroupRowAgg: 그룹 행 집계를 직접 (AG 동일 — 다른 컬럼 값을 함께 써야 할 때)
+    if (typeof this.gos.getGroupRowAgg === 'function') {
+      n.aggData = this.gos.getGroupRowAgg({ nodes: n.childrenAfterFilter, api: this.api, context: this.gos.context }) || null;
+      return;
+    }
     if (!aggCols.length) {
       n.aggData = null;
       return;
@@ -364,6 +415,19 @@ export const groupingMethods = {
     const filterNode = n => {
       if (n.childrenAll && n.group) {
         if (tree && n.data !== undefined && (!pass || pass(n))) {
+          // excludeChildrenWhenTreeDataFiltering: 통과한 부모의 자식도 각자 필터 (기본은 자식 전부 포함)
+          if (!this.gos.excludeChildrenWhenTreeDataFiltering) {
+            includeAll(n);
+            return true;
+          }
+          passed.push(n);
+          const kids = [];
+          for (const c of n.childrenAll) if (filterNode(c)) kids.push(c);
+          n.childrenAfterFilter = kids;
+          return true;
+        }
+        // groupAggFiltering: 그룹 행의 집계값으로 필터 — 통과하면 자식 전부 포함
+        if (aggFilter && pass && aggFilter(n) && pass(n)) {
           includeAll(n);
           return true;
         }
@@ -376,6 +440,19 @@ export const groupingMethods = {
       if (ok) passed.push(n);
       return ok;
     };
+    // groupAggFiltering: 필터 전에 전체로 집계해 그룹 행 값으로 거를 수 있게
+    const gaf = this.gos.groupAggFiltering;
+    const aggFilter = gaf && !tree ? (typeof gaf === 'function' ? n => !!gaf({ node: n }) : () => true) : null;
+    if (aggFilter && pass) {
+      const aggColsPre = this.allColumns.filter(c => c.colDef.aggFunc);
+      const prep = n => {
+        if (!n.childrenAll) return;
+        n.childrenAfterFilter = n.childrenAll;
+        n.childrenAll.forEach(prep);
+      };
+      this.groupTop.forEach(prep);
+      this.groupTop.forEach(n => this.aggregateNode(n, aggColsPre));
+    }
     const top = this.groupTop.filter(filterNode);
     const countLeaves = n => {
       if (!n.group || !n.childrenAfterFilter) return 1;
@@ -387,8 +464,15 @@ export const groupingMethods = {
     top.forEach(countLeaves);
     const aggCols = this.allColumns.filter(c => c.colDef.aggFunc);
     top.forEach(n => this.aggregateNode(n, aggCols));
+    // groupMaintainOrder: 그룹 컬럼이 아닌 컬럼으로 정렬하면 그룹 순서는 그대로
+    const sortsGroups = this.allColumns.some(c => c.sort && (c.autoType === 'group' || c.rowGroup));
+    const keepGroupOrder = !!this.gos.groupMaintainOrder && !sortsGroups;
+    const initCmp = this.gos.initialGroupOrderComparator;
     const sortList = list => {
-      const arr = sortCmp ? list.slice().sort(sortCmp) : list;
+      const allGroups = list.length > 0 && list.every(x => x.group);
+      let arr = list;
+      if (sortCmp && !(keepGroupOrder && allGroups)) arr = list.slice().sort(sortCmp);
+      else if (!sortCmp && allGroups && typeof initCmp === 'function') arr = list.slice().sort((a, b) => initCmp({ nodeA: a, nodeB: b, api: this.api, context: this.gos.context }));
       for (const c of arr) if (c.group && c.childrenAfterFilter) c.childrenAfterSort = sortList(c.childrenAfterFilter);
       return arr;
     };
@@ -400,6 +484,12 @@ export const groupingMethods = {
       for (const n of list) {
         // 피벗 모드: 리프(데이터) 행은 표시하지 않음
         if (pivot && !n.group) continue;
+        // groupHideParentOfSingleChild: 자식이 하나뿐인 그룹은 그룹 행 대신 자식을 바로 (true | 'leafGroupsOnly')
+        const hps = this.gos.groupHideParentOfSingleChild;
+        if (hps && n.group && n.childrenAfterSort?.length === 1 && (hps === true || !n.childrenAfterSort[0].group) && !pivot) {
+          flatten(n.childrenAfterSort);
+          continue;
+        }
         // groupHideOpenParents: 펼친 그룹 행 자체는 숨기고 자식만 (값은 첫 자식의 그룹 컬럼에 표시)
         const hidden = hideOpen && n.group && n.expanded && n.childrenAfterSort?.length;
         if (!hidden) out.push(n);
@@ -488,8 +578,14 @@ export const groupingMethods = {
       if (this.gos.groupHideOpenParents && this.isFirstDisplayedDescendant(node, anc)) return anc.key;
       return undefined;
     }
-    if (node.group || this.groupMode === 'tree' || node.__ssrmTree) return node.key;
     const cd = col.colDef;
+    // 트리: autoGroupColumnDef 에 field / valueGetter 를 주면 키 대신 그 값 (treeDataChildrenField · ParentIdField 에서 주로 사용)
+    const agd = this.gos.autoGroupColumnDef;
+    if ((this.groupMode === 'tree' || node.__ssrmTree) && node.data !== undefined && (agd?.field || agd?.valueGetter)) {
+      if (typeof cd.valueGetter === 'function') return cd.valueGetter(this.makeValueParams(node, col));
+      if (cd.field) return getFieldValue(node.data, cd.field);
+    }
+    if (node.group || this.groupMode === 'tree' || node.__ssrmTree) return node.key;
     if (typeof cd.valueGetter === 'function') return cd.valueGetter(this.makeValueParams(node, col));
     if (cd.field) return getFieldValue(node.data, cd.field);
     return undefined;
