@@ -477,7 +477,12 @@ export function createApi(core) {
     getCacheBlockState: () => core.getCacheBlockState(),
     getServerSideGroupLevelState: () =>
       core.ssrm ? [{ route: [], rowCount: core.ssrm.rowCount, lastRowIndexKnown: core.ssrm.lastRowKnown }] : [],
-    applyServerSideTransaction: () => undefined,
+    applyServerSideTransaction: tx => core.applyServerSideTransaction(tx),
+    applyServerSideTransactionAsync: (tx, callback) => core.applyServerSideTransactionAsync(tx, callback),
+    flushServerSideAsyncTransactions: () => core.flushServerSideAsyncTransactions(),
+    applyServerSideRowData: params => core.applyServerSideRowData(params),
+    getServerSideSelectionState: () => core.getServerSideSelectionState(),
+    setServerSideSelectionState: state => core.setServerSideSelectionState(state),
 
     // ── 편집 undo/redo ──
     undoCellEditing: () => core.undoCellEditing('api'),

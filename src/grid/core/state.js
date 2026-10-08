@@ -87,8 +87,13 @@ export const stateMethods = {
     if (expanded.length) s.rowGroupExpansion = { expandedRowGroupIds: expanded };
     const mp = this.manualPins;
     if (mp && (mp.top.length || mp.bottom.length)) s.rowPinning = { top: [...mp.top], bottom: [...mp.bottom] };
-    const selected = this.getSelectedNodes().map(n => n.id).filter(id => id != null);
-    if (selected.length) s.rowSelection = selected;
+    if (this.isSsrm()) {
+      const ss = this.getServerSideSelectionState();
+      if (ss && (ss.selectAll || ss.toggledNodes.length)) s.rowSelection = ss;
+    } else {
+      const selected = this.getSelectedNodes().map(n => n.id).filter(id => id != null);
+      if (selected.length) s.rowSelection = selected;
+    }
     if (this.gos.pagination) s.pagination = { page: this.currentPage, pageSize: this.getPageSize() };
     const vp = this.viewport;
     if (vp) {
@@ -147,7 +152,10 @@ export const stateMethods = {
       this.applyPendingExpansion();
     }
     if (want('rowPinning') && this.gos.enableRowPinning) this.setManualPins(state.rowPinning || {}, source);
-    if (want('rowSelection') && Array.isArray(state.rowSelection ?? [])) {
+    if (want('rowSelection') && this.isSsrm()) {
+      const rs = state.rowSelection;
+      this.setServerSideSelectionState(Array.isArray(rs) ? { selectAll: false, toggledNodes: rs } : rs, source);
+    } else if (want('rowSelection') && Array.isArray(state.rowSelection ?? [])) {
       const ids = new Set(state.rowSelection || []);
       const nodes = [];
       this.forEachNodeAll(n => nodes.push(n));

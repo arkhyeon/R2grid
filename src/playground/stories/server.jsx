@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { BASE_COLUMNS, makeRows, SALES } from '../data.js';
 import { Grid } from './_shared.jsx';
 
@@ -6,8 +6,8 @@ const CAT = '서버 데이터 · 페이지';
 
 const SERVER_ROWS = makeRows(2350);
 // 가짜 서버: 정렬/필터 후 구간 반환 (지연 300ms)
-function fakeServer({ startRow, endRow, sortModel = [], filterModel = {} }) {
-  let rows = SERVER_ROWS;
+function fakeServer({ startRow, endRow, sortModel = [], filterModel = {} }, all = SERVER_ROWS) {
+  let rows = all;
   const f = filterModel.owner;
   if (f?.filter) rows = rows.filter(r => r.owner.includes(f.filter));
   if (sortModel.length) {
@@ -45,25 +45,75 @@ function Pagination({ p, ctx }) {
   );
 }
 
-function Ssrm({ ctx }) {
+const btn = { padding: '5px 12px', marginRight: 6, borderRadius: 6, border: '1px solid var(--pg-border, #ccc)', background: 'var(--pg-surface, #fff)', color: 'inherit', cursor: 'pointer' };
+
+function Ssrm({ p, ctx }) {
+  const ref = useRef(null);
+  // 데모용 서버 데이터 (이 화면 안에서만 바뀜)
+  const db = useRef(null);
+  if (!db.current) db.current = SERVER_ROWS.map(r => ({ ...r }));
+  const seq = useRef(100000);
+  const [, setTick] = useState(0);
   const datasource = useMemo(
     () => ({
       getRows: params => {
         const { startRow, endRow, sortModel, filterModel } = params.request;
         ctx.log(`getRows ${startRow}~${endRow} sort=${JSON.stringify(sortModel)}`);
-        fakeServer({ startRow, endRow, sortModel, filterModel }).then(({ rows, total }) => params.success({ rowData: rows, rowCount: total }));
+        fakeServer({ startRow, endRow, sortModel, filterModel }, db.current).then(({ rows, total }) => params.success({ rowData: rows, rowCount: total }));
       },
     }),
     [],
   );
+  const api = () => ref.current?.api;
+  // 서버에 먼저 반영했다고 치고, 그리드에는 트랜잭션으로 같은 변경을 알림
+  const apply = (tx, label) => {
+    const done = res => ctx.log(`${label}: ${res?.status} (add ${res?.add?.length ?? 0} / update ${res?.update?.length ?? 0} / remove ${res?.remove?.length ?? 0})`);
+    if (p.async) api().applyServerSideTransactionAsync(tx, done);
+    else done(api().applyServerSideTransaction(tx));
+    setTick(t => t + 1);
+  };
+  const add = () => {
+    const row = { ...db.current[0], id: ++seq.current, taskName: `새 작업_${seq.current}`, rowCnt: 0, status: '대기' };
+    db.current = [row, ...db.current];
+    apply({ add: [row], addIndex: 0 }, '맨 위에 추가');
+  };
+  const update = () => {
+    const sel = api().getSelectedRows();
+    if (!sel.length) return ctx.log('선택한 행이 없습니다 (불러온 행 중)');
+    const changed = sel.map(r => ({ ...r, status: '완료', rowCnt: r.rowCnt + 1 }));
+    const byId = new Map(changed.map(r => [r.id, r]));
+    db.current = db.current.map(r => byId.get(r.id) || r);
+    apply({ update: changed }, '선택 행 완료 처리');
+  };
+  const remove = () => {
+    const sel = api().getSelectedRows();
+    if (!sel.length) return ctx.log('선택한 행이 없습니다 (불러온 행 중)');
+    const ids = new Set(sel.map(r => r.id));
+    db.current = db.current.filter(r => !ids.has(r.id));
+    apply({ remove: sel }, '선택 행 삭제');
+  };
   return (
-    <Grid
-      height={400}
-      rowModelType="serverSide"
-      serverSideDatasource={datasource}
-      cacheBlockSize={100}
-      columnDefs={BASE_COLUMNS.map(c => (c.field === 'owner' ? { ...c, filter: 'r2TextColumnFilter' } : c))}
-    />
+    <div>
+      <div style={{ marginBottom: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <button type="button" style={btn} onClick={add}>맨 위에 추가</button>
+        <button type="button" style={btn} onClick={update}>선택 행 완료 처리</button>
+        <button type="button" style={btn} onClick={remove}>선택 행 삭제</button>
+        <button type="button" style={btn} onClick={() => ctx.log(`getServerSideSelectionState: ${JSON.stringify(api().getServerSideSelectionState())}`)}>
+          선택 상태 보기
+        </button>
+      </div>
+      <Grid
+        gridRef={ref}
+        height={400}
+        rowModelType="serverSide"
+        serverSideDatasource={datasource}
+        cacheBlockSize={100}
+        getRowId={x => String(x.data.id)}
+        rowSelection={p.selection ? { mode: 'multiRow' } : undefined}
+        columnDefs={BASE_COLUMNS.map(c => (c.field === 'owner' ? { ...c, filter: 'r2TextColumnFilter' } : c))}
+        onSelectionChanged={e => ctx.log(`selectionChanged(${e.source}) → ${JSON.stringify(e.api.getServerSideSelectionState())}`)}
+      />
+    </div>
   );
 }
 
@@ -174,11 +224,30 @@ export default [
     id: 'server-side',
     category: CAT,
     name: '서버 사이드 행 모델 (SSRM)',
-    desc: "rowModelType: 'serverSide' — 보이는 구간의 블록(cacheBlockSize)만 getRows 로 요청합니다. 정렬/필터가 바뀌면 캐시를 비우고 request.sortModel / filterModel 로 다시 요청합니다.",
-    keywords: ['rowModelType', 'serverSide', 'serverSideDatasource', 'getRows', 'success', 'fail', 'cacheBlockSize', 'maxBlocksInCache', 'serverSideInitialRowCount', 'refreshServerSide', 'retryServerSideLoads', 'setGridOption', 'request.sortModel', 'request.filterModel'],
-    controls: [],
-    render: (p, ctx) => <Ssrm ctx={ctx} />,
-    code: () => `const datasource = useMemo(() => ({
+    desc: "rowModelType: 'serverSide' — 보이는 구간의 블록(cacheBlockSize)만 getRows 로 요청합니다. 정렬/필터가 바뀌면 캐시를 비우고 request.sortModel / filterModel 로 다시 요청합니다. 서버 데이터를 바꾼 뒤 applyServerSideTransaction 으로 알리면 다시 요청하지 않고 불러온 행에 바로 반영합니다. 선택은 행 id 기준이라 아직 안 불러온 행까지 '전체 선택' 할 수 있습니다.",
+    keywords: ['rowModelType', 'serverSide', 'serverSideDatasource', 'getRows', 'success', 'fail', 'cacheBlockSize', 'maxBlocksInCache', 'serverSideInitialRowCount', 'refreshServerSide', 'retryServerSideLoads', 'setGridOption', 'request.sortModel', 'request.filterModel', 'applyServerSideTransaction', 'applyServerSideTransactionAsync', 'flushServerSideAsyncTransactions', 'applyServerSideRowData', 'getServerSideSelectionState', 'setServerSideSelectionState', 'asyncTransactionWaitMillis'],
+    controls: [
+      {
+        key: 'selection',
+        type: 'boolean',
+        default: true,
+        label: "rowSelection: { mode: 'multiRow' }",
+        desc: "SSRM 에서 선택은 { selectAll, toggledNodes } 상태로 관리됩니다. 헤더 체크박스로 전체 선택하면 selectAll=true 가 되어 아직 안 불러온 행도 로드되는 즉시 선택된 상태로 나오고, 그 뒤 해제한 행만 toggledNodes 에 남습니다. getState().rowSelection 에도 이 모양으로 저장됩니다.",
+        on: "체크박스·헤더 체크박스 표시 — '선택 상태 보기' 로 상태 확인",
+        off: '선택 없음 (완료 처리·삭제 버튼은 선택 행이 필요)',
+      },
+      {
+        key: 'async',
+        type: 'boolean',
+        default: false,
+        label: 'Async 트랜잭션',
+        desc: 'applyServerSideTransaction 은 블록을 불러오는 중이면 적용하지 않고 StoreLoading 을 돌려줍니다. applyServerSideTransactionAsync 는 asyncTransactionWaitMillis(기본 50ms) 동안 모았다가, 로딩 중이면 로드가 끝난 뒤 한 번에 적용하고 콜백으로 결과를 줍니다.',
+        on: 'applyServerSideTransactionAsync(tx, callback) — 로딩 중에도 나중에 적용',
+        off: 'applyServerSideTransaction(tx) — 즉시 적용, 결과 status 바로 반환',
+      },
+    ],
+    render: (p, ctx) => <Ssrm p={p} ctx={ctx} />,
+    code: p => `const datasource = useMemo(() => ({
   getRows: params => {
     const { startRow, endRow, sortModel, filterModel } = params.request;
     api.post('/rows', { startRow, endRow, sortModel, filterModel })
@@ -187,7 +256,24 @@ export default [
   },
 }), []);
 
-<R2Grid rowModelType="serverSide" serverSideDatasource={datasource} cacheBlockSize={100} />`,
+<R2Grid
+  ref={gridRef}
+  rowModelType="serverSide"
+  serverSideDatasource={datasource}
+  cacheBlockSize={100}
+  getRowId={p => String(p.data.id)}   // 트랜잭션·선택은 id 로 행을 찾음${p.selection ? "\n  rowSelection={{ mode: 'multiRow' }}" : ''}
+/>
+
+// 서버에 저장한 뒤 그리드에 같은 변경 알림 (다시 요청하지 않음)
+const res = await api.post('/rows', newRow);
+gridRef.current.api.${p.async ? 'applyServerSideTransactionAsync' : 'applyServerSideTransaction'}({ add: [res.data], addIndex: 0 }${p.async ? ', r => console.log(r.status)' : ''});
+gridRef.current.api.${p.async ? 'applyServerSideTransactionAsync' : 'applyServerSideTransaction'}({ update: [changedRow] });
+gridRef.current.api.${p.async ? 'applyServerSideTransactionAsync' : 'applyServerSideTransaction'}({ remove: [deletedRow] });${p.selection ? `
+
+// 선택 상태 — 안 불러온 행 포함
+const { selectAll, toggledNodes } = gridRef.current.api.getServerSideSelectionState();
+// selectAll=true  → toggledNodes 는 선택 해제된 id
+// selectAll=false → toggledNodes 는 선택된 id` : ''}`,
     usage: {
       file: 'page/work/workGroup/work/modal/WorkGroupPlanModal.jsx',
       code: `const onGridReady = e => {

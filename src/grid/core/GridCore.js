@@ -2121,6 +2121,7 @@ export class GridCore {
     if (value && !node.selectable) return 0;
     const changed = [];
     if (value && (clearOthers || this.rsOpts?.mode === 'singleRow')) {
+      if (this.ssrmSel && this.isSsrm()) this.ssrmSel = { selectAll: false, toggled: new Set(node.selected ? [node.id] : []) };
       for (const [id, n] of [...this.selected]) {
         if (n !== node) {
           n.selected = false;
@@ -2166,7 +2167,9 @@ export class GridCore {
     if (changed.length) this.afterSelectionChange(changed, source);
   }
 
-  afterSelectionChange(changed, source, event) {
+  afterSelectionChange(changed, source, event, force = false) {
+    if (this.isSsrm()) this.ssrmSyncSelection(changed);
+    if (!changed.length && !force) return;
     this.selectionVersion = (this.selectionVersion || 0) + 1;
     changed.forEach(n => {
       this.dispatch('rowSelected', {
@@ -2185,6 +2188,11 @@ export class GridCore {
 
   selectAllNodes(mode = 'all', source = 'apiSelectAll') {
     if (!this.rsOpts || this.rsOpts.mode !== 'multiRow') return;
+    // SSRM: 안 불러온 행까지 전체 선택 (서버 필터 결과 전체) → selectAll 상태로
+    if (this.isSsrm()) {
+      this.setServerSideSelectionState({ selectAll: true, toggledNodes: [] }, source);
+      return;
+    }
     const nodes =
       mode === 'filtered' ? this.filteredNodes : mode === 'currentPage' ? this.getPageMasters() : this.rootNodes;
     const changed = [];
@@ -2199,6 +2207,10 @@ export class GridCore {
   }
 
   deselectAllNodes(mode = 'all', source = 'apiSelectAll') {
+    if (this.isSsrm()) {
+      this.setServerSideSelectionState({ selectAll: false, toggledNodes: [] }, source);
+      return;
+    }
     const scope =
       mode === 'filtered'
         ? new Set(this.filteredNodes)
@@ -2240,6 +2252,7 @@ export class GridCore {
     }
     const changed = [];
     if (!keepOthers) {
+      if (this.ssrmSel && this.isSsrm()) this.ssrmSel = { selectAll: false, toggled: new Set(inRange.filter(n => n.selected).map(n => n.id)) };
       const set = new Set(inRange);
       for (const [id, n] of [...this.selected]) {
         if (!set.has(n)) {
@@ -2315,6 +2328,11 @@ export class GridCore {
   getHeaderCheckboxState() {
     const rs = this.rsOpts;
     if (!rs) return false;
+    if (this.isSsrm()) {
+      const sel = this.ssrmSel;
+      if (!sel || (!sel.selectAll && !sel.toggled.size)) return false;
+      return sel.selectAll && !sel.toggled.size ? true : null;
+    }
     const mode = rs.selectAll;
     if (mode === 'all') {
       const sel = this.selected.size;
