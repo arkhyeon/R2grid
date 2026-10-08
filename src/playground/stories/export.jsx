@@ -328,7 +328,7 @@ api.exportDataAsExcel({
 // { id: 'formula', dataType: 'Formula' }  ← 값이 '=SUM(B2:B10)' 이면 수식으로`,
     usage: {
       file: 'assets/ExcelDownload.jsx',
-      code: `AgCharts.getImageDataURL(chartRef.current.chart).then(imageDataURL => {
+      code: `gridRef.current.api.getChartImageDataURL({ chartId }).then(imageDataURL => {
   gridRef.current.api.exportDataAsExcel({
     prependContent: [
       {

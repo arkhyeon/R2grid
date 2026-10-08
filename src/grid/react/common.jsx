@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useLayoutEffect, useRef } from 'react';
 import { cx } from '../core/utils.js';
 
-// viewBox 0 0 32 32 stroke 아이콘 (Quartz 아이콘셋 근사)
+// viewBox 0 0 32 32 stroke 아이콘 (자체 제작)
 const ICONS = {
   menu: 'M6 9h20M6 16h20M6 23h20',
   'menu-alt': 'M6 9h20M6 16h20M6 23h20',
