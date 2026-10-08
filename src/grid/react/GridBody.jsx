@@ -383,6 +383,7 @@ function rowProps(core, node, rowCount) {
     !node.rowPinned && node.rowIndex === 0 && 'r2-row-first',
     !node.rowPinned && node.rowIndex === rowCount - 1 && 'r2-row-last',
     node.rowPinned && 'r2-row-pinned',
+    !node.rowPinned && node.pinnedSibling && 'r2-row-pinned-source',
     node.group && !node.footer && 'r2-row-group',
     node.footer && 'r2-row-footer',
     node.stub && 'r2-row-loading',

@@ -69,6 +69,24 @@ function PinnedRows({ p, ctx }) {
   );
 }
 
+const ROWS40 = SAMPLE.slice(0, 40);
+function RowPinning({ p, ctx }) {
+  const isRowPinned = useMemo(() => (p.initial ? node => (node.data.status === '오류' && !node.data.useYn ? 'top' : null) : undefined), [p.initial]);
+  return (
+    <Grid
+      key={String(p.initial)}
+      rowData={ROWS40}
+      columnDefs={BASE_COLUMNS}
+      defaultColDef={{ editable: true }}
+      getRowId={x => String(x.data.id)}
+      enableRowPinning={p.mode === 'both' ? true : p.mode}
+      isRowPinned={isRowPinned}
+      isRowPinnable={p.onlyActive ? node => node.data.useYn : undefined}
+      onPinnedRowsChanged={e => ctx.log(`pinnedRowsChanged source=${e.source} → rowPinning ${JSON.stringify(e.api.getState().rowPinning ?? null)}`)}
+    />
+  );
+}
+
 function RowHeight({ p }) {
   const rows = useMemo(
     () =>
@@ -371,6 +389,56 @@ stopEditingWhenCellsLoseFocus
 singleClickEdit
 rowDragManaged`,
     },
+  },
+  {
+    id: 'row-pinning',
+    category: CAT,
+    name: '행 수동 고정',
+    desc: '사용자가 행을 우클릭 → "행 고정" 으로 위/아래에 고정합니다. 원본 행은 본문 제자리에 남고, 같은 data 를 쓰는 복사본이 고정 영역에 붙습니다(편집하면 둘 다 바뀜). 고정 목록은 행 id 로 기억해서 정렬·필터·데이터 갱신에도 유지되고, getState().rowPinning 으로 저장·복원됩니다.',
+    keywords: ['enableRowPinning', 'isRowPinned', 'isRowPinnable', 'pinRowSubMenu', 'pinnedRowsChanged', 'rowPinning', 'pinnedSibling', '행 고정'],
+    controls: [
+      {
+        key: 'mode',
+        type: 'select',
+        default: 'both',
+        label: 'enableRowPinning',
+        desc: '행 우클릭 메뉴에 "행 고정" 하위 메뉴를 켜고, 어느 쪽에 고정할 수 있는지 정합니다. 그룹 행·합계 행·pinnedTopRowData 행은 고정 대상이 아닙니다. 행을 구분하려면 getRowId 가 필요합니다(없으면 rowData 전체 교체 시 고정이 풀림).',
+        options: [
+          { value: 'both', label: 'true', desc: '위·아래 둘 다 — 메뉴에 위에 고정 / 아래에 고정 / 고정 해제' },
+          { value: 'top', label: "'top'", desc: '위에만 고정 가능 (아래 고정 항목 숨김)' },
+          { value: 'bottom', label: "'bottom'", desc: '아래에만 고정 가능' },
+          { value: false, label: 'false', desc: '수동 고정 끔 — 메뉴 항목 없음, 이미 고정된 행도 풀림' },
+        ],
+      },
+      {
+        key: 'initial',
+        type: 'boolean',
+        default: true,
+        label: 'isRowPinned',
+        desc: "행이 처음 만들어질 때(rowData 설정·트랜잭션 추가) 호출돼 'top' | 'bottom' | null 을 돌려주면 그 위치에 바로 고정합니다. 여기선 상태 '오류' 이면서 사용 안 함인 행을 위에 고정.",
+        on: "'오류'·미사용 행(4건)이 처음부터 위에 고정",
+        off: '처음엔 고정 없음 — 우클릭으로만 고정',
+      },
+      {
+        key: 'onlyActive',
+        type: 'boolean',
+        default: false,
+        label: 'isRowPinnable',
+        desc: '행마다 고정 가능 여부를 정하는 콜백. false 를 돌려준 행은 우클릭 메뉴에 "행 고정" 이 나오지 않습니다. 여기선 사용 여부(useYn)가 true 인 행만 허용.',
+        on: '사용 여부 false 행은 고정 불가',
+        off: '모든 데이터 행 고정 가능',
+      },
+    ],
+    render: (p, ctx) => <RowPinning p={p} ctx={ctx} />,
+    code: p => `<R2Grid
+  rowData={rowData}
+  columnDefs={columnDefs}
+  getRowId={p => String(p.data.id)}   // 고정 행을 id 로 기억
+  enableRowPinning${p.mode === 'both' ? '' : `={${p.mode === false ? 'false' : `'${p.mode}'`}}`}${p.initial ? "\n  isRowPinned={node => (node.data.status === '오류' && !node.data.useYn ? 'top' : null)}" : ''}${p.onlyActive ? '\n  isRowPinnable={node => node.data.useYn}' : ''}
+  onPinnedRowsChanged={e => saveState(e.api.getState().rowPinning)}
+/>
+
+// 복원: initialState={{ rowPinning: { top: ['12'], bottom: [] } }}`,
   },
   {
     id: 'row-height',

@@ -1,6 +1,6 @@
 // 그리드 상태 저장/복원(getState·setState·initialState·stateUpdated) + 값 컬럼/집계 API + 일괄 편집(Batch Edit)
 //  - GridState 모양은 AG v34 와 동일 (version, columnSizing, columnOrder, columnVisibility, columnPinning, sort,
-//    rowGroup, aggregation, pivot, filter, rowGroupExpansion, rowSelection, pagination, scroll, focusedCell,
+//    rowGroup, aggregation, pivot, filter, rowGroupExpansion, rowPinning, rowSelection, pagination, scroll, focusedCell,
 //    cellSelection, sideBar, columnGroup)
 //  - setState: 빠진 항목은 기본값으로 되돌림(AG 동일), propertiesToIgnore 로 제외. initialState 는 준 항목만 적용
 import { GRID_VERSION } from './globals.js';
@@ -19,6 +19,7 @@ const STATE_KEYS = [
   'cellSelection',
   'rowGroup',
   'rowGroupExpansion',
+  'rowPinning',
   'rowSelection',
   'scroll',
   'sideBar',
@@ -47,6 +48,7 @@ const EVENT_SOURCES = {
   rangeSelectionChanged: ['cellSelection'],
   toolPanelVisibleChanged: ['sideBar'],
   bodyScroll: ['scroll'],
+  pinnedRowsChanged: ['rowPinning'],
 };
 
 export const stateMethods = {
@@ -83,6 +85,8 @@ export const stateMethods = {
     if (openGroups.length) s.columnGroup = { openColumnGroupIds: openGroups };
     const expanded = this.collectExpandedIds();
     if (expanded.length) s.rowGroupExpansion = { expandedRowGroupIds: expanded };
+    const mp = this.manualPins;
+    if (mp && (mp.top.length || mp.bottom.length)) s.rowPinning = { top: [...mp.top], bottom: [...mp.bottom] };
     const selected = this.getSelectedNodes().map(n => n.id).filter(id => id != null);
     if (selected.length) s.rowSelection = selected;
     if (this.gos.pagination) s.pagination = { page: this.currentPage, pageSize: this.getPageSize() };
@@ -142,6 +146,7 @@ export const stateMethods = {
       this.pendingExpansion = ids;
       this.applyPendingExpansion();
     }
+    if (want('rowPinning') && this.gos.enableRowPinning) this.setManualPins(state.rowPinning || {}, source);
     if (want('rowSelection') && Array.isArray(state.rowSelection ?? [])) {
       const ids = new Set(state.rowSelection || []);
       const nodes = [];

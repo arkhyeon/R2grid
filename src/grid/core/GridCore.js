@@ -64,6 +64,8 @@ const SILENT_OPTION_KEYS = new Set([
   'loadingCellRenderer',
   'getLocaleText',
   'getRowId',
+  'isRowPinned',
+  'isRowPinnable',
   'gridOptions',
 ]);
 
@@ -368,6 +370,10 @@ export class GridCore {
       this.dispatchFindChanged();
     }
     if (changed('pinnedTopRowData') || changed('pinnedBottomRowData')) this.buildPinnedRows();
+    if (changed('enableRowPinning') && this.manualPins) {
+      const m = this.manualPins;
+      this.setManualPins({ top: this.rowPinningAllowed('top') ? m.top : [], bottom: this.rowPinningAllowed('bottom') ? m.bottom : [] }, 'gridOptionsChanged');
+    }
 
     const prevGroupMode = this.groupMode;
     this.groupMode = this.computeGroupMode();
@@ -1282,6 +1288,7 @@ export class GridCore {
     if (!initial && !isDelta && !this.gos.suppressScrollOnNewData && this.viewport) {
       this.viewport.setScrollTop(0);
     }
+    let freshNodes = null; // getRowId 갱신 시 새로 생긴 노드 (나머지는 기존 노드 재사용)
     if (rowData == null) {
       this.rowDataSet = false;
       if (this.selected.size) selectionChanged = true;
@@ -1293,6 +1300,7 @@ export class GridCore {
       if (typeof getRowId === 'function' && this.rootNodes.length) {
         const oldById = this.nodeById;
         const newById = new Map();
+        freshNodes = [];
         const nodes = new Array(rowData.length);
         for (let i = 0; i < rowData.length; i++) {
           const data = rowData[i];
@@ -1306,6 +1314,7 @@ export class GridCore {
             }
           } else {
             node = new RowNode(this, data, id);
+            freshNodes.push(node);
           }
           node.sourceRowIndex = i;
           nodes[i] = node;
@@ -1339,6 +1348,7 @@ export class GridCore {
     }
     this.updateSelectableAll();
     this.updateMasterFlags(this.rootNodes);
+    this.initRowPinning(freshNodes || this.rootNodes, !freshNodes);
     if (this.rootNodes.length) this.inferDataTypes();
     this.quickFilterVersion++;
     this.refreshModel({ newData: true, silent: initial });
@@ -1409,6 +1419,7 @@ export class GridCore {
         return node;
       });
       this.updateMasterFlags(newNodes);
+      this.initRowPinning(newNodes, false);
       const idx = tx.addIndex;
       if (idx != null && idx >= 0 && idx < this.rootNodes.length) {
         this.rootNodes = [...this.rootNodes.slice(0, idx), ...newNodes, ...this.rootNodes.slice(idx)];
@@ -1528,6 +1539,8 @@ export class GridCore {
         this.mergePinnedRows();
       }
     }
+    // 수동 고정 행: 원본이 지워졌으면 빠지고, data 가 바뀌었으면 복제도 따라감
+    if (this.manualPins && (this.manualPins.top.length || this.manualPins.bottom.length || this.manualCloneCache?.size)) this.mergePinnedRows();
     if (resetPage) this.currentPage = 0;
     this.updatePagination();
     this.computeRowTops();
@@ -3299,6 +3312,8 @@ export class GridCore {
     if (this.gos.suppressContextMenu) return false;
     const value = node && column ? this.getCellValue(node, column) : undefined;
     const defaultItems = ['copy', 'copyWithHeaders', 'paste', 'separator', 'export'];
+    // 수동 행 고정: 고정 가능한 행(또는 이미 고정된 복제 행)에서 "행 고정" 하위 메뉴
+    if (this.gos.enableRowPinning && node && (node.manualPinned || this.isRowPinnableNode(node))) defaultItems.unshift('pinRowSubMenu', 'separator');
     // 통합 차트: 범위가 있으면 "범위 차트" (AG 동일)
     if (this.gos.enableCharts && this.ranges.length) defaultItems.push('separator', 'chartRange');
     const getItems = this.gos.getContextMenuItems;

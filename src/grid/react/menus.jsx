@@ -58,6 +58,16 @@ function builtinItem(core, key, params) {
           { name: t('pinRight'), checked: col.pinned === 'right', action: () => core.api.setColumnsPinned([col], 'right') },
         ],
       };
+    case 'pinRowSubMenu': {
+      const node = params?.node;
+      if (!node || !core.gos.enableRowPinning || !(node.manualPinned || core.isRowPinnableNode(node))) return null;
+      const cur = core.manualPinPosition(node);
+      const sub = [];
+      if (core.rowPinningAllowed('top')) sub.push({ name: t('pinTop'), checked: cur === 'top', action: () => core.pinRowManual(node, 'top', 'contextMenu') });
+      if (core.rowPinningAllowed('bottom')) sub.push({ name: t('pinBottom'), checked: cur === 'bottom', action: () => core.pinRowManual(node, 'bottom', 'contextMenu') });
+      sub.push({ name: t('unpinRow'), checked: !cur, disabled: !cur, action: () => core.pinRowManual(node, null, 'contextMenu') });
+      return { name: t('pinRow'), icon: 'pin', subMenu: sub };
+    }
     case 'sortAscending':
       return col && col.isSortable() ? { name: t('sortAscending'), icon: 'asc', action: () => core.setColumnSort(col, 'asc', false, 'columnMenu') } : null;
     case 'sortDescending':
