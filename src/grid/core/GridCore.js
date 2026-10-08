@@ -393,6 +393,14 @@ export class GridCore {
       this.__findKey = null;
       this.dispatchFindChanged();
     }
+    // 피벗 결과 컬럼 모양을 바꾸는 옵션
+    if (['pivotRowTotals', 'pivotColumnGroupTotals', 'removePivotHeaderRowWhenSingleValueColumn', 'suppressExpandablePivotGroups', 'pivotDefaultExpanded', 'pivotMaxGeneratedColumns', 'processPivotResultColDef', 'processPivotResultColGroupDef'].some(changed) && this.isPivotActive?.()) {
+      this.applyPivotResultColumns(true);
+      this.columnsVersion++;
+      this.layoutColumns();
+      this.refreshModel({ skipFilter: true });
+      this.dispatch('displayedColumnsChanged', { source: 'gridOptionsChanged' });
+    }
     if (changed('pinnedTopRowData') || changed('pinnedBottomRowData')) {
       this.buildPinnedRows();
       this.dispatch('pinnedRowDataChanged', {});

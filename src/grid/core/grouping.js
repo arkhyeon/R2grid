@@ -60,6 +60,7 @@ export const groupingMethods = {
 
   wantsAutoGroupColumn(leaves) {
     const g = this.gos;
+    if (g.pivotSuppressAutoColumn && this.isPivotActive?.()) return false;
     if (g.groupDisplayType === 'custom' || g.groupDisplayType === 'groupRows') return false;
     if (g.treeData && (typeof g.getDataPath === 'function' || g.treeDataChildrenField || g.treeDataParentIdField || (g.rowModelType === 'serverSide' && typeof g.isServerSideGroup === 'function'))) return true;
     // 컬럼 상태 기준 (api/패널로 바뀐 그룹 반영)
@@ -370,7 +371,15 @@ export const groupingMethods = {
       const af = col.colDef.aggFunc;
       // 피벗 결과 컬럼: 피벗 키가 일치하는 리프만 대상 (값은 원본 값 컬럼에서)
       const pk = col.pivotKeyString;
-      const leafOk = ch => pk == null || this.pivotKeyOf(ch) === pk;
+      const prefix = col.pivotKeyPrefix;
+      const leafOk = prefix
+        ? ch => {
+            if (!prefix.length) return true;
+            const arr = this.pivotKeyArrOf(ch);
+            for (let i = 0; i < prefix.length; i++) if (arr[i] !== prefix[i]) return false;
+            return true;
+          }
+        : ch => pk == null || this.pivotKeyOf(ch) === pk;
       const valueCol = col.pivotValueColumn || col;
       const kids = n.childrenAfterFilter.filter(ch => ch.group || leafOk(ch));
       // 자식 그룹은 표시값(합계행 때문에 비울 수 있음)이 아닌 aggData 를 직접 사용

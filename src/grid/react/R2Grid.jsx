@@ -40,9 +40,10 @@ function GridView({ core }) {
   });
 
   // autoHeaderHeight: 줄바꿈된 헤더 글자 높이에 맞춰 늘림 (GridHeader 가 재서 core.autoHeaderPx 에 둠)
-  const baseHeaderHeight = g.headerHeight ?? DEFAULT_HEADER_HEIGHT;
+  const pivotOn = core.isPivotActive?.();
+  const baseHeaderHeight = (pivotOn ? g.pivotHeaderHeight : undefined) ?? g.headerHeight ?? DEFAULT_HEADER_HEIGHT;
   const headerHeight = core.autoHeaderPx && g.headerHeight !== 0 ? Math.max(baseHeaderHeight, core.autoHeaderPx) : baseHeaderHeight;
-  const groupHeaderHeight = g.groupHeaderHeight ?? baseHeaderHeight;
+  const groupHeaderHeight = (pivotOn ? g.pivotGroupHeaderHeight : undefined) ?? g.groupHeaderHeight ?? baseHeaderHeight;
   const headerTotal =
     g.headerHeight === 0 ? 0 : core.headerGroupDepth * groupHeaderHeight + headerHeight + core.getFloatingFiltersHeight(headerHeight);
   const rowHeight = core.getDefaultRowHeight();

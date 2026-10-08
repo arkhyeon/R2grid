@@ -21,6 +21,14 @@ export const pivotMethods = {
     return this.allColumns.filter(c => !c.isPivotResult && !c.autoType && c.colDef.aggFunc);
   },
 
+  // 리프 행의 피벗 키 배열 (합계 컬럼의 앞부분 비교용)
+  pivotKeyArrOf(node) {
+    if (node.__pivotArrEpoch === this.pivotEpoch) return node.__pivotArr;
+    node.__pivotArr = JSON.parse(this.pivotKeyOf(node));
+    node.__pivotArrEpoch = this.pivotEpoch;
+    return node.__pivotArr;
+  },
+
   // 리프 행의 피벗 키 문자열 (파이프라인마다 캐시)
   pivotKeyOf(node) {
     if (node.__pivotEpoch === this.pivotEpoch) return node.__pivotKey;
@@ -57,8 +65,19 @@ export const pivotMethods = {
       }
       return 0;
     };
-    const keys = [...keySet.values()].sort(comparator);
-    const sig = active && pcols.length ? JSON.stringify([pcols.map(c => c.colId), vcols.map(c => c.colId + c.colDef.aggFunc), keys]) : '';
+    let keys = [...keySet.values()].sort(comparator);
+    const g = this.gos;
+    // pivotMaxGeneratedColumns: 결과 컬럼이 너무 많으면 만들지 않고 이벤트 (AG 동일)
+    const max = g.pivotMaxGeneratedColumns;
+    if (max > 0 && keys.length * Math.max(1, vcols.length) > max) {
+      if (this.__pivotExceededSig !== keys.length) {
+        this.__pivotExceededSig = keys.length;
+        this.dispatch('pivotMaxColumnsExceeded', { message: `피벗 결과 컬럼 ${keys.length * Math.max(1, vcols.length)}개가 pivotMaxGeneratedColumns(${max})를 넘습니다` });
+      }
+      keys = [];
+    } else this.__pivotExceededSig = null;
+    const opts = [g.pivotRowTotals, g.pivotColumnGroupTotals, g.removePivotHeaderRowWhenSingleValueColumn, g.suppressExpandablePivotGroups, g.pivotDefaultExpanded];
+    const sig = active && pcols.length && keys.length ? JSON.stringify([pcols.map(c => c.colId), vcols.map(c => c.colId + c.colDef.aggFunc), keys, opts]) : '';
     if (!force && sig === this.__pivotSig) return false;
     this.__pivotSig = sig;
 
@@ -79,18 +98,69 @@ export const pivotMethods = {
     const rootList = [];
     const suppressAgg = this.gos.suppressAggFuncInHeader;
     const prevById = this.__pivotPrevById || new Map();
+    // removePivotHeaderRowWhenSingleValueColumn: 값 컬럼이 하나면 마지막 그룹 줄 없이 컬럼 이름 = 마지막 키
+    const dropLastRow = !!g.removePivotHeaderRowWhenSingleValueColumn && vcols.length === 1;
+    const groupLevels = dropLastRow ? pcols.length - 1 : pcols.length;
+    const pde = g.pivotDefaultExpanded ?? 0;
+    const procGroup = g.processPivotResultColGroupDef;
+    const procCol = g.processPivotResultColDef;
+    const makeCol = (def, chain, siblings, extra) => {
+      if (typeof procCol === 'function') procCol(def);
+      const prev = prevById.get(def.colId);
+      const col = new Column(this, def, def, def.colId, chain.slice());
+      if (prev) {
+        col.width = prev.width;
+        col.actualWidth = prev.actualWidth;
+        col.sort = prev.sort;
+        col.sortIndex = prev.sortIndex;
+      }
+      col.isPivotResult = true;
+      Object.assign(col, extra);
+      siblings.push(col);
+      this.pivotResultColumns.push(col);
+      this.columnById.set(def.colId, col);
+      return col;
+    };
+    const valueName = vc => {
+      const af = vc.colDef.aggFunc;
+      const name = vc.colDef.headerName ?? vc.colId;
+      return suppressAgg || typeof af !== 'string' ? name : `${af}(${name})`;
+    };
+    const totalDef = (colId, vc, label, keysPrefix) => ({
+      colId,
+      headerName: label,
+      aggFunc: vc.colDef.aggFunc,
+      valueFormatter: vc.colDef.valueFormatter,
+      cellClass: vc.colDef.cellClass,
+      cellStyle: vc.colDef.cellStyle,
+      type: vc.colDef.type,
+      pivotKeys: keysPrefix,
+      pivotValueColumn: vc.colId,
+      pivotTotalColumnIds: [],
+      sortable: true,
+      resizable: true,
+      width: vc.colDef.width ?? 150,
+    });
+    const rowTotals = g.pivotRowTotals;
+    if (rowTotals === 'before') {
+      for (const vc of vcols) makeCol(totalDef(`PivotRowTotal_${vc.colId}`, vc, `합계 ${valueName(vc)}`, []), [], rootList, { pivotKeyPrefix: [], pivotValueColumn: vc, pivotTotal: 'row' });
+    }
     for (const key of keys) {
       const chain = [];
       let siblings = rootList;
-      for (let lvl = 0; lvl < pcols.length; lvl++) {
+      for (let lvl = 0; lvl < groupLevels; lvl++) {
         const gid = `pivot_${JSON.stringify(key.slice(0, lvl + 1))}`;
         let grp = groupMap.get(gid);
         if (!grp) {
-          grp = new ColumnGroup({ headerName: key[lvl] === '' ? '(빈 값)' : key[lvl], pivotKeys: key.slice(0, lvl + 1) }, gid, lvl);
+          const gdef = { headerName: key[lvl] === '' ? '(빈 값)' : key[lvl], pivotKeys: key.slice(0, lvl + 1) };
+          if (typeof procGroup === 'function') procGroup(gdef);
+          grp = new ColumnGroup(gdef, gid, lvl);
           grp.parent = chain[chain.length - 1] || null;
+          grp.expanded = pde === -1 || lvl < pde;
           if (lvl === 0) grp.__pivotTree = true;
           groupMap.set(gid, grp);
           siblings.push(grp);
+          this.groupById?.set(gid, grp);
         }
         chain.push(grp);
         siblings = grp.children;
@@ -98,10 +168,10 @@ export const pivotMethods = {
       for (const vc of vcols) {
         const colId = `pivot_${key.join('_')}_${vc.colId}`;
         const af = vc.colDef.aggFunc;
-        const name = vc.colDef.headerName ?? vc.colId;
+        const name = dropLastRow ? (key[key.length - 1] === '' ? '(빈 값)' : key[key.length - 1]) : vc.colDef.headerName ?? vc.colId;
         const def = {
           colId,
-          headerName: suppressAgg || typeof af !== 'string' ? name : `${af}(${name})`,
+          headerName: dropLastRow || suppressAgg || typeof af !== 'string' ? name : `${af}(${name})`,
           aggFunc: af,
           valueFormatter: vc.colDef.valueFormatter,
           cellClass: vc.colDef.cellClass,
@@ -113,22 +183,38 @@ export const pivotMethods = {
           resizable: true,
           width: vc.colDef.width ?? 150,
         };
-        const prev = prevById.get(colId);
-        const col = new Column(this, def, def, colId, chain.slice());
-        if (prev) {
-          col.width = prev.width;
-          col.actualWidth = prev.actualWidth;
-          col.sort = prev.sort;
-          col.sortIndex = prev.sortIndex;
-        }
-        col.isPivotResult = true;
-        col.pivotKeyString = JSON.stringify(key);
-        col.pivotValueColumn = vc;
-        siblings.push(col);
-        this.pivotResultColumns.push(col);
-        this.columnById.set(colId, col);
+        makeCol(def, chain, siblings, { pivotKeyString: JSON.stringify(key), pivotValueColumn: vc });
       }
     }
+    // pivotColumnGroupTotals: 그룹마다 하위 합계 컬럼 (그룹을 접으면 합계만, 펼치면 자식 — AG 동일)
+    const groupTotals = g.pivotColumnGroupTotals;
+    if (groupTotals === 'before' || groupTotals === 'after') {
+      for (const grp of groupMap.values()) {
+        const prefix = grp.colGroupDef.pivotKeys;
+        // 자식 그룹이 있는 그룹만 (마지막 단계 그룹은 자식이 이미 값 컬럼)
+        if (!grp.children.some(c => !c.isColumn)) continue;
+        const chain = [];
+        for (let x = grp; x; x = x.parent) chain.unshift(x);
+        const totals = [];
+        for (const vc of vcols) {
+          const def = totalDef(`PivotGroupTotal_${JSON.stringify(prefix)}_${vc.colId}`, vc, `합계 ${valueName(vc)}`, prefix);
+          if (!g.suppressExpandablePivotGroups) def.columnGroupShow = 'closed';
+          totals.push(makeCol(def, chain, [], { pivotKeyPrefix: prefix, pivotValueColumn: vc, pivotTotal: 'group' }));
+        }
+        if (!g.suppressExpandablePivotGroups) grp.children.forEach(c => (c.isColumn ? (c.colDef.columnGroupShow = 'open') : (c.colGroupDef.columnGroupShow = 'open')));
+        if (groupTotals === 'before') grp.children.unshift(...totals);
+        else grp.children.push(...totals);
+        grp.computeExpandable();
+      }
+    }
+    if (rowTotals === 'after') {
+      for (const vc of vcols) makeCol(totalDef(`PivotRowTotal_${vc.colId}`, vc, `합계 ${valueName(vc)}`, []), [], rootList, { pivotKeyPrefix: [], pivotValueColumn: vc, pivotTotal: 'row' });
+    }
+    // 화면 순서 = 트리 순서 (합계 컬럼 위치 반영)
+    const ordered = [];
+    const walkCols = list => list.forEach(x => (x.isColumn ? ordered.push(x) : walkCols(x.children)));
+    walkCols(rootList);
+    this.pivotResultColumns = ordered;
     this.__pivotPrevById = new Map(this.pivotResultColumns.map(c => [c.colId, c]));
     this.allColumns = [...this.allColumns, ...this.pivotResultColumns];
     this.columnTree = [...this.columnTree, ...rootList];
