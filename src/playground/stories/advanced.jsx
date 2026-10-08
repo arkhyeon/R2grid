@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { BASE_COLUMNS, SALES, SAMPLE } from '../data.js';
 import { Grid } from './_shared.jsx';
 
-const btn = { padding: '5px 12px', marginRight: 6, borderRadius: 6, border: '1px solid var(--pg-border, #ccc)', background: 'var(--pg-surface, #fff)', color: 'inherit', cursor: 'pointer' };
+const btn = { padding: '5px 12px', marginRight: 6, borderRadius: 6, border: '1px solid var(--pg-field-border)', background: 'var(--pg-field-bg)', color: 'inherit', cursor: 'pointer' };
 
 // ── 그리드 상태 저장 · 복원 ──
 function GridStateDemo({ ctx }) {

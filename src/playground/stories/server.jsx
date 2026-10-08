@@ -45,7 +45,7 @@ function Pagination({ p, ctx }) {
   );
 }
 
-const btn = { padding: '5px 12px', marginRight: 6, borderRadius: 6, border: '1px solid var(--pg-border, #ccc)', background: 'var(--pg-surface, #fff)', color: 'inherit', cursor: 'pointer' };
+const btn = { padding: '5px 12px', marginRight: 6, borderRadius: 6, border: '1px solid var(--pg-field-border)', background: 'var(--pg-field-bg)', color: 'inherit', cursor: 'pointer' };
 
 function Ssrm({ p, ctx }) {
   const ref = useRef(null);

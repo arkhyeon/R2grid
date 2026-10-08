@@ -4,14 +4,37 @@
     {
       "name": "r2grid",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5199
     },
     {
       "name": "clm30-r2grid",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "D:/02 CLM30", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "D:/02 CLM30",
+        "run",
+        "dev"
+      ],
       "port": 5200
+    },
+    {
+      "name": "seed-ui",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "D:/04 seed-ui",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5210",
+        "--strictPort"
+      ],
+      "port": 5210
     }
   ]
 }
