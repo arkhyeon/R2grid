@@ -89,7 +89,7 @@ export const stateMethods = {
     if (mp && (mp.top.length || mp.bottom.length)) s.rowPinning = { top: [...mp.top], bottom: [...mp.bottom] };
     if (this.isSsrm()) {
       const ss = this.getServerSideSelectionState();
-      if (ss && (ss.selectAll || ss.toggledNodes.length)) s.rowSelection = ss;
+      if (ss && (ss.selectAll || ss.selectAllChildren || ss.toggledNodes.length)) s.rowSelection = ss;
     } else {
       const selected = this.getSelectedNodes().map(n => n.id).filter(id => id != null);
       if (selected.length) s.rowSelection = selected;

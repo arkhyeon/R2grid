@@ -77,7 +77,11 @@ export const ssrmMethods = {
   ssrmReset(reason = 'reset') {
     // 그룹 기준이 바뀌면 펼침 기억도 의미가 없어짐
     const sig = this.rowGroupColumns().map(c => c.colId).join('|');
-    if (sig !== this.ssrmGroupSig) this.ssrmExpanded = new Set();
+    if (sig !== this.ssrmGroupSig) {
+      this.ssrmExpanded = new Set();
+      // 그룹 경로가 바뀌면 그룹 선택 트리도 의미가 없어짐
+      if (this.ssrmGroupSig !== undefined) this.ssrmSelTree = null;
+    }
     this.ssrmGroupSig = sig;
     this.ssrmExpanded ||= new Set();
     const root = { ...this.ssrmNewStore([], null), stores: new Map(), modelSig: this.ssrmModelSig() };
@@ -280,11 +284,16 @@ export const ssrmMethods = {
     return { group: true, key, field: cd.field, col };
   },
 
-  // 선택 상태(selectAll XOR toggled)를 로드된 노드에 반영
+  // 선택 상태를 로드된 노드에 반영 — 평면: selectAll XOR toggled / 그룹 선택: 선택 트리
   ssrmApplySelection(node) {
-    const sel = this.ssrmSel;
-    if (!sel) return false;
-    const want = !!node.selectable && sel.selectAll !== sel.toggled.has(node.id);
+    let want;
+    if (this.ssrmTreeMode()) {
+      want = !!node.selectable && (node.__ssrmGroup ? this.ssrmGroupState(node) === true : this.ssrmTreeEffective(node).sel);
+    } else {
+      const sel = this.ssrmSel;
+      if (!sel) return false;
+      want = !!node.selectable && sel.selectAll !== sel.toggled.has(node.id);
+    }
     const changed = node.selected !== want;
     node.selected = want;
     if (want) this.selected.set(node.id, node);
@@ -516,6 +525,15 @@ export const ssrmMethods = {
     this.notify();
   },
 
+  // 단독 선택(클릭·singleRow) 전에 id 상태 초기화 — keep: 선택을 유지할 노드
+  ssrmResetSelection(keep = []) {
+    if (!this.isSsrm()) return;
+    if (this.ssrmTreeMode()) {
+      this.ssrmSelTree = { id: undefined, selectAll: false, toggled: new Map() };
+      keep.forEach(n => this.ssrmTreeSet(n, true));
+    } else if (this.ssrmSel) this.ssrmSel = { selectAll: false, toggled: new Set(keep.map(n => n.id)) };
+  },
+
   ssrmIsLoading() {
     if (!this.ssrm) return false;
     for (const st of this.ssrm.stores.values()) for (const b of st.blocks.values()) if (b.state === 'loading') return true;
@@ -655,22 +673,124 @@ export const ssrmMethods = {
   // { selectAll, toggledNodes }: selectAll=true 면 toggledNodes 는 '선택 해제된' id, false 면 '선택된' id. 안 불러온 행도 포함
   getServerSideSelectionState() {
     if (!this.isSsrm()) return null;
+    if (this.ssrmTreeMode()) return this.ssrmTreeToState();
     const sel = this.ssrmSel || { selectAll: false, toggled: new Set() };
     return { selectAll: sel.selectAll, toggledNodes: [...sel.toggled] };
   },
 
   setServerSideSelectionState(state, source = 'api') {
     if (!this.isSsrm()) return;
-    this.ssrmSel = { selectAll: !!state?.selectAll, toggled: new Set((state?.toggledNodes || []).map(String)) };
+    if (this.ssrmTreeMode() || (state && 'selectAllChildren' in state)) {
+      // 그룹 선택 모양 { selectAllChildren, toggledNodes: [{ nodeId, selectAllChildren, toggledNodes }] }
+      const build = (x, id) => ({
+        id,
+        selectAll: !!(x?.selectAllChildren ?? x?.selectAll),
+        toggled: new Map((x?.toggledNodes || []).map(t => (typeof t === 'object' ? [String(t.nodeId), build(t, String(t.nodeId))] : [String(t), { id: String(t), selectAll: !x?.selectAll, toggled: new Map() }]))),
+      });
+      this.ssrmSelTree = build(state, undefined);
+    } else {
+      this.ssrmSel = { selectAll: !!state?.selectAll, toggled: new Set((state?.toggledNodes || []).map(String)) };
+    }
+    this.ssrmApplyAllSelection(source);
+  },
+
+  // 로드된 행 전체에 선택 상태 다시 반영 → 바뀐 행만 이벤트
+  ssrmApplyAllSelection(source) {
     const changed = [];
     this.ssrmForEachLoaded(n => {
       if (this.ssrmApplySelection(n)) changed.push(n);
     });
-    this.afterSelectionChange(changed, source, undefined, true);
+    this.__ssrmApplying = true;
+    try {
+      this.afterSelectionChange(changed, source, undefined, true);
+    } finally {
+      this.__ssrmApplying = false;
+    }
+  },
+
+  // ── 그룹 선택 (rowSelection.groupSelects: 'descendants' | 'filteredDescendants') ──
+  // 선택 트리: { selectAll, toggled: Map<id, 같은 모양> } — 항목은 부모와 다른 상태인 그룹/행만 (안 불러온 하위도 상속으로 결정)
+  ssrmTreeMode() {
+    return this.isServerGrouping() && this.rsOpts?.mode === 'multiRow' && this.groupSelectsMode() !== 'self';
+  },
+
+  ssrmTreeRoot() {
+    return (this.ssrmSelTree ||= { id: undefined, selectAll: false, toggled: new Map() });
+  },
+
+  ssrmAncestors(node) {
+    const out = [];
+    for (let p = node.parent; p; p = p.parent) out.unshift(p);
+    return out;
+  },
+
+  // 노드의 실제 선택값 (가장 가까운 트리 항목의 selectAll 상속) + 자기 항목
+  ssrmTreeEffective(node) {
+    let s = this.ssrmTreeRoot();
+    let sel = s.selectAll;
+    for (const a of this.ssrmAncestors(node)) {
+      const e = s?.toggled.get(a.id);
+      if (e) {
+        sel = e.selectAll;
+        s = e;
+      } else s = null;
+    }
+    const entry = s?.toggled.get(node.id) || null;
+    return { sel: entry ? entry.selectAll : sel, entry };
+  },
+
+  // 그룹 체크 상태: true | false | null(하위 일부만)
+  ssrmGroupState(node) {
+    const { sel, entry } = this.ssrmTreeEffective(node);
+    return entry && entry.toggled.size ? null : sel;
+  },
+
+  ssrmTreeSet(node, value) {
+    let s = this.ssrmTreeRoot();
+    let sel = s.selectAll;
+    for (const a of this.ssrmAncestors(node)) {
+      let e = s.toggled.get(a.id);
+      if (!e) s.toggled.set(a.id, (e = { id: a.id, selectAll: sel, toggled: new Map() }));
+      sel = e.selectAll;
+      s = e;
+    }
+    s.toggled.set(node.id, { id: node.id, selectAll: !!value, toggled: new Map() });
+    // 부모와 같은 값이고 하위 항목도 없으면 정리
+    const norm = st => {
+      for (const [id, e] of st.toggled) {
+        norm(e);
+        if (!e.toggled.size && e.selectAll === st.selectAll) st.toggled.delete(id);
+      }
+    };
+    norm(this.ssrmTreeRoot());
+  },
+
+  ssrmSetGroupSelected(node, value, source = 'api') {
+    if (!this.ssrmTreeMode()) {
+      this.setNodeSelected(node, value, false, source);
+      return;
+    }
+    this.ssrmTreeSet(node, value);
+    this.ssrmApplyAllSelection(source);
+  },
+
+  ssrmTreeToState(st = this.ssrmTreeRoot()) {
+    const out = { selectAllChildren: st.selectAll, toggledNodes: [...st.toggled.values()].map(e => this.ssrmTreeToState(e)) };
+    if (st.id !== undefined) return { nodeId: st.id, ...out };
+    return out;
   },
 
   // 선택 변경 후 id 상태 동기화 (afterSelectionChange 에서 호출)
   ssrmSyncSelection(changed) {
+    if (this.__ssrmApplying) return;
+    if (this.ssrmTreeMode()) {
+      // 행 하나를 직접 바꾼 경우: 트리에 기록하고, 그 영향(부모 그룹 체크 상태)을 로드된 행에 다시 반영
+      for (const n of [...changed]) this.ssrmTreeSet(n, n.selected);
+      this.ssrmForEachLoaded(n => {
+        if (this.ssrmApplySelection(n) && !changed.includes(n)) changed.push(n);
+      });
+      return;
+    }
     const sel = this.ssrmSel;
     if (!sel) return;
     if (this.rsOpts?.mode === 'singleRow') {

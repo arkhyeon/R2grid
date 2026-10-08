@@ -178,6 +178,9 @@ function SsrmGroup({ p, ctx }) {
       groupDefaultExpanded={p.expanded}
       getChildCount={p.childCount ? data => data.childCount : undefined}
       rowGroupPanelShow={p.panel ? 'always' : 'never'}
+      getRowId={x => (x.data.id != null ? String(x.data.id) : [...x.parentKeys, x.data[GROUP_LEVELS[p.levels][x.level]]].join('/'))}
+      rowSelection={p.groupSelect ? { mode: 'multiRow', groupSelects: 'descendants' } : undefined}
+      onSelectionChanged={e => ctx.log(`selectionChanged → ${JSON.stringify(e.api.getServerSideSelectionState())}`)}
       onRowGroupOpened={e => ctx.log(`rowGroupOpened ${JSON.stringify(e.node.key)} expanded=${e.expanded}`)}
     />
   );
@@ -395,6 +398,15 @@ const { selectAll, toggledNodes } = gridRef.current.api.getServerSideSelectionSt
         off: '개수 표시 없음 (아직 하위를 안 받았으므로 그리드는 모름)',
       },
       {
+        key: 'groupSelect',
+        type: 'boolean',
+        default: true,
+        label: "groupSelects: 'descendants'",
+        desc: "rowSelection.groupSelects. 그룹 행을 체크하면 아직 안 불러온 하위 행까지 전부 선택된 것으로 칩니다. 선택은 { selectAllChildren, toggledNodes: [{ nodeId, selectAllChildren, toggledNodes }] } 트리로 관리되고, getServerSideSelectionState / getState().rowSelection 으로 그대로 저장·복원됩니다. 그룹 id 가 단계마다 겹치지 않게 getRowId 에서 parentKeys 를 붙였습니다.",
+        on: '그룹 체크 → 하위 전체 선택, 하위 일부만 선택되면 그룹 체크박스가 일부(−) 표시',
+        off: '선택 없음',
+      },
+      {
         key: 'panel',
         type: 'boolean',
         default: true,
@@ -425,14 +437,18 @@ ${GROUP_LEVELS[p.levels].map((f, i) => `  { field: '${f}', rowGroup: true, rowGr
 <R2Grid
   rowModelType="serverSide"
   serverSideDatasource={datasource}
-  columnDefs={columnDefs}${p.expanded ? `\n  groupDefaultExpanded={${p.expanded}}` : ''}${p.childCount ? '\n  getChildCount={data => data.childCount}' : ''}${p.panel ? '\n  rowGroupPanelShow="always"' : ''}
+  columnDefs={columnDefs}${p.expanded ? `\n  groupDefaultExpanded={${p.expanded}}` : ''}${p.childCount ? '\n  getChildCount={data => data.childCount}' : ''}${p.panel ? '\n  rowGroupPanelShow="always"' : ''}${p.groupSelect ? "\n  rowSelection={{ mode: 'multiRow', groupSelects: 'descendants' }}\n  getRowId={p => p.data.id ?? [...p.parentKeys, groupKeyOf(p)].join('/')}" : ''}
 />
 
 // 특정 그룹만 다시 불러오기 / 그 그룹에 행 추가
 api.refreshServerSide({ route: ['Oracle'], purge: true });
 api.applyServerSideTransaction({ route: ['Oracle', '진행'], add: [newRow] });
 
-// 서버 트리: treeData + isServerSideGroup(data) + getServerSideGroupKey(data)`,
+// 서버 트리: treeData + isServerSideGroup(data) + getServerSideGroupKey(data)${p.groupSelect ? `
+
+// 선택 상태 (안 불러온 하위 포함) — 서버에 그대로 보내 대상 행을 계산
+const sel = api.getServerSideSelectionState();
+// { selectAllChildren: false, toggledNodes: [{ nodeId: 'Oracle', selectAllChildren: true, toggledNodes: [...] }] }` : ''}`,
   },
   {
     id: 'infinite',

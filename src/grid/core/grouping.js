@@ -106,7 +106,7 @@ export const groupingMethods = {
   },
 
   isGroupSelectsDescendants() {
-    return this.isGroupMode() && this.groupSelectsMode() !== 'self';
+    return (this.isGroupMode() || this.ssrmTreeMode?.()) && this.groupSelectsMode() !== 'self';
   },
 
   defaultExpandedFor(node) {
@@ -526,6 +526,7 @@ export const groupingMethods = {
   },
 
   getGroupSelectionState(node) {
+    if (node.__ssrmGroup) return this.ssrmGroupState(node);
     const list = this.groupDescendantsForSelection(node);
     if (!list.length) return false;
     let sel = 0;
@@ -535,6 +536,10 @@ export const groupingMethods = {
   },
 
   setGroupSelected(node, value, source = 'api') {
+    if (node.__ssrmGroup) {
+      this.ssrmSetGroupSelected(node, value, source);
+      return;
+    }
     const list = this.groupDescendantsForSelection(node);
     if (!list.length) return;
     if (!value) {

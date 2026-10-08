@@ -209,7 +209,7 @@ const STORY_DOCS = {
     notes: [
       '서버는 groupKeys 길이로 단계를 판단해 그룹 행(그룹 필드 + 집계값) 또는 리프 행을 돌려줘야 합니다.',
       '그룹 행 id 를 getRowId 로 직접 정할 땐 params.parentKeys 를 포함해 단계 사이에 겹치지 않게 하세요.',
-      '그룹 행 선택은 그 행 자체만 선택합니다 (하위 전체 선택 groupSelects 는 아직 지원하지 않음).',
+      "groupSelects: 'descendants' 의 선택 상태는 행 목록이 아니라 그룹 트리입니다. 실제 대상 행은 서버가 이 트리와 같은 조건으로 계산해야 합니다 (getSelectedRows 는 불러온 행만).",
     ],
   },
   infinite: {

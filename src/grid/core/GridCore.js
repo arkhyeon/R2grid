@@ -2127,7 +2127,7 @@ export class GridCore {
     if (value && !node.selectable) return 0;
     const changed = [];
     if (value && (clearOthers || this.rsOpts?.mode === 'singleRow')) {
-      if (this.ssrmSel && this.isSsrm()) this.ssrmSel = { selectAll: false, toggled: new Set(node.selected ? [node.id] : []) };
+      this.ssrmResetSelection(node.selected ? [node] : []);
       for (const [id, n] of [...this.selected]) {
         if (n !== node) {
           n.selected = false;
@@ -2258,7 +2258,7 @@ export class GridCore {
     }
     const changed = [];
     if (!keepOthers) {
-      if (this.ssrmSel && this.isSsrm()) this.ssrmSel = { selectAll: false, toggled: new Set(inRange.filter(n => n.selected).map(n => n.id)) };
+      this.ssrmResetSelection(inRange.filter(n => n.selected));
       const set = new Set(inRange);
       for (const [id, n] of [...this.selected]) {
         if (!set.has(n)) {
@@ -2334,6 +2334,11 @@ export class GridCore {
   getHeaderCheckboxState() {
     const rs = this.rsOpts;
     if (!rs) return false;
+    if (this.isSsrm() && this.ssrmTreeMode()) {
+      const t = this.ssrmTreeRoot();
+      if (!t.toggled.size) return t.selectAll;
+      return null;
+    }
     if (this.isSsrm()) {
       const sel = this.ssrmSel;
       if (!sel || (!sel.selectAll && !sel.toggled.size)) return false;
