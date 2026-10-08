@@ -5,6 +5,16 @@
 //    Ctrl/⌘+클릭은 추가·제외, 선택된 하나를 다시 누르면 해제. 전체 값은 옅게, 걸러진 값은 진하게
 import { setFilterKey } from './filterService.js';
 
+// 차트 꾸미기 기본값 (설정 패널 · updateChart.chartThemeOverrides / chartOptions)
+export const CHART_PALETTES = {
+  default: ['#5090dc', '#ffa03a', '#459d55', '#34bfe1', '#e1cc00', '#9669cb', '#b5b5b5', '#bd5a2a', '#78e0a8', '#fd5c5c'],
+  pastel: ['#8fb7e8', '#ffc58c', '#9ccf9f', '#93dbe9', '#f0e28a', '#c3a9e2', '#d6d6d6', '#e0a483', '#b6efcf', '#fca5a5'],
+  bright: ['#1f6feb', '#ff7a00', '#16a34a', '#06b6d4', '#eab308', '#9333ea', '#6b7280', '#c2410c', '#10b981', '#ef4444'],
+  ocean: ['#0b3d91', '#1565c0', '#1e88e5', '#42a5f5', '#64b5f6', '#90caf9', '#26a69a', '#00897b', '#4db6ac', '#80cbc4'],
+  warm: ['#b71c1c', '#e53935', '#f4511e', '#fb8c00', '#ffb300', '#fdd835', '#8d6e63', '#d81b60', '#f06292', '#ff8a65'],
+};
+const DEFAULT_OPTIONS = { title: '', legend: true, legendPosition: 'bottom', palette: 'default', labels: false, xTitle: '', yTitle: '' };
+
 // 크로스 필터 차트가 지원하는 종류 (누적형 제외 — AG 동일)
 export const CROSS_FILTER_TYPES = ['groupedColumn', 'groupedBar', 'line', 'area', 'pie', 'donut'];
 export const CHART_TYPES = [
@@ -132,33 +142,98 @@ export const chartMethods = {
     this.dispatch('chartDestroyed', { chartId });
   },
 
+  chartOptionsOf(m) {
+    if (!m.options) m.options = { ...DEFAULT_OPTIONS, title: m.title || '' };
+    return m.options;
+  },
+
+  // updateChart: chartType · cellRange · aggFunc(크로스 필터) · chartThemeOverrides(AG 모양: common.title / legend) ·
+  //   chartOptions(R2: title, legend, legendPosition, palette, labels, xTitle, yTitle) · categoryColId · hiddenSeries
   updateChart(params) {
     const m = this.charts?.get(params.chartId);
     if (!m) return;
-    if (params.chartType) m.chartType = params.chartType;
-    if (params.cellRange) {
+    if (params.chartType && (m.modelType !== 'crossFilter' || CROSS_FILTER_TYPES.includes(params.chartType))) m.chartType = params.chartType;
+    if (params.cellRange && m.cellRange) {
       const cr = params.cellRange;
       if (cr.rowStartIndex != null) m.cellRange.rowStartIndex = cr.rowStartIndex;
       if (cr.rowEndIndex != null) m.cellRange.rowEndIndex = cr.rowEndIndex;
       if (cr.columns) m.cellRange.columns = this.getColumnsFromKeys(cr.columns);
     }
+    if (params.aggFunc && m.modelType === 'crossFilter') m.aggFunc = params.aggFunc;
+    const o = this.chartOptionsOf(m);
+    const common = params.chartThemeOverrides?.common;
+    if (common?.title) {
+      if (common.title.text !== undefined) o.title = common.title.text;
+      if (common.title.enabled === false) o.title = '';
+    }
+    if (common?.legend) {
+      if (common.legend.enabled !== undefined) o.legend = !!common.legend.enabled;
+      if (common.legend.position) o.legendPosition = common.legend.position === 'top' ? 'top' : 'bottom';
+    }
+    if (params.chartOptions) Object.assign(o, params.chartOptions);
+    m.title = o.title;
+    if (params.categoryColId !== undefined) m.categoryColId = params.categoryColId;
+    if (params.hiddenSeries) m.hiddenSeries = new Set(params.hiddenSeries);
     this.notify();
-    this.dispatch('chartOptionsChanged', { chartId: m.chartId, chartType: m.chartType });
+    this.dispatch('chartOptionsChanged', { chartId: m.chartId, chartType: m.chartType, chartOptions: { ...o } });
+  },
+
+  // 설정 패널 열기/닫기 (AG openChartToolPanel / closeChartToolPanel). panel: 'chart' | 'data' | 'format'
+  openChartToolPanel(params = {}) {
+    const m = this.charts?.get(params.chartId);
+    if (!m) return;
+    const map = { settings: 'chart', data: 'data', format: 'format', chart: 'chart' };
+    m.panelOpen = map[params.panel] || 'chart';
+    this.notify();
+  },
+
+  closeChartToolPanel(params = {}) {
+    const m = this.charts?.get(params.chartId);
+    if (!m || !m.panelOpen) return;
+    m.panelOpen = null;
+    this.notify();
+  },
+
+  // 데이터 패널용: 고를 수 있는 카테고리·계열 (숨긴 계열 포함)
+  getChartDataOptions(m) {
+    const data = this.getChartData(m, true);
+    return {
+      categories: m.modelType === 'range' ? [{ colId: '__rowIndex', name: '(행 번호)' }, ...(data.categoryCandidates || [])] : [],
+      categoryColId: data.categoryColId,
+      series: data.series.map(s => ({ colId: s.colId, name: s.name, hidden: !!m.hiddenSeries?.has(s.colId) })),
+    };
+  },
+
+  toggleChartSeries(m, colId, visible) {
+    const h = new Set(m.hiddenSeries || []);
+    if (visible) h.delete(colId);
+    else h.add(colId);
+    this.updateChart({ chartId: m.chartId, hiddenSeries: [...h] });
   },
 
   // 차트 데이터: { categories: string[], series: [{ name, colId, values: number[], totals? }], cross? }
-  getChartData(model) {
-    if (model.modelType === 'pivot') return this.getPivotChartData();
-    if (model.modelType === 'crossFilter') return this.getCrossFilterChartData(model);
+  //  withHidden: 숨긴 계열도 포함 (설정 패널용)
+  getChartData(model, withHidden = false) {
+    const data =
+      model.modelType === 'pivot' ? this.getPivotChartData() : model.modelType === 'crossFilter' ? this.getCrossFilterChartData(model) : this.getRangeChartData(model);
+    if (!withHidden && model.hiddenSeries?.size) data.series = data.series.filter(s => !model.hiddenSeries.has(s.colId));
+    return data;
+  },
+
+  getRangeChartData(model) {
     const { rowStartIndex, rowEndIndex, columns } = model.cellRange;
     const numCols = [];
-    let catCol = null;
+    const textCols = [];
     const sample = this.displayedNodes.slice(rowStartIndex, rowEndIndex + 1).filter(n => n && !n.detail);
     for (const c of columns) {
       const numeric = sample.some(n => typeof this.getCellValue(n, c) === 'number') || c.dataType === 'number';
       if (numeric && c.autoType !== 'group') numCols.push(c);
-      else if (!catCol) catCol = c;
+      else textCols.push(c);
     }
+    // 카테고리: 패널에서 고른 컬럼('__rowIndex' = 행 번호) 또는 범위의 첫 비숫자 컬럼
+    const pick = model.categoryColId;
+    let catCol = pick === '__rowIndex' ? null : pick ? columns.find(c => c.colId === pick) || textCols[0] || null : textCols[0] || null;
+    if (catCol && numCols.includes(catCol)) numCols.splice(numCols.indexOf(catCol), 1);
     const categories = sample.map((n, i) => (catCol ? this.getCellText(n, catCol) : String(n.rowIndex + 1 ?? i + 1)));
     const series = numCols.map(c => ({
       name: this.getDisplayName(c),
@@ -168,7 +243,13 @@ export const chartMethods = {
         return typeof v === 'number' && Number.isFinite(v) ? v : 0;
       }),
     }));
-    return { categories, series, categoryName: catCol ? this.getDisplayName(catCol) : '' };
+    return {
+      categories,
+      series,
+      categoryName: catCol ? this.getDisplayName(catCol) : '',
+      categoryColId: catCol ? catCol.colId : '__rowIndex',
+      categoryCandidates: columns.map(c => ({ colId: c.colId, name: this.getDisplayName(c, true) })),
+    };
   },
 
   // 피벗: 표시 중인 그룹 행(합계 행 제외) × 표시 중인 피벗 결과 컬럼
@@ -273,6 +354,7 @@ export const chartMethods = {
       chartType: m.chartType,
       ...(m.cellRange ? { cellRange: { ...m.cellRange, columns: m.cellRange.columns.map(c => c.colId) } } : {}),
       ...(m.modelType === 'crossFilter' ? { aggFunc: m.aggFunc } : {}),
+      chartOptions: { ...this.chartOptionsOf(m) },
       suppressChartRanges: m.suppressChartRanges,
     }));
   },

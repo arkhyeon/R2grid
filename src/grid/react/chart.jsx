@@ -1,12 +1,11 @@
 // 통합 차트 렌더러 (SVG) + 차트 창
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CHART_TYPES, CROSS_FILTER_TYPES } from '../core/charts.js';
+import { CHART_PALETTES, CHART_TYPES, CROSS_FILTER_TYPES } from '../core/charts.js';
 import { downloadFile } from '../core/utils.js';
 import { Icon } from './common.jsx';
 import { PopupLayer, usePopupPosition } from './popup.jsx';
 
-const PALETTE = ['#5090dc', '#ffa03a', '#459d55', '#34bfe1', '#e1cc00', '#9669cb', '#b5b5b5', '#bd5a2a', '#78e0a8', '#fd5c5c'];
 
 function niceScale(min, max, ticks = 5) {
   if (min === max) {
@@ -26,19 +25,34 @@ function niceScale(min, max, ticks = 5) {
 
 const fmt = v => (Math.abs(v) >= 1e6 ? `${+(v / 1e6).toFixed(1)}M` : Math.abs(v) >= 1e3 ? `${+(v / 1e3).toFixed(1)}K` : `${+v.toFixed(2)}`);
 
-export function ChartSvg({ data, type, width, height, title }) {
+// options: { legend, legendPosition('top'|'bottom'), palette, labels(값 표시), xTitle, yTitle } — 설정 패널 꾸미기
+export function ChartSvg({ data, type, width, height, title, options = {} }) {
   const { categories, series, cross } = data;
+  const palette = CHART_PALETTES[options.palette] || CHART_PALETTES.default;
+  const showLegend = options.legend !== false;
+  const legendTop = showLegend && options.legendPosition === 'top';
+  const isPie = type === 'pie' || type === 'donut';
+  const xTitle = !isPie && options.xTitle;
+  const yTitle = !isPie && options.yTitle;
+  const labelEls = [];
+  const label = (key, x, y, text, anchor = 'middle') =>
+    options.labels &&
+    labelEls.push(
+      <text key={key} x={x} y={y} textAnchor={anchor} fontSize="10" fill="currentColor" opacity="0.85" pointerEvents="none">
+        {text}
+      </text>,
+    );
   // 크로스 필터: 전체(옅게) 위에 걸러진 값(진하게), 누르면 그 카테고리로 필터
   const click = ci => (cross ? { onClick: e => cross.onClick(ci, e), style: { cursor: 'pointer' } } : {});
   const dim = ci => cross && cross.selected.size > 0 && !cross.selected.has(ci);
-  const top = title ? 34 : 14;
-  const legendH = 28;
-  const pad = { top, right: 16, bottom: 44 + legendH, left: 56 };
+  const legendH = showLegend ? 28 : 0;
+  const titleH = title ? 34 : 14;
+  const pad = { top: titleH + (legendTop ? legendH : 0), right: 16, bottom: 30 + (legendTop ? 0 : legendH) + (xTitle ? 18 : 0) + (isPie ? 0 : 14), left: 56 + (yTitle ? 18 : 0) };
   const W = width;
   const H = height;
   const pw = Math.max(10, W - pad.left - pad.right);
   const ph = Math.max(10, H - pad.top - pad.bottom);
-  const color = i => PALETTE[i % PALETTE.length];
+  const color = i => palette[i % palette.length];
   const n = categories.length;
   const els = [];
   let legend = series.map((s, i) => ({ name: s.name, color: color(i) }));
@@ -79,6 +93,9 @@ export function ChartSvg({ data, type, width, height, title }) {
           <title>{tip}</title>
         </path>,
       );
+      const mid = (a0 + a1) / 2;
+      const lr = ri ? (r + ri) / 2 : r * 0.62;
+      if (a1 - a0 > 0.25) label(`lv${i}`, cx + lr * Math.cos(mid), cy + lr * Math.sin(mid) + 3, `${((v / total) * 100).toFixed(0)}%`);
       if (cross && ratio > 0) {
         els.push(
           <path key={`f${i}`} d={slice(Math.sqrt(ri * ri + (r * r - ri * ri) * ratio))} fill={color(i)} {...click(i)}>
@@ -158,6 +175,7 @@ export function ChartSvg({ data, type, width, height, title }) {
           els.push(<path key={`a${si}`} d={`${line}${back}Z`} fill={color(si)} opacity="0.35" />);
         }
         els.push(<path key={`l${si}`} d={line} fill="none" stroke={color(si)} strokeWidth="2" />);
+        ys.forEach((y, ci) => label(`lv${si}-${ci}`, cx(ci), y - 7, fmt(s.values[ci])));
         ys.forEach((y, ci) =>
           els.push(
             <circle key={`p${si}-${ci}`} cx={cx(ci)} cy={y} r={cross ? 5 : 3} fill={color(si)} opacity={dim(ci) ? 0.3 : 1} {...click(ci)}>
@@ -201,6 +219,8 @@ export function ChartSvg({ data, type, width, height, title }) {
               : { x: pad.left + off, y: pad.top + ph - a - len, width: Math.max(1, thick - 1), height: len };
           };
           const rect = toRect(v0, v1);
+          if (horizontal) label(`lv${si}-${ci}`, rect.x + rect.width + 3, rect.y + rect.height / 2 + 3, normalized ? `${v.toFixed(0)}%` : fmt(raw), 'start');
+          else if (!stacked || rect.height > 12) label(`lv${si}-${ci}`, rect.x + rect.width / 2, stacked ? rect.y + rect.height / 2 + 3 : rect.y - 3, normalized ? `${v.toFixed(0)}%` : fmt(raw));
           if (cross) {
             const t = s.totals[ci];
             els.push(
@@ -217,6 +237,8 @@ export function ChartSvg({ data, type, width, height, title }) {
         });
       });
     }
+    if (xTitle) els.push(<text key="xt" x={pad.left + pw / 2} y={pad.top + ph + 34} textAnchor="middle" fontSize="11" fill="currentColor" opacity="0.8">{xTitle}</text>);
+    if (yTitle) els.push(<text key="yt" x={14} y={pad.top + ph / 2} textAnchor="middle" fontSize="11" fill="currentColor" opacity="0.8" transform={`rotate(-90 14 ${pad.top + ph / 2})`}>{yTitle}</text>);
     // 축선
     els.push(
       horizontal ? (
@@ -227,9 +249,10 @@ export function ChartSvg({ data, type, width, height, title }) {
     );
   }
   // 범례
-  const items = legend.slice(0, 12);
+  const items = showLegend ? legend.slice(0, 12) : [];
   const itemW = Math.min(140, (W - 20) / Math.max(1, items.length));
   const lx0 = Math.max(10, (W - itemW * items.length) / 2);
+  const ly = legendTop ? titleH - 6 : H - legendH + 8;
   return (
     <svg width={W} height={H} className="r2-chart-svg" xmlns="http://www.w3.org/2000/svg" fontFamily="inherit">
       {title && (
@@ -238,8 +261,9 @@ export function ChartSvg({ data, type, width, height, title }) {
         </text>
       )}
       {els}
+      {labelEls}
       {items.map((l, i) => (
-        <g key={i} transform={`translate(${lx0 + itemW * i},${H - legendH + 8})`}>
+        <g key={i} transform={`translate(${lx0 + itemW * i},${ly})`}>
           <rect width="10" height="10" rx="2" fill={l.color} />
           <text x="14" y="9" fontSize="11" fill="currentColor">
             {String(l.name).length > 14 ? `${String(l.name).slice(0, 13)}…` : l.name}
@@ -275,9 +299,134 @@ export function svgToPng(svgEl, background = '#fff') {
   });
 }
 
+// 설정 패널 (AG 차트 툴패널: 차트 종류 · 데이터 · 꾸미기)
+function ChartSettings({ core, model }) {
+  const tab = model.panelOpen;
+  const o = core.chartOptionsOf(model);
+  const set = patch => core.updateChart({ chartId: model.chartId, chartOptions: patch });
+  const types = CHART_TYPES.filter(([k]) => model.modelType !== 'crossFilter' || CROSS_FILTER_TYPES.includes(k));
+  const dataOpts = tab === 'data' ? core.getChartDataOptions(model) : null;
+  const stop = e => e.stopPropagation();
+  return (
+    <div className="r2-chart-settings" onPointerDown={stop} onKeyDown={stop}>
+      <div className="r2-chart-settings-tabs" role="tablist">
+        {[
+          ['chart', '종류'],
+          ['data', '데이터'],
+          ['format', '꾸미기'],
+        ].map(([k, label]) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'r2-selected' : undefined} onClick={() => core.openChartToolPanel({ chartId: model.chartId, panel: k })}>
+            {label}
+          </button>
+        ))}
+        <span className="r2-chart-settings-close" role="button" title="닫기" onClick={() => core.closeChartToolPanel({ chartId: model.chartId })}>
+          <Icon name="cross" />
+        </span>
+      </div>
+      <div className="r2-chart-settings-body">
+        {tab === 'chart' && (
+          <div className="r2-chart-type-list">
+            {types.map(([k, label]) => (
+              <button key={k} type="button" className={model.chartType === k ? 'r2-selected' : undefined} onClick={() => core.updateChart({ chartId: model.chartId, chartType: k })}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+        {tab === 'data' && (
+          <>
+            {model.modelType === 'range' && (
+              <label className="r2-chart-field">
+                <span>항목 (가로축)</span>
+                <select value={dataOpts.categoryColId} onChange={e => core.updateChart({ chartId: model.chartId, categoryColId: e.target.value })}>
+                  {dataOpts.categories.map(c => (
+                    <option key={c.colId} value={c.colId}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {model.modelType === 'crossFilter' && (
+              <label className="r2-chart-field">
+                <span>집계</span>
+                <select value={model.aggFunc} onChange={e => core.updateChart({ chartId: model.chartId, aggFunc: e.target.value })}>
+                  {[
+                    ['sum', '합계'],
+                    ['avg', '평균'],
+                    ['count', '개수'],
+                    ['min', '최소'],
+                    ['max', '최대'],
+                  ].map(([k, l]) => (
+                    <option key={k} value={k}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <div className="r2-chart-field-title">계열</div>
+            {dataOpts.series.length === 0 && <div className="r2-chart-field-empty">숫자 컬럼이 없습니다</div>}
+            {dataOpts.series.map(s => (
+              <label key={s.colId ?? s.name} className="r2-chart-check">
+                <input type="checkbox" checked={!s.hidden} onChange={e => core.toggleChartSeries(model, s.colId, e.target.checked)} />
+                <span>{s.name}</span>
+              </label>
+            ))}
+          </>
+        )}
+        {tab === 'format' && (
+          <>
+            <label className="r2-chart-field">
+              <span>제목</span>
+              <input type="text" value={o.title} placeholder="(없음)" onChange={e => set({ title: e.target.value })} />
+            </label>
+            <label className="r2-chart-check">
+              <input type="checkbox" checked={o.legend} onChange={e => set({ legend: e.target.checked })} />
+              <span>범례</span>
+              <select value={o.legendPosition} disabled={!o.legend} onChange={e => set({ legendPosition: e.target.value })}>
+                <option value="bottom">아래</option>
+                <option value="top">위</option>
+              </select>
+            </label>
+            <label className="r2-chart-check">
+              <input type="checkbox" checked={o.labels} onChange={e => set({ labels: e.target.checked })} />
+              <span>값 표시</span>
+            </label>
+            <div className="r2-chart-field-title">색</div>
+            <div className="r2-chart-palettes">
+              {Object.entries(CHART_PALETTES).map(([k, cols]) => (
+                <button key={k} type="button" title={k} className={o.palette === k ? 'r2-selected' : undefined} onClick={() => set({ palette: k })}>
+                  {cols.slice(0, 5).map(c => (
+                    <i key={c} style={{ background: c }} />
+                  ))}
+                </button>
+              ))}
+            </div>
+            {model.chartType !== 'pie' && model.chartType !== 'donut' && (
+              <>
+                <label className="r2-chart-field">
+                  <span>가로축 제목</span>
+                  <input type="text" value={o.xTitle} placeholder="(없음)" onChange={e => set({ xTitle: e.target.value })} />
+                </label>
+                <label className="r2-chart-field">
+                  <span>세로축 제목</span>
+                  <input type="text" value={o.yTitle} placeholder="(없음)" onChange={e => set({ yTitle: e.target.value })} />
+                </label>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ChartPanel({ core, model, width, height, floating, onHeaderDown }) {
   const svgWrap = useRef(null);
   const data = core.getChartData(model);
+  const options = core.chartOptionsOf(model);
+  const title = options.title || undefined;
   model.ref.chartElement = svgWrap.current;
   model.ref.getImageDataURL = () => svgToPng(svgWrap.current.querySelector('svg'), getComputedStyle(svgWrap.current).backgroundColor || '#fff');
   const download = async () => {
@@ -291,7 +440,7 @@ function ChartPanel({ core, model, width, height, floating, onHeaderDown }) {
     <div className={floating ? 'r2-chart-window r2-popup-child' : 'r2-chart-wrapper'} style={{ width }}>
       <div className="r2-panel-title-bar r2-chart-title-bar" onPointerDown={onHeaderDown}>
         <span className="r2-panel-title-bar-title">
-          {model.title || `${data.categoryName || '범위'} ${model.modelType === 'pivot' ? '피벗 차트' : model.modelType === 'crossFilter' ? '크로스 필터' : '차트'}`}
+          {title || `${data.categoryName || '범위'} ${model.modelType === 'pivot' ? '피벗 차트' : model.modelType === 'crossFilter' ? '크로스 필터' : '차트'}`}
         </span>
         <select
           value={model.chartType}
@@ -304,6 +453,17 @@ function ChartPanel({ core, model, width, height, floating, onHeaderDown }) {
             </option>
           ))}
         </select>
+        {!core.gos.suppressChartToolPanelsButton && (
+          <span
+            className={`r2-panel-title-bar-button${model.panelOpen ? ' r2-selected' : ''}`}
+            role="button"
+            title="차트 설정"
+            onPointerDown={e => e.stopPropagation()}
+            onClick={() => (model.panelOpen ? core.closeChartToolPanel({ chartId: model.chartId }) : core.openChartToolPanel({ chartId: model.chartId }))}
+          >
+            <Icon name="settings" />
+          </span>
+        )}
         <span className="r2-panel-title-bar-button" role="button" title="PNG 다운로드" onPointerDown={e => e.stopPropagation()} onClick={download}>
           <Icon name="save" />
         </span>
@@ -311,8 +471,11 @@ function ChartPanel({ core, model, width, height, floating, onHeaderDown }) {
           <Icon name="cross" />
         </span>
       </div>
-      <div ref={svgWrap} className="r2-chart-body">
-        <ChartSvg data={data} type={model.chartType} width={width} height={height} title={model.title} />
+      <div className="r2-chart-body-wrap">
+        <div ref={svgWrap} className="r2-chart-body">
+          <ChartSvg data={data} type={model.chartType} width={width} height={height} title={title} options={options} />
+        </div>
+        {model.panelOpen && <ChartSettings core={core} model={model} />}
       </div>
     </div>
   );

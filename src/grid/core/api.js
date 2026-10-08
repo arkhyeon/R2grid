@@ -427,6 +427,8 @@ export function createApi(core) {
     // ── 통합 차트 ──
     createRangeChart: params => core.createRangeChart(params),
     createPivotChart: params => core.createPivotChart(params),
+    openChartToolPanel: params => core.openChartToolPanel(params),
+    closeChartToolPanel: params => core.closeChartToolPanel(params),
     createCrossFilterChart: params => core.createCrossFilterChart(params),
     getChartModels: () => core.getChartModels(),
     getChartRef: id => core.getChartRef(id),
@@ -441,8 +443,6 @@ export function createApi(core) {
         a.click();
       });
     },
-    closeChartToolPanel: () => {},
-    openChartToolPanel: () => {},
 
     // ── 고급 필터 ──
     getAdvancedFilterModel: () => core.getAdvancedFilterModel(),

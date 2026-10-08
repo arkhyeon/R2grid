@@ -629,6 +629,131 @@
 .r2-chart-svg {
   display: block;
 }
+/* 차트 설정 패널 (오른쪽에 겹쳐 열림) */
+.r2-chart-body-wrap {
+  position: relative;
+}
+.r2-chart-settings {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(240px, 70%);
+  display: flex;
+  flex-direction: column;
+  background-color: var(--r2-background-color);
+  border-left: solid 1px var(--r2-border-color);
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.08);
+  color: var(--r2-text-color);
+  font-size: var(--r2-font-size);
+  z-index: 1;
+}
+.r2-chart-settings-tabs {
+  display: flex;
+  align-items: center;
+  border-bottom: solid 1px var(--r2-border-color);
+}
+.r2-chart-settings-tabs button {
+  flex: 1;
+  padding: calc(var(--r2-spacing) * 0.9) 4px;
+  border: none;
+  border-bottom: solid 2px transparent;
+  background: none;
+  color: inherit;
+  font: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+}
+.r2-chart-settings-tabs button.r2-selected {
+  border-bottom-color: var(--r2-accent-color);
+  opacity: 1;
+  font-weight: 600;
+}
+.r2-chart-settings-close {
+  display: inline-flex;
+  padding: 0 calc(var(--r2-spacing) * 0.75);
+  cursor: pointer;
+  opacity: 0.7;
+}
+.r2-chart-settings-body {
+  flex: 1;
+  overflow: auto;
+  padding: var(--r2-spacing) calc(var(--r2-spacing) * 1.25);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--r2-spacing) * 0.9);
+}
+.r2-chart-type-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.r2-chart-type-list button,
+.r2-chart-palettes button {
+  padding: 6px;
+  border: solid 1px var(--r2-border-color);
+  border-radius: var(--r2-border-radius);
+  background-color: var(--r2-background-color);
+  color: inherit;
+  font: inherit;
+  font-size: 0.92em;
+  cursor: pointer;
+}
+.r2-chart-type-list button.r2-selected,
+.r2-chart-palettes button.r2-selected {
+  border-color: var(--r2-accent-color);
+  box-shadow: 0 0 0 1px var(--r2-accent-color);
+}
+.r2-chart-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.r2-chart-field > span,
+.r2-chart-field-title {
+  font-size: 0.9em;
+  opacity: 0.75;
+}
+.r2-chart-field input,
+.r2-chart-field select,
+.r2-chart-check select {
+  padding: 4px 6px;
+  border: var(--r2-input-border, solid 1px var(--r2-border-color));
+  border-radius: var(--r2-border-radius);
+  background-color: var(--r2-input-background-color, var(--r2-background-color));
+  color: inherit;
+  font: inherit;
+}
+.r2-chart-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.r2-chart-check select {
+  margin-left: auto;
+}
+.r2-chart-field-empty {
+  opacity: 0.6;
+}
+.r2-chart-palettes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.r2-chart-palettes button {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+}
+.r2-chart-palettes i {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+}
+.r2-panel-title-bar-button.r2-selected {
+  color: var(--r2-accent-color);
+}
 
 /* 고급 필터 */
 .r2-advanced-filter-header {

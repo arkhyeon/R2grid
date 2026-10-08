@@ -285,8 +285,8 @@ api.exportDataAsExcel({
     id: 'integrated-charts',
     category: CAT,
     name: '통합 차트 (범위 차트)',
-    desc: 'enableCharts 후 범위를 선택해 우클릭 → 범위 차트, 또는 api.createRangeChart. 비숫자 첫 컬럼이 카테고리, 숫자 컬럼이 시리즈이며 데이터가 바뀌면 차트도 갱신됩니다. 종류 전환·PNG 저장 지원.',
-    keywords: ['enableCharts', 'createRangeChart', 'chartType', 'groupedColumn', 'stackedColumn', 'normalizedColumn', 'groupedBar', 'line', 'area', 'pie', 'donut', 'chartContainer', 'getChartModels', 'getChartRef', 'updateChart', 'downloadChart', 'getChartImageDataURL', 'chartRange', 'onChartCreated'],
+    desc: 'enableCharts 후 범위를 선택해 우클릭 → 범위 차트, 또는 api.createRangeChart. 비숫자 첫 컬럼이 카테고리, 숫자 컬럼이 시리즈이며 데이터가 바뀌면 차트도 갱신됩니다. 차트 제목줄의 ⚙ 로 설정 패널을 열어 종류 · 데이터(가로축 항목, 계열 켜고 끄기) · 꾸미기(제목, 범례, 값 표시, 색, 축 제목)를 바꿉니다. PNG 저장 지원.',
+    keywords: ['enableCharts', 'createRangeChart', 'chartType', 'groupedColumn', 'stackedColumn', 'normalizedColumn', 'groupedBar', 'line', 'area', 'pie', 'donut', 'chartContainer', 'getChartModels', 'getChartRef', 'updateChart', 'downloadChart', 'getChartImageDataURL', 'chartRange', 'onChartCreated', 'openChartToolPanel', 'closeChartToolPanel', 'chartThemeOverrides', 'chartOptions', 'suppressChartToolPanelsButton', 'onChartOptionsChanged'],
     controls: [
       {
         key: 'type',
@@ -320,6 +320,14 @@ api.exportDataAsExcel({
 const chartRef = api.createRangeChart({
   cellRange: { rowStartIndex: 0, rowEndIndex: 9, columns: ['owner', 'rowCnt', 'progress'] },
   chartType: '${p.type}',${p.inline ? '\n  chartContainer: containerRef.current,' : ''}
+});
+
+// 설정 패널 열기 / 꾸미기 코드로 바꾸기
+api.openChartToolPanel({ chartId: chartRef.chartId, panel: 'format' }); // 'chart' | 'data' | 'format'
+api.updateChart({
+  chartId: chartRef.chartId,
+  chartThemeOverrides: { common: { title: { text: '소유자별 행 수' }, legend: { position: 'top' } } },
+  chartOptions: { labels: true, palette: 'ocean', yTitle: '행 수' },
 });
 chartRef.destroyChart();`,
   },

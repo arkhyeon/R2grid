@@ -265,7 +265,9 @@ const STORY_DOCS = {
     notes: ['필터는 카테고리 컬럼의 Set 필터 모델로 걸립니다 (filterType: "set"). 컬럼 메뉴의 필터와 같은 상태입니다.', '전체 값(옅은 막대)은 필터와 무관한 모든 행 기준입니다.'],
   },
   'integrated-charts': {
-    whenToUse: ['선택한 범위를 바로 막대·선·원 그래프로 볼 때'],
+    badge: 'UPDATE',
+    whenToUse: ['선택한 범위를 바로 막대·선·원 그래프로 볼 때', '사용자가 차트 종류·계열·색을 직접 바꿔 보고 PNG 로 저장할 때 — 설정 패널(⚙)'],
+    notes: ['설정 패널 버튼을 숨기려면 suppressChartToolPanelsButton. 꾸미기 값은 getChartModels()[i].chartOptions 로 읽을 수 있습니다.'],
   },
 
   // ─── CLM 화면 ─────────────────────────────
