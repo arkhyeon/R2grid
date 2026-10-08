@@ -1,4 +1,4 @@
-// 공용 유틸 — AG-Grid 내부 동작(필드 경로, 기본 비교자, 이벤트명 규칙)을 그대로 따른다.
+// 공용 유틸 — 내부 동작(필드 경로, 기본 비교자, 이벤트명 규칙)을 그대로 따른다.
 
 export function getFieldValue(data, field, suppressDot) {
   if (data == null || field == null) return undefined;
@@ -49,7 +49,7 @@ export function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
 }
 
-// AG-Grid _defaultComparator 와 동일 (null 은 오름차순에서 앞)
+// _defaultComparator 와 동일 (null 은 오름차순에서 앞)
 export function defaultComparator(a, b, accentedCompare) {
   const aMissing = a == null;
   const bMissing = b == null;
@@ -103,15 +103,6 @@ export function downloadFile(fileName, content, mimeType) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// 내장 컴포넌트 이름 정규화: AG 호환 이름 → R2 이름 (agTextColumnFilter → r2TextColumnFilter,
-// ag-Grid-SelectionColumn → r2-Grid-SelectionColumn). 내부는 R2 이름 하나로 처리하고, 옛 AG 이름도 받는다.
-export function canonName(name) {
-  if (typeof name !== 'string') return name;
-  if (name.startsWith('ag-Grid-')) return `r2-Grid-${name.slice(8)}`;
-  if (/^ag[A-Z]/.test(name)) return `r2${name.slice(2)}`;
-  return name;
-}
-
 // 클래스명 조합 (falsy 무시)
 export function cx(...parts) {
   let out = '';
@@ -144,7 +135,7 @@ export function resolveClassRules(rules, params) {
   return out;
 }
 
-// AG-Grid 문자열 표현식 지원 ('x > 5' 형태, value/data/node 등 노출)
+// 문자열 표현식 지원 ('x > 5' 형태, value/data/node 등 노출)
 const exprCache = new Map();
 export function evaluateExpression(expr, params) {
   let fn = exprCache.get(expr);

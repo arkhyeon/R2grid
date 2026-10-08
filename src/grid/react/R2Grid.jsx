@@ -1,4 +1,4 @@
-// R2Grid 컴포넌트 (AG-Grid AgGridReact 와 같은 props / ref.current.api)
+// R2Grid 컴포넌트 (props / ref.current.api)
 //  <R2Grid ref={ref} columnDefs rowData gridOptions ... onGridReady ... />  → ref.current.api
 import React, {
   forwardRef,
@@ -20,7 +20,7 @@ import { Popups } from './menus.jsx';
 import { CustomFilterHost } from './filters.jsx';
 import { AdvancedFilterBar } from './advancedFilter.jsx';
 import { ChartsHost } from './chart.jsx';
-import '../styles/quartz.css';
+import '../styles/r2grid.css';
 
 function isEditableEl(t) {
   return t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
@@ -75,7 +75,7 @@ function GridView({ core }) {
     <div
       ref={rootRef}
       className={cx(
-        'r2-root-wrapper r2-theme-vars r2-theme-quartz',
+        'r2-root-wrapper r2-theme-vars r2-theme-default',
         core.isRtl() ? 'r2-rtl' : 'r2-ltr',
         core.theme?.className,
         autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal',

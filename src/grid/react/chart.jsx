@@ -299,7 +299,7 @@ export function svgToPng(svgEl, background = '#fff') {
   });
 }
 
-// 설정 패널 (AG 차트 툴패널: 차트 종류 · 데이터 · 꾸미기)
+// 설정 패널 (차트 툴패널: 차트 종류 · 데이터 · 꾸미기)
 function ChartSettings({ core, model }) {
   const tab = model.panelOpen;
   const o = core.chartOptionsOf(model);
@@ -527,7 +527,7 @@ function ContainerChart({ core, model }) {
     return () => ro.disconnect();
   }, [model.container]);
   return createPortal(
-    <div className={`r2-popup r2-theme-vars r2-theme-quartz ${core.theme?.className || ''}`} style={{ position: 'static', width: '100%', height: '100%' }}>
+    <div className={`r2-popup r2-theme-vars r2-theme-default ${core.theme?.className || ''}`} style={{ position: 'static', width: '100%', height: '100%' }}>
       <ChartPanel core={core} model={model} width={size.w} height={size.h} />
     </div>,
     model.container,

@@ -2,7 +2,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { localeText } from '../core/locale.js';
-import { canonName, cx } from '../core/utils.js';
+import { cx } from '../core/utils.js';
 import { Icon } from './common.jsx';
 import { stableElement } from './renderComponent.js';
 import { ColumnChooserList } from './menus.jsx';
@@ -12,9 +12,9 @@ import { ColumnDropZone, PivotModeToggle } from './columnDrop.jsx';
 
 // ── 사이드바 ───────────────────────────────────────────────
 function ToolPanelContent({ core, tp }) {
-  const comp = typeof tp.toolPanel === 'string' && !core.gos.components?.[tp.toolPanel] ? canonName(tp.toolPanel) : tp.toolPanel;
+  const comp = tp.toolPanel;
   if (comp === 'r2ColumnsToolPanel') {
-    // AG 컬럼 툴패널: 피벗 모드 토글 / 컬럼 목록 / 행 그룹·값·열 레이블 드롭 영역 (toolPanelParams 로 개별 숨김)
+    // 컬럼 툴패널: 피벗 모드 토글 / 컬럼 목록 / 행 그룹·값·열 레이블 드롭 영역 (toolPanelParams 로 개별 숨김)
     const p = tp.toolPanelParams || {};
     const pivot = core.isPivotActive();
     return (
@@ -79,7 +79,7 @@ export function SideBar({ core }) {
   );
 }
 
-// r2-hidden 은 classList 로만 토글 (AG 동일). className prop 으로 바꾸면 리렌더 시
+// r2-hidden 은 classList 로만 토글. className prop 으로 바꾸면 리렌더 시
 // 외부에서 붙인 클래스(CLM: r2-visible / r2-animation-slideOut)가 지워진다.
 function ToolPanelWrapper({ hidden, tp, children }) {
   const ref = useRef(null);
@@ -99,7 +99,7 @@ function ToolPanelWrapper({ hidden, tp, children }) {
 }
 
 // ── 행 그룹 패널 (rowGroupPanelShow: 'always' | 'onlyWhenGrouping') ──
-// pivotPanelShow: 'always' | 'onlyWhenPivoting' — 피벗 모드일 때 같은 줄에 열 레이블 영역 (AG 동일)
+// pivotPanelShow: 'always' | 'onlyWhenPivoting' — 피벗 모드일 때 같은 줄에 열 레이블 영역
 export function RowGroupPanel({ core }) {
   const show = core.gos.rowGroupPanelShow;
   const pshow = core.gos.pivotPanelShow;
@@ -182,7 +182,7 @@ export function StatusBar({ core }) {
   });
   const renderPanel = ({ def, i }) => {
     const key = def.key ?? `${def.statusPanel}-${i}`;
-    const biName = typeof def.statusPanel === 'string' && !core.gos.components?.[def.statusPanel] ? canonName(def.statusPanel) : null;
+    const biName = typeof def.statusPanel === 'string' && !core.gos.components?.[def.statusPanel] ? def.statusPanel : null;
     const builtin = biName && STATUS_PANEL_CLASS[biName];
     let content;
     if (builtin) content = <BuiltinStatusPanel core={core} def={{ ...def, statusPanel: biName }} />;
@@ -266,7 +266,7 @@ export function PagingPanel({ core }) {
   const pages = core.totalPages;
   const startRow = total ? page * size + 1 : 0;
   const endRow = Math.min(total, (page + 1) * size);
-  // paginationNumberFormatter: 페이지 표시줄 숫자 형식 (AG 동일)
+  // paginationNumberFormatter: 페이지 표시줄 숫자 형식
   const fmt = n => (typeof core.gos.paginationNumberFormatter === 'function' ? core.gos.paginationNumberFormatter({ value: n, api: core.api, context: core.gos.context }) : n.toLocaleString());
   let selector = g.paginationPageSizeSelector ?? true;
   if (g.paginationAutoPageSize) selector = false;
@@ -326,7 +326,7 @@ export function PagingPanel({ core }) {
 }
 
 // ── 툴팁 ───────────────────────────────────────────────────
-// 셀/헤더의 data-r2-tooltip 을 지연 표시 (AG 기본 tooltipShowDelay 2000ms)
+// 셀/헤더의 data-r2-tooltip 을 지연 표시 (기본 tooltipShowDelay 2000ms)
 //  tooltipShowMode 'whenTruncated' (잘린 글자만), tooltipMouseTrack (마우스 따라감), tooltipInteraction (툴팁 위에 올려도 유지),
 //  tooltipTrigger 'focus' (키보드로 셀에 포커스하면 표시), colDef.tooltipComponent / tooltipComponentSelector / tooltipComponentParams
 function tooltipTarget(core, el) {
@@ -362,7 +362,7 @@ export function useTooltip(core) {
   const show = (el, x, y) => {
     const text = el.getAttribute('data-r2-tooltip');
     if (!text) return;
-    // 잘린 경우에만 (AG tooltipShowMode: 'whenTruncated')
+    // 잘린 경우에만 (tooltipShowMode: 'whenTruncated')
     if (g().tooltipShowMode === 'whenTruncated') {
       const box = el.querySelector('.r2-cell-wrapper, .r2-header-cell-text, .r2-group-value') || el;
       if (box.scrollWidth <= box.clientWidth && box.scrollHeight <= box.clientHeight + 1) return;

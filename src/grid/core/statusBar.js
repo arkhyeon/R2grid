@@ -17,7 +17,7 @@ export const statusBarMethods = {
     return this.__sc;
   },
 
-  // 범위 선택 셀 집계: 2칸 이상일 때만 (AG 동일). count 는 빈 값 제외, sum/min/max/avg 는 숫자만
+  // 범위 선택 셀 집계: 2칸 이상일 때만. count 는 빈 값 제외, sum/min/max/avg 는 숫자만
   getStatusAggregation() {
     if (this.__saVersion === this.version) return this.__sa;
     let res = null;

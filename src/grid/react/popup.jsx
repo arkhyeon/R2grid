@@ -4,11 +4,11 @@ import { cx } from '../core/utils.js';
 
 // 팝업도 그리드와 같은 CSS 변수(테마/다크)를 받도록 같은 클래스로 감싼다.
 // 레이어는 팝업 부모(기본: 그리드 루트 래퍼) 안의 0x0 원점 — 팝업은 이 원점 기준 absolute 좌표로 놓여
-// 페이지가 스크롤돼도 그리드와 함께 움직이고, 래퍼의 overflow:hidden 으로 그리드 안에 갇힌다 (AG 동일).
+// 페이지가 스크롤돼도 그리드와 함께 움직이고, 래퍼의 overflow:hidden 으로 그리드 안에 갇힌다.
 export function PopupLayer({ core, children }) {
   return (
     <div
-      className={cx('r2-popup r2-theme-vars r2-theme-quartz', core.theme?.className)}
+      className={cx('r2-popup r2-theme-vars r2-theme-default', core.theme?.className)}
       data-r2-popup=""
       style={{ position: 'absolute', left: 0, top: 0, width: 0, height: 0, zIndex: 1000 }}
     >
@@ -33,7 +33,7 @@ export function usePopupPosition(ref, getAnchor, deps = [], core, { track = fals
       return;
     }
     const parent = core?.getPopupParent?.();
-    // 경계 = 팝업 부모의 전체 박스 (뷰포트와 교차시키지 않음 — 페이지 스크롤로 크기·위치가 변하면 안 됨, AG 동일)
+    // 경계 = 팝업 부모의 전체 박스 (뷰포트와 교차시키지 않음 — 페이지 스크롤로 크기·위치가 변하면 안 됨)
     let b = { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
     if (parent && parent !== document.body && parent !== document.documentElement) {
       const pr = parent.getBoundingClientRect();

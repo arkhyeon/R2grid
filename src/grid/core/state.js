@@ -1,8 +1,8 @@
 // 그리드 상태 저장/복원(getState·setState·initialState·stateUpdated) + 값 컬럼/집계 API + 일괄 편집(Batch Edit)
-//  - GridState 모양은 AG v34 와 동일 (version, columnSizing, columnOrder, columnVisibility, columnPinning, sort,
+//  - GridState 모양 (version, columnSizing, columnOrder, columnVisibility, columnPinning, sort,
 //    rowGroup, aggregation, pivot, filter, rowGroupExpansion, rowPinning, rowSelection, pagination, scroll, focusedCell,
 //    cellSelection, sideBar, columnGroup)
-//  - setState: 빠진 항목은 기본값으로 되돌림(AG 동일), propertiesToIgnore 로 제외. initialState 는 준 항목만 적용
+//  - setState: 빠진 항목은 기본값으로 되돌림, propertiesToIgnore 로 제외. initialState 는 준 항목만 적용
 import { GRID_VERSION } from './globals.js';
 
 const STATE_KEYS = [
@@ -294,7 +294,7 @@ export const stateMethods = {
     if (pivotMode !== undefined && pivotMode !== this.isPivotActive()) this.setPivotMode(pivotMode);
   },
 
-  // stateUpdated: 상태 관련 이벤트를 모아 한 번에 (AG 동일 이벤트 이름/모양)
+  // stateUpdated: 상태 관련 이벤트를 모아 한 번에
   noteStateChange(type) {
     const src = EVENT_SOURCES[type];
     if (!src || this.initializing) return;
@@ -390,7 +390,7 @@ export const stateMethods = {
     this.api.setRowGroupColumns(list);
   },
 
-  // ── 일괄 편집 (AG v34 Batch Edit) ─────────────────────────
+  // ── 일괄 편집 (Batch Edit) ─────────────────────────
   //  편집 결과를 바로 데이터에 쓰지 않고 보류 → commit 시 한 번에 반영(cellValueChanged), cancel 시 버림
   startBatchEdit() {
     if (this.batch) return;
@@ -459,7 +459,7 @@ export const stateMethods = {
     this.dispatch('batchEditingStopped', { changes: [] });
   },
 
-  // 편집 중/보류 중인 행 값 (AG getEditRowValues)
+  // 편집 중/보류 중인 행 값 (getEditRowValues)
   getEditRowValues(node) {
     if (!node) return undefined;
     const out = {};

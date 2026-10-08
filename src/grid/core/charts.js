@@ -15,7 +15,7 @@ export const CHART_PALETTES = {
 };
 const DEFAULT_OPTIONS = { title: '', legend: true, legendPosition: 'bottom', palette: 'default', labels: false, xTitle: '', yTitle: '' };
 
-// 크로스 필터 차트가 지원하는 종류 (누적형 제외 — AG 동일)
+// 크로스 필터 차트가 지원하는 종류 (누적형 제외)
 export const CROSS_FILTER_TYPES = ['groupedColumn', 'groupedBar', 'line', 'area', 'pie', 'donut'];
 export const CHART_TYPES = [
   ['groupedColumn', '묶은 세로 막대'],
@@ -102,7 +102,7 @@ export const chartMethods = {
     return model.ref;
   },
 
-  // 피벗 차트: 피벗 모드가 켜져 있어야 함 (AG 동일)
+  // 피벗 차트: 피벗 모드가 켜져 있어야 함
   createPivotChart(params = {}) {
     if (!this.isPivotActive?.()) return undefined;
     return this.newChartModel('pivot', params, {});
@@ -147,7 +147,7 @@ export const chartMethods = {
     return m.options;
   },
 
-  // updateChart: chartType · cellRange · aggFunc(크로스 필터) · chartThemeOverrides(AG 모양: common.title / legend) ·
+  // updateChart: chartType · cellRange · aggFunc(크로스 필터) · chartThemeOverrides(모양: common.title / legend) ·
   //   chartOptions(R2: title, legend, legendPosition, palette, labels, xTitle, yTitle) · categoryColId · hiddenSeries
   updateChart(params) {
     const m = this.charts?.get(params.chartId);
@@ -178,7 +178,7 @@ export const chartMethods = {
     this.dispatch('chartOptionsChanged', { chartId: m.chartId, chartType: m.chartType, chartOptions: { ...o } });
   },
 
-  // 설정 패널 열기/닫기 (AG openChartToolPanel / closeChartToolPanel). panel: 'chart' | 'data' | 'format'
+  // 설정 패널 열기/닫기 (openChartToolPanel / closeChartToolPanel). panel: 'chart' | 'data' | 'format'
   openChartToolPanel(params = {}) {
     const m = this.charts?.get(params.chartId);
     if (!m) return;

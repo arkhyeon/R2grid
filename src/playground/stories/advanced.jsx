@@ -181,7 +181,7 @@ export default [
     id: 'grid-state',
     category: 'UI 구성',
     name: '그리드 상태 저장 · 복원',
-    desc: 'api.getState() / api.setState(state, propertiesToIgnore) / initialState / onStateUpdated (AG v34 GridState 모양).\n컬럼 폭·순서·숨김·고정, 정렬, 필터, 행 그룹·집계·피벗, 그룹 펼침, 행 선택, 페이지, 스크롤, 포커스 셀, 셀 범위, 사이드바를 한 객체로 저장합니다. 쿠키/서버에 저장했다가 그대로 복원하면 됩니다.',
+    desc: 'api.getState() / api.setState(state, propertiesToIgnore) / initialState / onStateUpdated (GridState 모양).\n컬럼 폭·순서·숨김·고정, 정렬, 필터, 행 그룹·집계·피벗, 그룹 펼침, 행 선택, 페이지, 스크롤, 포커스 셀, 셀 범위, 사이드바를 한 객체로 저장합니다. 쿠키/서버에 저장했다가 그대로 복원하면 됩니다.',
     keywords: ['getState', 'setState', 'initialState', 'onStateUpdated', 'stateUpdated', 'GridState', '상태 저장', 'columnState', '쿠키'],
     controls: [],
     wide: true,
@@ -203,7 +203,7 @@ api.setState(state, ['filter']);
     id: 'batch-edit',
     category: '셀 · 편집',
     name: '일괄 편집 (Batch Edit)',
-    desc: 'api.startBatchEdit() 후의 편집은 데이터에 바로 쓰지 않고 보류합니다(바뀐 셀 강조). commitBatchEdit() 때 한 번에 반영되며 cellValueChanged 가 그때 발생하고, cancelBatchEdit() 는 전부 버립니다. 저장 버튼이 있는 편집 화면에 맞습니다. (AG v34 BatchEditModule)',
+    desc: 'api.startBatchEdit() 후의 편집은 데이터에 바로 쓰지 않고 보류합니다(바뀐 셀 강조). commitBatchEdit() 때 한 번에 반영되며 cellValueChanged 가 그때 발생하고, cancelBatchEdit() 는 전부 버립니다. 저장 버튼이 있는 편집 화면에 맞습니다. (BatchEditModule)',
     keywords: ['startBatchEdit', 'commitBatchEdit', 'cancelBatchEdit', 'isBatchEditing', 'getEditRowValues', 'batchEditingStarted', 'batchEditingStopped', '일괄', '저장'],
     controls: [],
     render: (p, ctx) => <BatchEditDemo ctx={ctx} />,
@@ -222,7 +222,7 @@ api.cancelBatchEdit();         // 전부 취소
     id: 'columns-tool-panel',
     category: '그룹 · 집계 · 피벗',
     name: '컬럼 툴패널 · 드롭 영역',
-    desc: "AG 컬럼 툴패널: 피벗 모드 토글, 컬럼 목록, 행 그룹 / 값 / 열 레이블 영역. enableRowGroup·enableValue·enablePivot 컬럼을 목록이나 헤더에서 끌어다 놓고, 칩을 끌어 순서를 바꾸거나 밖에 놓아 뺍니다. 값 칩의 함수 이름을 누르면 집계 함수(allowedAggFuncs)를 고릅니다.\ntoolPanelParams: suppressPivotMode / suppressRowGroups / suppressValues / suppressPivots / suppressColumnFilter.",
+    desc: "컬럼 툴패널: 피벗 모드 토글, 컬럼 목록, 행 그룹 / 값 / 열 레이블 영역. enableRowGroup·enableValue·enablePivot 컬럼을 목록이나 헤더에서 끌어다 놓고, 칩을 끌어 순서를 바꾸거나 밖에 놓아 뺍니다. 값 칩의 함수 이름을 누르면 집계 함수(allowedAggFuncs)를 고릅니다.\ntoolPanelParams: suppressPivotMode / suppressRowGroups / suppressValues / suppressPivots / suppressColumnFilter.",
     keywords: ['r2ColumnsToolPanel', 'sideBar', 'enableRowGroup', 'enableValue', 'enablePivot', 'allowedAggFuncs', 'defaultAggFunc', 'pivotPanelShow', 'rowGroupPanelShow', 'setColumnAggFunc', 'addValueColumns', 'moveRowGroupColumn', '피벗 모드', '드롭'],
     controls: [
       {

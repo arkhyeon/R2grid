@@ -1,5 +1,5 @@
 // 컬럼 드롭 영역 (행 그룹 / 값 / 열 레이블(피벗)) — 컬럼 툴패널(세로)과 행 그룹 패널(가로) 공용
-//  - 컬럼 목록·헤더·다른 영역에서 끌어다 놓기, 칩 끌어서 순서 변경, 칩을 영역 밖에 놓으면 제거 (AG 동일)
+//  - 컬럼 목록·헤더·다른 영역에서 끌어다 놓기, 칩 끌어서 순서 변경, 칩을 영역 밖에 놓으면 제거
 //  - 값 칩의 집계 함수 이름을 누르면 집계 함수 선택 (allowedAggFuncs / 내장 + aggFuncs)
 import React, { useRef, useState } from 'react';
 import { cx } from '../core/utils.js';
@@ -40,7 +40,7 @@ export function dropIntoZone(core, kind, col, index) {
   if (kind === 'rowGroup') {
     const wasGrouped = !!col.rowGroup;
     core.api.setRowGroupColumns(list);
-    // 그룹으로 끌어 넣으면 컬럼 숨김 (AG 기본, suppressGroupChangesColumnVisibility 로 끔)
+    // 그룹으로 끌어 넣으면 컬럼 숨김 (기본, suppressGroupChangesColumnVisibility 로 끔)
     const sv = core.gos.suppressGroupChangesColumnVisibility;
     if (!wasGrouped && col.visible && !(sv === true || sv === 'suppressHideOnGroup' || core.gos.suppressRowGroupHidesColumns)) core.setColumnsVisible([col], false, 'toolPanelUi');
   } else core.setPivotColumns(list, 'toolPanelUi');
@@ -62,7 +62,7 @@ export function removeFromZone(core, kind, col) {
   else if (kind === 'rowGroup') {
     if (isGroupLocked(core, col)) return;
     core.api.removeRowGroupColumns([col]);
-    // 그룹에서 빼면 다시 표시 (AG 기본, suppressGroupChangesColumnVisibility / suppressMakeColumnVisibleAfterUnGroup 로 끔)
+    // 그룹에서 빼면 다시 표시 (기본, suppressGroupChangesColumnVisibility / suppressMakeColumnVisibleAfterUnGroup 로 끔)
     const sv = core.gos.suppressGroupChangesColumnVisibility;
     if (!col.visible && !(sv === true || sv === 'suppressShowOnUngroup' || core.gos.suppressMakeColumnVisibleAfterUnGroup)) core.setColumnsVisible([col], true, 'toolPanelUi');
   } else core.setPivotColumns(core.pivotColumns().filter(c => c !== col), 'toolPanelUi');

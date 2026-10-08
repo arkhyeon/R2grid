@@ -17,7 +17,7 @@ import { stableElement } from './renderComponent.js';
 // ── 사용자 필터 컴포넌트 ─────────────────────────────────────
 const FilterCompContext = createContext(null);
 
-// useGridFilter (ag-grid-react 호환): reactive 커스텀 필터가 doesFilterPass / afterGuiAttached 등 등록
+// useGridFilter: reactive 커스텀 필터가 doesFilterPass / afterGuiAttached 등 등록
 export function useGridFilter(callbacks) {
   const ctx = useContext(FilterCompContext);
   useLayoutEffect(() => {

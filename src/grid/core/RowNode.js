@@ -1,4 +1,4 @@
-// AG-Grid IRowNode 호환 객체. 화면 코드가 node.data / node.setSelected() / node.setDataValue() 등을 그대로 쓴다.
+// RowNode 객체. 화면 코드가 node.data / node.setSelected() / node.setDataValue() 등을 그대로 쓴다.
 export class RowNode {
   constructor(core, data, id) {
     this.core = core;
@@ -39,7 +39,7 @@ export class RowNode {
     this.__quickFilterText = null;
   }
 
-  // AG 호환: 그룹 노드의 리프 자식 (트리데이터는 데이터가 있는 모든 하위 노드)
+  // 그룹 노드의 리프 자식 (트리데이터는 데이터가 있는 모든 하위 노드)
   get allLeafChildren() {
     if (!this.childrenAll) return this.group ? [] : null;
     const out = [];

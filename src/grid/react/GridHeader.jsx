@@ -8,7 +8,7 @@ import { PopupLayer } from './popup.jsx';
 import { FloatingFilterCell } from './filters.jsx';
 import { canDropInZone, dropIntoZone } from './columnDrop.jsx';
 
-// 그룹이 없는(패딩) 레벨을 컬럼 헤더가 위로 덮는지 — AG 기본, colDef.suppressSpanHeaderHeight 로 끔
+// 그룹이 없는(패딩) 레벨을 컬럼 헤더가 위로 덮는지 — 기본, colDef.suppressSpanHeaderHeight 로 끔
 const spansHeaderHeight = col => !col.colDef.suppressSpanHeaderHeight;
 
 function groupSegments(cols, level) {
@@ -84,7 +84,7 @@ function HeaderGroupCell({ core, seg, level, height }) {
   );
 }
 
-// 헤더 툴팁: headerTooltipValueGetter 우선 (AG v33+)
+// 헤더 툴팁: headerTooltipValueGetter 우선
 function headerTooltipOf(core, def, column, columnGroup) {
   if (!def) return undefined;
   if (typeof def.headerTooltipValueGetter === 'function') {
@@ -175,7 +175,7 @@ function HeaderCell({ core, col, height: rowHeight, groupHeaderHeight, multiSort
   };
 
   const showMenuBtn = !isSelection && !col.autoType && !cd.suppressHeaderMenuButton && !cd.suppressMenu;
-  // 플로팅 필터가 있으면 필터 버튼은 플로팅 필터 쪽에 (AG 동일)
+  // 플로팅 필터가 있으면 필터 버튼은 플로팅 필터 쪽에
   const showFilterBtn =
     !legacy && !!cd.filter && !cd.floatingFilter && !cd.suppressHeaderFilterButton && !col.autoType && !core.isAdvancedFilterEnabled();
   const toggleMenu = e => {
@@ -417,7 +417,7 @@ function useColumnDrag(core) {
       const rootRect = core.eRoot?.getBoundingClientRect();
       const outside =
         rootRect && (ev.clientY < rootRect.top - 30 || ev.clientY > rootRect.bottom + 30 || ev.clientX < rootRect.left - 30 || ev.clientX > rootRect.right + 30);
-      // 드롭 영역(행 그룹/값/열 레이블) 위 — 해당 역할 허용 컬럼만 (enableRowGroup/enableValue/enablePivot, AG 동일)
+      // 드롭 영역(행 그룹/값/열 레이블) 위 — 해당 역할 허용 컬럼만 (enableRowGroup/enableValue/enablePivot)
       const hit = document.elementFromPoint(ev.clientX, ev.clientY);
       const zoneEl = !outside && hit?.closest?.('.r2-column-drop[data-kind]');
       const zone = zoneEl && core.eRoot.contains(zoneEl) && canDropInZone(col, zoneEl.dataset.kind) ? zoneEl.dataset.kind : null;

@@ -1,4 +1,4 @@
-// 공용 소형 컴포넌트: 아이콘(인라인 SVG, currentColor), 체크박스 (AG-Grid DOM/클래스 구조 동일)
+// 공용 소형 컴포넌트: 아이콘(인라인 SVG, currentColor), 체크박스
 import React, { createContext, useContext, useLayoutEffect, useRef } from 'react';
 import { cx } from '../core/utils.js';
 
@@ -19,7 +19,7 @@ const ICONS = {
   'small-up': 'M10 19l6-6 6 6',
   'small-right': 'M13 10l6 6-6 6',
   'small-left': 'M19 10l-6 6 6 6',
-  // 컬럼 그룹 열림/닫힘 (AG: columnGroupOpened=expanded, columnGroupClosed=contracted)
+  // 컬럼 그룹 열림/닫힘 (columnGroupOpened=expanded, columnGroupClosed=contracted)
   expanded: 'M19.5 9l-7 7 7 7',
   contracted: 'M12.5 9l7 7-7 7',
   first: 'M22 9l-7 7 7 7M10 8v16',
@@ -51,9 +51,9 @@ const ICONS = {
   search: 'M14 6a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM20 20l6.5 6.5',
 };
 
-// gridOptions.icons / colDef.icons: { [AG 아이콘 이름]: HTML 문자열 | () => 문자열 | HTMLElement }
+// gridOptions.icons / colDef.icons: { [아이콘 이름]: HTML 문자열 | () => 문자열 | HTMLElement }
 export const IconsContext = createContext(null);
-const AG_ICON_NAME = {
+const ICON_NAME = {
   asc: 'sortAscending',
   desc: 'sortDescending',
   none: 'sortUnSort',
@@ -93,7 +93,7 @@ const AG_ICON_NAME = {
 
 export function Icon({ name, className, ...rest }) {
   const icons = useContext(IconsContext);
-  const custom = icons && (icons[AG_ICON_NAME[name]] ?? icons[name]);
+  const custom = icons && (icons[ICON_NAME[name]] ?? icons[name]);
   if (custom != null) {
     const v = typeof custom === 'function' ? custom() : custom;
     const html = v instanceof Element ? v.outerHTML : String(v ?? '');

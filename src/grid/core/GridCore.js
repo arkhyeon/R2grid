@@ -1,4 +1,4 @@
-// 그리드 엔진 본체. React 와 무관한 순수 JS — 상태 + AG-Grid 호환 api + 이벤트.
+// 그리드 엔진 본체. React 와 무관한 순수 JS — 상태 + api + 이벤트.
 // React 레이어는 useSyncExternalStore(subscribe, getVersion) 로 구독해 렌더만 담당한다.
 import { EventService } from './EventService.js';
 import { RowNode } from './RowNode.js';
@@ -7,7 +7,6 @@ import { getGlobalGridOptions } from './globals.js';
 import { resolveTheme } from './theme.js';
 import { setFilterKey } from './filterService.js';
 import {
-  canonName,
   clamp,
   defaultComparator,
   evaluateExpression,
@@ -178,7 +177,7 @@ export class GridCore {
 
     this.api = createApi(this);
     this.applyProps(props, true);
-    // initialState: 준 항목만 적용 (AG 동일 — 이후 바뀌어도 다시 적용하지 않음)
+    // initialState: 준 항목만 적용 (이후 바뀌어도 다시 적용하지 않음)
     if (this.gos.initialState) {
       this.__muteEvents = true;
       try {
@@ -225,7 +224,7 @@ export class GridCore {
   dispatch(type, params = {}) {
     if (this.destroyed || this.__muteEvents) return;
     const event = { type, api: this.api, context: this.gos.context, ...params };
-    // 컬럼 단위 콜백 (colDef.onCellClicked 등 — AG 동일하게 그리드 이벤트보다 먼저)
+    // 컬럼 단위 콜백 (colDef.onCellClicked 등 — 그리드 이벤트보다 먼저)
     if (COL_DEF_EVENTS.has(type)) {
       const h = params.column?.colDef?.[eventPropName(type)];
       if (typeof h === 'function') h(event);
@@ -238,7 +237,7 @@ export class GridCore {
     if (!(type === 'columnResized' && params.finished === false)) this.noteStateChange(type);
   }
 
-  // alignedGrids: [gridRef | api] 또는 () => [...] — 컬럼 폭/순서/표시/고정/그룹 열림 + 가로 스크롤 동기화 (AG 동일)
+  // alignedGrids: [gridRef | api] 또는 () => [...] — 컬럼 폭/순서/표시/고정/그룹 열림 + 가로 스크롤 동기화
   getAlignedCores() {
     const ag = this.gos.alignedGrids;
     const list = typeof ag === 'function' ? ag() : ag;
@@ -331,7 +330,7 @@ export class GridCore {
       return;
     }
     const changed = k => prev[k] !== next[k];
-    // componentStateChanged: 바뀐 옵션 { key: { previousValue, currentValue } } (AG 동일)
+    // componentStateChanged: 바뀐 옵션 { key: { previousValue, currentValue } }
     {
       const diff = {};
       for (const k of new Set([...Object.keys(prev || {}), ...Object.keys(next || {})])) {
@@ -554,7 +553,7 @@ export class GridCore {
           const groupId = def.groupId != null ? String(def.groupId) : `__group_${groupSeq++}`;
           const gdef = g.defaultColGroupDef ? { ...g.defaultColGroupDef, ...def } : def;
           const group = new ColumnGroup(gdef, groupId, level);
-          // 같은 groupId 그룹의 열림 상태 유지 (AG 동일)
+          // 같은 groupId 그룹의 열림 상태 유지
           const prevGroup = prevGroups.get(groupId);
           if (prevGroup && !initial) group.expanded = prevGroup.expanded;
           group.parent = chain.length ? chain[chain.length - 1] : null;
@@ -731,7 +730,7 @@ export class GridCore {
       .join('|');
   }
 
-  // 첫 행 기준 cellDataType 추론 (AG-Grid v31+ 동작)
+  // 첫 행 기준 cellDataType 추론
   inferDataTypes() {
     const first = this.rootNodes[0]?.data;
     for (const col of this.allColumns) {
@@ -893,8 +892,8 @@ export class GridCore {
     if (typeof key === 'object') {
       return this.allColumns.find(c => c.userProvidedColDef === key || c.colDef === key) ?? null;
     }
-    // r2-Grid-* 별칭 colId 도 허용 (내부 colId 는 AG 와 같은 r2-Grid-*)
-    return this.columnById.get(String(key)) ?? this.columnById.get(canonName(String(key))) ?? null;
+    // r2-Grid-* 별칭 colId 도 허용 
+    return this.columnById.get(String(key)) ?? null;
   }
 
   getColumnsFromKeys(keys) {
@@ -975,7 +974,7 @@ export class GridCore {
     const lockedRight = rest.filter(c => c.colDef.lockPosition === 'right');
     const middle = rest.filter(c => !lockedLeft.includes(c) && !lockedRight.includes(c));
     const next = [...lockedLeft, ...middle, ...lockedRight];
-    // marryChildren 그룹은 자식이 연속해야 함 → 깨지는 이동은 무시 (AG 동일)
+    // marryChildren 그룹은 자식이 연속해야 함 → 깨지는 이동은 무시
     if (!this.isMarriedOrderValid(next)) return;
     this.allColumns = next;
     this.afterColumnLayoutChange();
@@ -1188,7 +1187,7 @@ export class GridCore {
     }
     // 그룹 노드: 집계값 우선 (트리데이터의 데이터 보유 부모도 동일)
     if (node.group && node.aggData && column.colId in node.aggData) {
-      // 합계 행이 아래에 따로 보이면 펼친 그룹 행은 집계값을 비움 (AG 동일)
+      // 합계 행이 아래에 따로 보이면 펼친 그룹 행은 집계값을 비움
       if (node.__footerShown && node.expanded && !node.footer && !this.gos.groupSuppressBlankHeader) return undefined;
       return node.aggData[column.colId];
     }
@@ -1203,7 +1202,7 @@ export class GridCore {
     return undefined;
   }
 
-  // valueFormatter 결과 (없으면 null — AG-Grid 와 동일하게 valueFormatted=null)
+  // valueFormatter 결과 (없으면 null — valueFormatted=null)
   formatValue(node, column, value) {
     const cd = column.colDef;
     if (column.autoType === 'group' && column.groupIndex != null) {
@@ -1317,7 +1316,7 @@ export class GridCore {
 
   setRowData(rowData, initial) {
     if (this.isSsrm()) return;
-    // treeDataChildrenField: 중첩된 children 배열을 펼친 목록으로 (부모는 treeChildParent 에 기억, AG v33.1+)
+    // treeDataChildrenField: 중첩된 children 배열을 펼친 목록으로 (부모는 treeChildParent 에 기억, v33.1+)
     this.treeChildParent = null;
     if (rowData && this.gos.treeData && this.gos.treeDataChildrenField && typeof this.gos.getDataPath !== 'function') {
       const f = this.gos.treeDataChildrenField;
@@ -1339,7 +1338,7 @@ export class GridCore {
     let selectionChanged = false;
     this.editing = null;
     this.groupsDirty = true;
-    // getRowId 없는 전체 교체면 맨 위로 (suppressScrollOnNewData 로 끔) — AG 동작
+    // getRowId 없는 전체 교체면 맨 위로 (suppressScrollOnNewData 로 끔)
     const isDelta = typeof getRowId === 'function' && this.rootNodes.length > 0;
     if (!initial && !isDelta && !this.gos.suppressScrollOnNewData && this.viewport) {
       this.viewport.setScrollTop(0);
@@ -1627,7 +1626,7 @@ export class GridCore {
 
   applyFilters() {
     const preds = [];
-    // 고급 필터가 켜지면 컬럼 필터 대신 고급 필터 모델만 적용 (AG 동일)
+    // 고급 필터가 켜지면 컬럼 필터 대신 고급 필터 모델만 적용
     const advanced = this.isAdvancedFilterEnabled();
     if (advanced && this.advancedFilterModel) {
       const m = this.advancedFilterModel;
@@ -1669,7 +1668,7 @@ export class GridCore {
     });
   }
 
-  // 그룹 모드 형제 정렬용 비교자 (AG 기본 비교자 + colDef.comparator)
+  // 그룹 모드 형제 정렬용 비교자 (기본 비교자 + colDef.comparator)
   makeSortComparator() {
     const sortCols = this.allColumns
       .filter(c => c.sort)
@@ -1720,7 +1719,7 @@ export class GridCore {
     if (typeof post === 'function') post({ nodes: this.sortedNodes, api: this.api, context: this.gos.context });
   }
 
-  // AG 기본 비교자와 같은 결과(null 은 오름차순 앞, 동률은 원래 순서 유지)를 내는 키 정렬.
+  // 기본 비교자와 같은 결과(null 은 오름차순 앞, 동률은 원래 순서 유지)를 내는 키 정렬.
   // 컬럼마다 값을 한 번만 읽어 타입별 키 배열로 만든다: 숫자 → Float64Array, 문자열 → 직접 비교,
   // 그 외/colDef.comparator → 일반 비교자. 단일·다중 정렬 공통.
   keyedSort(nodes, sortCols) {
@@ -1836,7 +1835,7 @@ export class GridCore {
   }
 
   // 페이지 단위(행) 시작 rowIndex 목록. null 이면 표시 행 하나하나가 단위.
-  // AG 동일: paginateChildRows=false(기본) 면 그룹은 최상위 행, 마스터/디테일은 마스터 행 기준으로 자르고
+  // paginateChildRows=false(기본) 면 그룹은 최상위 행, 마스터/디테일은 마스터 행 기준으로 자르고
   // 펼친 자식·상세 행은 부모와 같은 페이지에 둔다.
   getPageUnitStarts() {
     if (this.gos.paginateChildRows) return null;
@@ -2017,7 +2016,7 @@ export class GridCore {
       custom = true;
       this.applyCustomFilterModel(c, null);
     });
-    // 커스텀 필터는 컴포넌트가 새 모델로 렌더된 뒤 적용 (AG 도 비동기)
+    // 커스텀 필터는 컴포넌트가 새 모델로 렌더된 뒤 적용
     if (custom) {
       this.notify();
       this.scheduleFilterChanged('api', []);
@@ -2428,7 +2427,7 @@ export class GridCore {
 
   // ── 포커스 ───────────────────────────────────────────────
   setFocusedCell(rowIndex, colKey, opts = {}) {
-    if (this.gos.suppressCellFocus) return; // 셀 포커스/키보드 셀 이동 비활성 (AG 동일)
+    if (this.gos.suppressCellFocus) return; // 셀 포커스/키보드 셀 이동 비활성
     const col = this.getColumn(colKey);
     const rowPinned = opts.rowPinned || null;
     const limit = rowPinned === 'top' ? this.pinnedTop.length : rowPinned === 'bottom' ? this.pinnedBottom.length : this.displayedNodes.length;
@@ -2651,7 +2650,6 @@ export class GridCore {
     const params = { ...this.makeValueParams(node, column), value: this.getCellValue(node, column) };
     const sel = typeof cd.cellEditorSelector === 'function' ? cd.cellEditorSelector(params) : null;
     let comp = sel?.component ?? cd.cellEditor;
-    if (typeof comp === 'string' && !this.gos.components?.[comp]) comp = canonName(comp);
     const rawParams = sel?.params ?? cd.cellEditorParams;
     const editorParams = (typeof rawParams === 'function' ? rawParams(params) : rawParams) || {};
     let popup = sel?.popup ?? cd.cellEditorPopup;
@@ -2667,7 +2665,7 @@ export class GridCore {
       const registered = this.gos.components?.[comp];
       if (registered) comp = registered;
     }
-    // AG v34: agRichSelect/agSelect 는 isPopup()=false (셀 안 필드 + 목록 팝업), agLargeText 만 팝업
+    // r2RichSelect/r2Select 는 isPopup()=false (셀 안 필드 + 목록 팝업), r2LargeText 만 팝업
     if (comp === 'r2LargeTextCellEditor') popup = popup ?? true;
     return {
       comp,
@@ -2786,7 +2784,7 @@ export class GridCore {
     const oldValue = ed.startValue;
     let valueChanged = false;
     const cancelled = cancel || cancelAfterEnd;
-    // 원래 값이 비어있고 입력도 비어있으면 원래 값 유지 (AG TextCellEditor.getValue 규칙)
+    // 원래 값이 비어있고 입력도 비어있으면 원래 값 유지 (TextCellEditor.getValue 규칙)
     if (newValue === '' && oldValue == null) newValue = oldValue;
     if (!cancelled && newValue !== oldValue) {
       const cd = column.colDef;
@@ -3044,7 +3042,7 @@ export class GridCore {
           this.focusPinned('top', this.pinnedTop.length - 1, cols[baseColIdx].colId);
           return true;
         }
-        // 첫 행에서 ↑ → 헤더 (AG 동일, suppressHeaderFocus 로 끔)
+        // 첫 행에서 ↑ → 헤더 (suppressHeaderFocus 로 끔)
         if (!ctrl && !shift && baseRow <= first && !this.gos.suppressHeaderFocus && this.gos.headerHeight !== 0) {
           return this.setHeaderFocus(this.headerRowCount() - 1, cols[baseColIdx].colId, 'ui');
         }
@@ -3121,7 +3119,7 @@ export class GridCore {
         }
         return false;
       case 'Backspace': {
-        // AG: 맥에서 Backspace 는 Delete 와 같이 값 지우기 (enableCellEditingOnBackspace 면 편집 시작), 그 외 OS 는 빈 값으로 편집 시작
+        // 맥에서 Backspace 는 Delete 와 같이 값 지우기 (enableCellEditingOnBackspace 면 편집 시작), 그 외 OS 는 빈 값으로 편집 시작
         const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
         if (mac && !this.gos.enableCellEditingOnBackspace) {
           if (this.cellSelectionOpts && this.ranges.length) {
@@ -3256,7 +3254,7 @@ export class GridCore {
   normalizeSideBar(initial) {
     const sb = this.gos.sideBar;
     const builtin = rawId => {
-      const id = canonName(rawId);
+      const id = rawId;
       if (id === 'columns' || id === 'r2ColumnsToolPanel') {
         return {
           id: 'columns',
@@ -3394,7 +3392,7 @@ export class GridCore {
   }
 
   // ── 팝업(메뉴/필터) ────────────────────────────────────────
-  // 팝업(메뉴/필터/팝업 에디터) 부모: popupParent 지정 시 그 요소, 아니면 그리드 루트 래퍼 (AG 동일 — 그리드 안에 갇힘)
+  // 팝업(메뉴/필터/팝업 에디터) 부모: popupParent 지정 시 그 요소, 아니면 그리드 루트 래퍼 (그리드 안에 갇힘)
   getPopupParent() {
     const p = this.gos.popupParent;
     if (p && typeof p.appendChild === 'function') return p;
@@ -3429,10 +3427,10 @@ export class GridCore {
     const defaultItems = ['copy', 'copyWithHeaders', 'paste', 'separator', 'export'];
     // 수동 행 고정: 고정 가능한 행(또는 이미 고정된 복제 행)에서 "행 고정" 하위 메뉴
     if (this.gos.enableRowPinning && node && (node.manualPinned || this.isRowPinnableNode(node))) defaultItems.unshift('pinRowSubMenu', 'separator');
-    // 통합 차트: 범위가 있으면 "범위 차트" (AG 동일)
+    // 통합 차트: 범위가 있으면 "범위 차트"
     if (this.gos.enableCharts && this.ranges.length) defaultItems.push('separator', 'chartRange');
     if (this.gos.enableCharts && this.isPivotActive?.()) defaultItems.push('separator', 'pivotChart');
-    // colDef.contextMenuItems 가 있으면 그 컬럼에선 그리드 설정보다 우선 (AG v33.1+)
+    // colDef.contextMenuItems 가 있으면 그 컬럼에선 그리드 설정보다 우선
     const colItems = column?.colDef?.contextMenuItems;
     const getItems = colItems !== undefined ? (Array.isArray(colItems) ? () => colItems : colItems) : this.gos.getContextMenuItems;
     const items = typeof getItems === 'function'

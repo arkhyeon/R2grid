@@ -1,6 +1,6 @@
-// AG-Grid v33+ Theming API 호환: themeQuartz.withParams(params, mode?)
+// 테마: r2Theme.withParams(params, mode?)
 // 파라미터 → CSS 변수(--r2-accent-color 등)로 변환해 테마별 <style> 을 주입한다.
-// 다크 전환은 AG-Grid 와 동일하게 조상 요소의 data-r2-theme-mode="dark" 로 한다.
+// 다크 전환은 조상 요소의 data-r2-theme-mode="dark" 로 한다.
 
 let themeSeq = 0;
 
@@ -117,10 +117,7 @@ class Theme {
   }
 }
 
-export const themeQuartz = new Theme('quartz');
-export const themeAlpine = themeQuartz;
-export const themeBalham = themeQuartz;
-export const themeMaterial = themeQuartz;
+export const r2Theme = new Theme('r2');
 export const createTheme = () => new Theme('custom');
 
 // Part 스텁 (withPart 체이닝 호환)
@@ -132,19 +129,12 @@ export const colorSchemeDark = part('colorSchemeDark');
 export const colorSchemeDarkWarm = part('colorSchemeDarkWarm');
 export const colorSchemeDarkBlue = part('colorSchemeDarkBlue');
 export const colorSchemeVariable = part('colorSchemeVariable');
-export const iconSetQuartz = part('iconSetQuartz');
-export const iconSetQuartzLight = part('iconSetQuartzLight');
-export const iconSetQuartzBold = part('iconSetQuartzBold');
-export const iconSetQuartzRegular = part('iconSetQuartzRegular');
-export const iconSetAlpine = part('iconSetAlpine');
-export const iconSetMaterial = part('iconSetMaterial');
 export const checkboxStyleDefault = part('checkboxStyleDefault');
 export const inputStyleBase = part('inputStyleBase');
 export const inputStyleBordered = part('inputStyleBordered');
-export const tabStyleQuartz = part('tabStyleQuartz');
 export const createPart = () => part('custom');
 
 export function resolveTheme(theme) {
   if (theme && theme instanceof Theme) return theme;
-  return themeQuartz;
+  return r2Theme;
 }

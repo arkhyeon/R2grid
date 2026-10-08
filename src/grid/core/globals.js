@@ -1,4 +1,4 @@
-// provideGlobalGridOptions / ModuleRegistry / LicenseManager 호환 (모듈 등록은 no-op: 모든 기능 내장)
+// provideGlobalGridOptions: 모든 그리드에 공통 적용할 기본 옵션
 
 let globalGridOptions = {};
 
@@ -25,19 +25,4 @@ export function getGlobalGridOptions() {
   return globalGridOptions;
 }
 
-export const ModuleRegistry = {
-  register() {},
-  registerModules() {},
-  isRegistered() {
-    return true;
-  },
-};
-
-export const LicenseManager = {
-  setLicenseKey() {},
-  getLicenseDetails() {
-    return { valid: true };
-  },
-};
-
-export const GRID_VERSION = 'r2grid-34.3.1-compat';
+export const GRID_VERSION = 'r2grid-0.0.1';

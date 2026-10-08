@@ -1,7 +1,7 @@
 /* =====================================================================
- * R2grid — themeQuartz 호환 스타일
- *  - 변수명/클래스명은 AG-Grid v34 Theming API 와 동일 (--r2-accent-color, .r2-row-selected ...)
- *  - 다크: 조상 요소 data-r2-theme-mode="dark" (AG-Grid 와 동일 메커니즘)
+ * R2grid 기본 스타일
+ *  - 테마 변수(--r2-accent-color …) / 클래스(.r2-row-selected …)
+ *  - 다크: 조상 요소 data-r2-theme-mode="dark" (동일 메커니즘)
  * ===================================================================== */
 
 .r2-theme-vars {
@@ -153,7 +153,7 @@
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
-  /* width:0 — 컬럼 총폭(컨테이너 width)이 부모의 고유 폭으로 새어 나가지 않게 (AG 동일).
+  /* width:0 — 컬럼 총폭(컨테이너 width)이 부모의 고유 폭으로 새어 나가지 않게.
      없으면 flex 컬럼이 채운 폭이 다시 부모 폭을 붙잡아 창을 줄여도 그리드가 안 줄어듦 */
   width: 0;
   min-width: 0;
@@ -211,7 +211,7 @@
 .r2-header-row:not(:first-child) {
   border-top: var(--r2-header-row-border);
 }
-/* 그룹 없는 컬럼 헤더가 위 그룹 행까지 늘어남 (AG 기본 span header height) */
+/* 그룹 없는 컬럼 헤더가 위 그룹 행까지 늘어남 (기본 span header height) */
 .r2-header-row-spanning {
   overflow: visible;
 }
@@ -478,7 +478,7 @@
 .r2-header-cell.r2-column-hover {
   background-color: var(--r2-column-hover-color, var(--r2-row-hover-color));
 }
-/* 일괄 편집 보류 셀 (AG ag-cell-batch-edit) */
+/* 일괄 편집 보류 셀 */
 .r2-cell.r2-cell-batch-edit {
   background-color: var(--r2-cell-batch-edit-background-color, color-mix(in srgb, var(--r2-accent-color, #2196f3) 14%, transparent));
   color: var(--r2-cell-batch-edit-text-color, inherit);

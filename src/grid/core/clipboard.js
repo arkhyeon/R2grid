@@ -1,4 +1,4 @@
-// 클립보드: AG-Grid ClipboardModule 동작 재현
+// 클립보드: ClipboardModule 동작 재현
 //  - 범위 선택 → 범위 복사 / 없으면 선택행(copySelectedRows) / 없으면 포커스 셀
 //  - copyHeadersToClipboard, processCellForClipboard, processHeaderForClipboard, sendToClipboard
 //  - 붙여넣기: 포커스/범위 시작 기준 TSV 채우기, 단일 값이면 범위 전체 채우기

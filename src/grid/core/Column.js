@@ -1,4 +1,4 @@
-// AG-Grid Column / ColumnGroup 호환 객체.
+// Column / ColumnGroup 객체.
 // CLM 코드가 column.getColDef(), getColId(), isVisible(), actualWidth, gos.gridOptions.rowHeight 등을 직접 참조한다.
 
 export const SELECTION_COL_ID = 'r2-Grid-SelectionColumn';
@@ -25,7 +25,7 @@ export class Column {
     this.applyColDef(colDef, userColDef, true);
   }
 
-  // isNew=true 면 모든 상태 속성 적용. 아니면 colDef 값이 이전과 달라진 속성만 적용(AG-Grid 상태 보존 규칙)
+  // isNew=true 면 모든 상태 속성 적용. 아니면 colDef 값이 이전과 달라진 속성만 적용(상태 보존 규칙)
   applyColDef(colDef, userColDef, isNew, prevColDefArg) {
     // 비교 기준은 이전 "원본" colDef (aggFunc 상태 반영 사본이 아니라)
     const prevColDef = this.baseColDef ?? prevColDefArg;
@@ -68,7 +68,7 @@ export class Column {
     if (this.actualWidth == null) this.actualWidth = this.width;
   }
 
-  // AG-Grid 내부 필드 접근 호환 (SimpleTextEditor: column.gos.gridOptions.rowHeight)
+  // 내부 필드 접근 호환 (SimpleTextEditor: column.gos.gridOptions.rowHeight)
   get gos() {
     const core = this.core;
     return {
@@ -118,7 +118,7 @@ export class Column {
     return this.colDef.columnGroupShow;
   }
 
-  // AG 내부 필드 호환: column.originalParent.colGroupDef (CLM WorkGroupList)
+  // 내부 필드 호환: column.originalParent.colGroupDef (CLM WorkGroupList)
   get originalParent() {
     return this.parent;
   }
@@ -257,7 +257,7 @@ export class ColumnGroup {
     this.expandable = false;
   }
 
-  // AG 규칙: 열림 때 보이는 자식·닫힘 때 보이는 자식이 모두 있고, columnGroupShow 지정 자식이 하나라도 있어야 접기 가능
+  // 규칙: 열림 때 보이는 자식·닫힘 때 보이는 자식이 모두 있고, columnGroupShow 지정 자식이 하나라도 있어야 접기 가능
   computeExpandable() {
     let whenOpen = false;
     let whenClosed = false;

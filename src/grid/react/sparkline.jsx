@@ -1,4 +1,4 @@
-// agSparklineCellRenderer — 셀 안의 작은 차트 (SVG). AG sparklineOptions 의 주요 옵션 지원:
+// r2SparklineCellRenderer — 셀 안의 작은 차트 (SVG). sparklineOptions 의 주요 옵션 지원:
 //  type: 'line' | 'area' | 'bar', direction('horizontal'|'vertical' — bar), xKey/yKey(객체 배열), stroke, strokeWidth, fill,
 //  marker{enabled,size,fill,stroke}, padding{top,right,bottom,left}, min/max, highlight 마지막/최대/최소(markerFormatter 대신 itemStyler 일부)
 import React from 'react';
@@ -42,7 +42,7 @@ export function SparklineCell({ value, width, height, options = {}, params }) {
   const style = typeof options.itemStyler === 'function' ? options.itemStyler : null;
   let body;
   if (type === 'bar') {
-    const vertical = options.direction !== 'horizontal'; // AG: 'vertical' = 세로 막대(컬럼)
+    const vertical = options.direction !== 'horizontal'; // 'vertical' = 세로 막대(컬럼)
     const zero = vertical ? sy(0) : null;
     if (vertical) {
       const bw = Math.max(1, (w / n) * 0.8);
