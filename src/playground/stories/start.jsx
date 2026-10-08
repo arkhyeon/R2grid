@@ -146,7 +146,7 @@ export default function Page() {
     category: CAT,
     name: '테마 · 다크 모드',
     desc: 'moonTheme.withParams 로 색/크기를 바꾸고, 조상 요소의 data-r2-theme-mode="dark" 로 다크 스킴을 켭니다. provideGlobalGridOptions 로 전역 테마를 지정할 수 있습니다.',
-    keywords: ['theme', 'moonTheme', 'withParams', 'accentColor', 'data-r2-theme-mode', 'dark', 'provideGlobalGridOptions', 'rowHeight', 'headerHeight', 'colorSchemeDark'],
+    keywords: ['theme', 'moonTheme', 'withParams', 'accentColor', 'data-r2-theme-mode', 'dark', 'provideGlobalGridOptions', 'rowHeight', 'headerHeight'],
     controls: [
       {
         key: 'dark',

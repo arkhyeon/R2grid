@@ -80,14 +80,6 @@ class Theme {
     return new Theme(this.name, next);
   }
 
-  withPart() {
-    return this;
-  }
-
-  withoutPart() {
-    return this;
-  }
-
   get className() {
     return `r2-theme-p${this.id}`;
   }
@@ -118,21 +110,6 @@ class Theme {
 }
 
 export const moonTheme = new Theme('moon');
-export const createTheme = () => new Theme('custom');
-
-// Part 스텁 (withPart 체이닝 호환)
-const part = name => ({ partName: name, withParams: () => part(name) });
-export const colorSchemeLight = part('colorSchemeLight');
-export const colorSchemeLightWarm = part('colorSchemeLightWarm');
-export const colorSchemeLightCold = part('colorSchemeLightCold');
-export const colorSchemeDark = part('colorSchemeDark');
-export const colorSchemeDarkWarm = part('colorSchemeDarkWarm');
-export const colorSchemeDarkBlue = part('colorSchemeDarkBlue');
-export const colorSchemeVariable = part('colorSchemeVariable');
-export const checkboxStyleDefault = part('checkboxStyleDefault');
-export const inputStyleBase = part('inputStyleBase');
-export const inputStyleBordered = part('inputStyleBordered');
-export const createPart = () => part('custom');
 
 export function resolveTheme(theme) {
   if (theme && theme instanceof Theme) return theme;

@@ -12,19 +12,5 @@ export { GridCore } from './core/GridCore.js';
 export { RowNode } from './core/RowNode.js';
 export { Column, ColumnGroup } from './core/Column.js';
 export { provideGlobalGridOptions, getGlobalGridOptions, GRID_VERSION } from './core/globals.js';
-export {
-  moonTheme,
-  createTheme,
-  createPart,
-  colorSchemeLight,
-  colorSchemeLightWarm,
-  colorSchemeLightCold,
-  colorSchemeDark,
-  colorSchemeDarkWarm,
-  colorSchemeDarkBlue,
-  colorSchemeVariable,
-  checkboxStyleDefault,
-  inputStyleBase,
-  inputStyleBordered,
-} from './core/theme.js';
+export { moonTheme } from './core/theme.js';
 
