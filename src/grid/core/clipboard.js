@@ -74,11 +74,35 @@ function collectCopyTarget(core) {
   return [];
 }
 
-export function buildClipboardText(core, blocks, includeHeaders) {
+// 그룹 헤더 줄 (copyGroupHeadersToClipboard · processGroupHeaderForClipboard)
+function groupHeaderLines(core, columns, delim) {
+  const depth = columns.reduce((m, c) => Math.max(m, c.groupChain?.length || 0), 0);
+  const proc = core.gos.processGroupHeaderForClipboard;
+  const lines = [];
+  for (let level = 0; level < depth; level++) {
+    lines.push(
+      columns
+        .map(c => {
+          const g = c.groupChain?.[level];
+          if (!g) return '';
+          if (typeof proc === 'function') {
+            const out = proc({ columnGroup: g, api: core.api, context: core.gos.context });
+            return out == null ? '' : String(out);
+          }
+          return g.colGroupDef?.headerName ?? '';
+        })
+        .join(delim),
+    );
+  }
+  return lines;
+}
+
+export function buildClipboardText(core, blocks, includeHeaders, includeGroupHeaders = !!core.gos.copyGroupHeadersToClipboard) {
   const delim = core.gos.clipboardDelimiter ?? '\t';
   const parts = blocks.map(({ nodes, columns }) => {
     const lines = [];
-    if (includeHeaders) lines.push(columns.map(c => headerValue(core, c)).join(delim));
+    if (includeGroupHeaders) lines.push(...groupHeaderLines(core, columns, delim));
+    if (includeHeaders || includeGroupHeaders) lines.push(columns.map(c => headerValue(core, c)).join(delim));
     nodes.forEach(n => lines.push(columns.map(c => clipboardValue(core, n, c)).join(delim)));
     return lines.join(LINE);
   });
@@ -88,7 +112,7 @@ export function buildClipboardText(core, blocks, includeHeaders) {
 function send(core, text) {
   const custom = core.gos.sendToClipboard;
   if (typeof custom === 'function') custom({ data: text, api: core.api, context: core.gos.context });
-  else copyTextToClipboard(text);
+  else copyTextToClipboard(text, !!core.gos.suppressClipboardApi);
 }
 
 function highlight(core, blocks) {
@@ -102,8 +126,8 @@ function highlight(core, blocks) {
 export function copySelectionToClipboard(core, { includeHeaders, includeGroupHeaders } = {}) {
   const blocks = collectCopyTarget(core);
   if (!blocks.length) return '';
-  const withHeaders = includeHeaders ?? includeGroupHeaders ?? !!core.gos.copyHeadersToClipboard;
-  const text = buildClipboardText(core, blocks, withHeaders);
+  const withHeaders = includeHeaders ?? !!core.gos.copyHeadersToClipboard;
+  const text = buildClipboardText(core, blocks, withHeaders, includeGroupHeaders ?? !!core.gos.copyGroupHeadersToClipboard);
   send(core, text);
   highlight(core, blocks);
   return text;
@@ -111,6 +135,7 @@ export function copySelectionToClipboard(core, { includeHeaders, includeGroupHea
 
 // 브라우저 copy/cut 이벤트용: clipboardData 에 직접 기록 (sendToClipboard 지정 시 그쪽으로)
 export function copySelectionToEvent(core, e, cut = false) {
+  if (cut && core.gos.suppressCutToClipboard) return false;
   const blocks = collectCopyTarget(core);
   if (!blocks.length) return false;
   const text = buildClipboardText(core, blocks, !!core.gos.copyHeadersToClipboard);
@@ -131,6 +156,7 @@ export function copySelectionToEvent(core, e, cut = false) {
 }
 
 export function cutSelectionToClipboard(core) {
+  if (core.gos.suppressCutToClipboard) return;
   const blocks = collectCopyTarget(core);
   if (!blocks.length) return;
   core.dispatch('cutStart', { source: 'ui' });

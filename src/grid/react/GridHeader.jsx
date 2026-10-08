@@ -144,13 +144,28 @@ function HeaderCell({ core, col, height: rowHeight, groupHeaderHeight, multiSort
     const startX = e.clientX;
     const startW = col.actualWidth;
     const dir = core.isRtl() ? -1 : 1;
+    // Shift 리사이즈 (colResizeDefault: 'shift' 면 기본, Shift 누르면 반대): 오른쪽 이웃 컬럼과 폭을 주고받음 (합계 유지)
+    const shiftMode = (core.gos.colResizeDefault === 'shift') !== !!e.shiftKey;
+    const section = col.pinned === 'left' ? core.displayedLeft : col.pinned === 'right' ? core.displayedRight : core.displayedCenter;
+    const next = shiftMode ? section[section.indexOf(col) + 1] : null;
+    const nextW = next?.actualWidth ?? 0;
+    const resizeTo = (x, finished) => {
+      let w = startW + (x - startX) * dir;
+      if (next) {
+        const minW = col.colDef.minWidth ?? 20;
+        const nextMin = next.colDef.minWidth ?? 20;
+        w = Math.max(minW, Math.min(w, startW + nextW - nextMin));
+        core.setColumnWidth(next, startW + nextW - w, finished, 'uiColumnResized');
+      }
+      core.setColumnWidth(col, w, finished, 'uiColumnResized');
+    };
     core.dispatch('dragStarted', { target: el });
-    const onMove = ev => core.setColumnWidth(col, startW + (ev.clientX - startX) * dir, false, 'uiColumnResized');
+    const onMove = ev => resizeTo(ev.clientX, false);
     const onUp = ev => {
       el.removeEventListener('pointermove', onMove);
       el.removeEventListener('pointerup', onUp);
       el.removeEventListener('pointercancel', onUp);
-      core.setColumnWidth(col, startW + (ev.clientX - startX) * dir, true, 'uiColumnResized');
+      resizeTo(ev.clientX, true);
       core.dispatch(ev.type === 'pointercancel' ? 'dragCancelled' : 'dragStopped', { target: el });
     };
     el.addEventListener('pointermove', onMove);
@@ -418,6 +433,13 @@ function useColumnDrag(core) {
       const rest = core.allColumns.filter(c => c !== col);
       let idx = rest.indexOf(target) + (before ? 0 : 1);
       const curIdx = core.allColumns.indexOf(col);
+      // suppressMoveWhenColumnDragging: 놓을 위치만 표시하고 놓을 때 이동
+      if (core.gos.suppressMoveWhenColumnDragging) {
+        state.current.pendingMove = idx === curIdx ? null : idx;
+        state.current.ghost = { ...state.current.ghost, insertX: before ? r.left : r.right, insertTop: r.top, insertH: r.height };
+        force();
+        return;
+      }
       if (idx === curIdx) return;
       core.moveColumns([col], idx, 'uiColumnMoved');
     };
@@ -433,6 +455,9 @@ function useColumnDrag(core) {
       const g = state.current.ghost;
       state.current.ghost = null;
       force();
+      const pending = state.current.pendingMove;
+      state.current.pendingMove = null;
+      if (pending != null && !g?.zone && !g?.hidden) core.moveColumns([col], pending, 'uiColumnMoved');
       if (g?.zone) {
         // 놓은 위치 기준 삽입 순서
         const chips = [...(g.zoneEl?.querySelectorAll('.r2-column-drop-cell') || [])];
@@ -461,6 +486,7 @@ function useColumnDrag(core) {
             </span>
             <div className="r2-dnd-ghost-label">{g.name}</div>
           </div>
+          {g.insertX != null && !g.zone && !g.hidden && <div className="r2-column-move-indicator" style={{ position: 'fixed', left: g.insertX - 1, top: g.insertTop, height: g.insertH }} />}
         </PopupLayer>,
         document.body,
       )

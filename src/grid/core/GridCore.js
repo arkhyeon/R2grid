@@ -3085,12 +3085,26 @@ export class GridCore {
           return true;
         }
         return false;
-      case 'Backspace':
+      case 'Backspace': {
+        // AG: 맥에서 Backspace 는 Delete 와 같이 값 지우기 (enableCellEditingOnBackspace 면 편집 시작), 그 외 OS 는 빈 값으로 편집 시작
+        const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
+        if (mac && !this.gos.enableCellEditingOnBackspace) {
+          if (this.cellSelectionOpts && this.ranges.length) {
+            this.clearRangeCells();
+            return true;
+          }
+          if (this.isCellEditable(column, node)) {
+            this.writeCell(node, column, null, 'cellClear');
+            return true;
+          }
+          return false;
+        }
         if (this.isCellEditable(column, node)) {
           this.startEdit(node, column, 'Backspace');
           return true;
         }
         return false;
+      }
       default:
         break;
     }
@@ -3127,7 +3141,8 @@ export class GridCore {
       const c = cols[ci];
       if (n && c && this.isCellEditable(c, n)) {
         this.moveFocusTo(row, c.colId);
-        this.startEdit(n, c, null);
+        // suppressStartEditOnTab: 다음 칸으로 포커스만 옮기고 편집은 시작하지 않음
+        if (!this.gos.suppressStartEditOnTab) this.startEdit(n, c, null);
         return;
       }
     }
@@ -3518,7 +3533,7 @@ export class GridCore {
       range.selectNodeContents(el);
       const w = range.getBoundingClientRect().width;
       const cs = getComputedStyle(el);
-      return w + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + 2;
+      return w + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + 2 + (this.gos.autoSizePadding ?? 0);
     };
     const resized = [];
     cols.forEach(col => {

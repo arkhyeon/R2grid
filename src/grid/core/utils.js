@@ -67,7 +67,7 @@ export function defaultComparator(a, b, accentedCompare) {
   }
 }
 
-export function copyTextToClipboard(text) {
+export function copyTextToClipboard(text, noApi = false) {
   const fallback = () => {
     const ta = document.createElement('textarea');
     ta.value = text;
@@ -84,7 +84,7 @@ export function copyTextToClipboard(text) {
     document.body.removeChild(ta);
     active?.focus?.({ preventScroll: true });
   };
-  if (navigator.clipboard?.writeText) {
+  if (!noApi && navigator.clipboard?.writeText) {
     navigator.clipboard.writeText(text).catch(fallback);
   } else {
     fallback();

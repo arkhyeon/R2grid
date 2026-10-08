@@ -266,7 +266,8 @@ export function PagingPanel({ core }) {
   const pages = core.totalPages;
   const startRow = total ? page * size + 1 : 0;
   const endRow = Math.min(total, (page + 1) * size);
-  const fmt = n => n.toLocaleString();
+  // paginationNumberFormatter: 페이지 표시줄 숫자 형식 (AG 동일)
+  const fmt = n => (typeof core.gos.paginationNumberFormatter === 'function' ? core.gos.paginationNumberFormatter({ value: n, api: core.api, context: core.gos.context }) : n.toLocaleString());
   let selector = g.paginationPageSizeSelector ?? true;
   if (g.paginationAutoPageSize) selector = false;
   let options = Array.isArray(selector) ? selector : [20, 50, 100];

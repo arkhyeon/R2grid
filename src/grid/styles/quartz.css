@@ -2043,3 +2043,11 @@ body.r2-dnd-dragging * {
 .r2-tooltip-interactive {
   pointer-events: auto;
 }
+
+/* suppressMoveWhenColumnDragging: 놓일 자리 표시 */
+.r2-column-move-indicator {
+  width: 2px;
+  background-color: var(--r2-accent-color);
+  pointer-events: none;
+  z-index: 10001;
+}

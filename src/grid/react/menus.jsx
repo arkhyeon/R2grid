@@ -22,6 +22,7 @@ function builtinItem(core, key, params) {
     case 'copyWithGroupHeaders':
       return { name: t('copyWithGroupHeaders'), icon: 'copy', action: () => core.api.copyToClipboard({ includeHeaders: true, includeGroupHeaders: true }) };
     case 'cut':
+      if (core.gos.suppressCutToClipboard) return null;
       return { name: t('cut'), shortcut: t('ctrlX'), icon: 'cut', action: () => core.api.cutToClipboard() };
     case 'paste':
       return {
@@ -32,10 +33,13 @@ function builtinItem(core, key, params) {
         action: () => core.api.pasteFromClipboard(),
       };
     case 'export':
+      if (core.gos.suppressCsvExport && core.gos.suppressExcelExport) return null;
       return { name: t('export'), icon: 'save', subMenu: ['csvExport', 'excelExport'] };
     case 'csvExport':
+      if (core.gos.suppressCsvExport) return null;
       return { name: t('csvExport'), icon: 'csv', action: () => core.api.exportDataAsCsv() };
     case 'excelExport':
+      if (core.gos.suppressExcelExport) return null;
       return { name: t('excelExport'), icon: 'excel', action: () => core.api.exportDataAsExcel() };
     case 'autoSizeAll':
       return { name: t('autosizeAllColumns'), action: () => core.api.autoSizeAllColumns() };

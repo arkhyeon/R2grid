@@ -452,16 +452,30 @@ function cellSpanOf(core, node, col) {
 
 function Row({ core, node, cols, sectionCols, top, height, rp, handlers }) {
   const transform = !core.gos.suppressRowTransform;
+  const rowRef = useRef(null);
+  // processRowPostCreate: 행 DOM 이 처음 만들어졌을 때 (가운데 영역 기준, 고정 영역 행도 함께 전달)
+  useLayoutEffect(() => {
+    const fn = core.gos.processRowPostCreate;
+    if (typeof fn !== 'function' || sectionCols !== core.displayedCenter || !rowRef.current) return;
+    const root = rowRef.current.closest('.r2-root');
+    const key = rowKey(node);
+    const sib = sel => root?.querySelector(`${sel} .r2-row[row-index="${key}"]`) || null;
+    fn({ eRow: rowRef.current, ePinnedLeftRow: sib('.r2-pinned-left-cols-container'), ePinnedRightRow: sib('.r2-pinned-right-cols-container'), node, rowIndex: node.rowIndex, addRenderedRowListener: () => {}, api: core.api, context: core.gos.context });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const businessKey = typeof core.gos.getBusinessKeyForNode === 'function' && !node.stub ? core.gos.getBusinessKeyForNode(node) : undefined;
   const cells = spanCells(core, node, cols, sectionCols)
     .map(c => ({ ...c, cellSpan: cellSpanOf(core, node, c.col) }))
     .filter(c => c.cellSpan !== null);
   const raise = cells.some(c => c.cellSpan);
   return (
     <div
+      ref={rowRef}
       className={rp.className}
       role="row"
       row-index={rowKey(node)}
       row-id={node.id}
+      row-business-key={businessKey}
       aria-rowindex={node.rowPinned ? undefined : node.rowIndex + 2}
       aria-selected={node.selectable && !node.rowPinned ? node.selected : undefined}
       style={{ ...(transform ? { transform: `translateY(${top}px)` } : { top }), height, ...rp.style, ...(raise ? { zIndex: 1 } : null) }}
@@ -725,6 +739,10 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     if (!el) return undefined;
     const onWheel = ev => {
       if (ev.target instanceof Element && ev.target.closest('.r2-root') !== focusSinkRef.current) return;
+      if (core.gos.suppressScrollWhenPopupsAreOpen && core.popup) {
+        ev.preventDefault();
+        return;
+      }
       let dx = ev.deltaX;
       if (!dx && ev.shiftKey) dx = ev.deltaY;
       if (!dx) return;
@@ -1016,6 +1034,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     },
     cellContextMenu(node, col, e) {
       if (g.allowContextMenuWithControlKey && (e.ctrlKey || e.metaKey)) return;
+      if (g.suppressContextMenu && g.preventDefaultOnContextMenu) e.preventDefault();
       e.stopPropagation();
       if (node.stub) {
         e.preventDefault();
@@ -1048,7 +1067,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     const sel = k => root.querySelectorAll(`.r2-row[row-index="${k}"]`);
     if (core.hoveredRowIndex != null) sel(core.hoveredRowIndex).forEach(el => el.classList.remove('r2-row-hover'));
     core.hoveredRowIndex = key;
-    if (key != null) {
+    if (key != null && !g.suppressRowHoverHighlight) {
       sel(key).forEach(el => {
         if (el.closest('.r2-root') === root && !el.classList.contains('r2-full-width-row')) el.classList.add('r2-row-hover');
       });
@@ -1109,7 +1128,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
   const buffer = g.rowBuffer ?? 10;
   let first = 0;
   let last = rowCount - 1;
-  if (!autoLayout && rowCount) {
+  if (!autoLayout && rowCount && !g.suppressRowVirtualisation) {
     first = Math.max(0, core.indexAtPixel(virtTop) - buffer);
     last = Math.min(rowCount - 1, core.indexAtPixel(virtTop + (vh || 600)) + buffer);
   }
@@ -1256,7 +1275,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     if (floatBottomRef.current) floatBottomRef.current.scrollLeft = left;
   }, [topH > 0, bottomH > 0]);
 
-  const hScrollVisible = !core.gos.suppressHorizontalScroll && core.centerWidth > (size.cw || 0) + 1;
+  const hScrollVisible = !core.gos.suppressHorizontalScroll && (!!core.gos.alwaysShowHorizontalScroll || core.centerWidth > (size.cw || 0) + 1);
 
   return (
     <>
@@ -1265,6 +1284,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
         <div
           ref={bodyVpRef}
           className={cx('r2-body-viewport', autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal', 'r2-row-no-animation')}
+          style={g.alwaysShowVerticalScroll && !autoLayout ? { overflowY: 'scroll' } : undefined}
           role="presentation"
           onScroll={onBodyScroll}
           onMouseOver={onMouseOver}
