@@ -388,7 +388,8 @@ export class GridCore {
       this.pivotModeOverride = undefined;
       this.applyPivotModeChange();
     }
-    if (changed('findSearchValue') || changed('findOptions')) {
+    // findOptions 는 인라인 객체로 자주 넘어오므로 내용으로 비교 (참조 비교 시 findChanged → 상위 setState → 무한 루프)
+    if (changed('findSearchValue') || JSON.stringify(prev.findOptions ?? null) !== JSON.stringify(next.findOptions ?? null)) {
       this.findActive = null;
       this.__findKey = null;
       this.dispatchFindChanged();
