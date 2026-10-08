@@ -252,7 +252,12 @@ const STORY_DOCS = {
     whenToUse: ['보이는 목록을 그대로 파일로 받을 때 (필터·정렬 반영)'],
   },
   'excel-export': {
-    whenToUse: ['제목·합계·서식이 있는 엑셀 보고서', '여러 그리드를 시트별로 한 파일에 — exportMultipleSheetsAsExcel'],
+    badge: 'UPDATE',
+    whenToUse: ['제목·합계·서식이 있는 엑셀 보고서', '여러 그리드를 시트별로 한 파일에 — exportMultipleSheetsAsExcel', '받은 파일을 바로 거르고 정렬하게 — exportAsExcelTable, 날짜 형식 dataType'],
+    notes: [
+      'exportAsExcelTable 의 범위는 컬럼 헤더 행 ~ 마지막 데이터 행입니다. 표 안에서는 셀 병합을 할 수 없으니 데이터 행 병합(mergeAcross)과 같이 쓰지 마세요.',
+      "dataType: 'DateTime' 은 'YYYY-MM-DD[ HH:mm[:ss]]' 문자열이나 Date 를 엑셀 날짜 값으로 바꿉니다. 표시 형식은 같은 스타일의 numberFormat 으로 지정하세요.",
+    ],
   },
   'pivot-chart': {
     badge: 'NEW',

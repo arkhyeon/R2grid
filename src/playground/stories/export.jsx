@@ -31,6 +31,12 @@ function Excel({ p, ctx }) {
       prependContent: p.title ? [{ cells: [{ data: { type: 'String', value: 'R2grid 작업 목록 보고서' }, mergeAcross: cols - 1, styleId: 'title' }] }] : undefined,
       appendContent: p.total ? [{ cells: [{ data: { type: 'String', value: '합계' } }, ...Array(3).fill({ data: { type: 'String', value: '' } }), { data: { type: 'Number', value: SAMPLE.reduce((s, r) => s + r.rowCnt, 0) } }] }] : undefined,
       onlySelected: p.onlySelected,
+      freezeRows: p.freeze !== 'none' ? 'headers' : undefined,
+      freezeColumns: p.freeze === 'both' ? 'pinned' : undefined,
+      rowGroupExpandState: p.group !== 'none' ? p.group : undefined,
+      exportAsExcelTable: p.table ? { name: 'Tasks' } : undefined,
+      pageSetup: p.print ? { orientation: 'Landscape', pageSize: 'A4' } : undefined,
+      headerFooterConfig: p.print ? { all: { header: [{ value: '작업 목록', position: 'Center', font: { bold: true } }], footer: [{ value: '&[Page] / &[Pages]', position: 'Right' }] } } : undefined,
     });
     ctx.log('exportDataAsExcel (xlsx, deflate 압축)');
   };
@@ -48,13 +54,19 @@ function Excel({ p, ctx }) {
         </button>
       </div>
       <Grid
+        key={p.group === 'none' ? 'flat' : 'group'}
         gridRef={ref}
         rowData={SAMPLE}
-        columnDefs={[{ headerName: '기본', children: BASE_COLUMNS.slice(0, 3) }, { headerName: '상세', children: BASE_COLUMNS.slice(3) }]}
+        columnDefs={[
+          { headerName: '기본', children: BASE_COLUMNS.slice(0, 3).map(c => (c.field === 'id' ? { ...c, pinned: 'left' } : c.field === 'dbms' ? { ...c, rowGroup: p.group !== 'none', hide: p.group !== 'none' } : c)) },
+          { headerName: '상세', children: BASE_COLUMNS.slice(3).map(c => (c.field === 'rowCnt' ? { ...c, aggFunc: 'sum' } : c)) },
+          { field: 'updatedAt', headerName: '수정일', width: 110, cellClass: p.dates ? 'excelDate' : undefined },
+        ]}
         rowSelection={{ mode: 'multiRow' }}
         excelStyles={[
           { id: 'header', font: { bold: true, color: '#FFFFFF' }, interior: { color: '#3E3E3E', pattern: 'Solid' } },
           { id: 'title', font: { bold: true, size: 14 }, alignment: { horizontal: 'Center' } },
+          { id: 'excelDate', dataType: 'DateTime', numberFormat: { format: 'yyyy-mm-dd' } },
         ]}
       />
     </>
@@ -208,8 +220,8 @@ export default [
     id: 'excel-export',
     category: CAT,
     name: 'Excel(xlsx) 내보내기',
-    desc: '외부 라이브러리 없이 xlsx 를 직접 생성합니다. 그룹 헤더 병합, prepend/appendContent(mergeAcross), excelStyles, rowHeight, addImageToCell(차트 이미지), 다중 시트.',
-    keywords: ['exportDataAsExcel', 'getDataAsExcel', 'getMultipleSheetsAsExcel', 'exportMultipleSheetsAsExcel', 'getSheetDataForExcel', 'excelStyles', 'prependContent', 'appendContent', 'mergeAcross', 'addImageToCell', 'rowHeight', 'sheetName', 'xlsx'],
+    desc: '외부 라이브러리 없이 xlsx 를 직접 생성합니다. 그룹 헤더 병합, prepend/appendContent(mergeAcross), excelStyles(dataType 포함), rowHeight, addImageToCell(차트 이미지), 다중 시트, 틀 고정, 행 그룹 개요(접기), 엑셀 표, 인쇄 설정.',
+    keywords: ['exportDataAsExcel', 'getDataAsExcel', 'getMultipleSheetsAsExcel', 'exportMultipleSheetsAsExcel', 'getSheetDataForExcel', 'excelStyles', 'prependContent', 'appendContent', 'mergeAcross', 'addImageToCell', 'rowHeight', 'sheetName', 'xlsx', 'freezeRows', 'freezeColumns', 'rowGroupExpandState', 'suppressRowOutline', 'exportAsExcelTable', 'dataType', 'DateTime', 'Formula', 'autoConvertFormulas', 'pageSetup', 'margins', 'headerFooterConfig'],
     controls: [
       {
         key: 'title',
@@ -238,6 +250,58 @@ export default [
         on: '체크한 행만',
         off: '표시된 전체 행',
       },
+      {
+        key: 'freeze',
+        type: 'select',
+        default: 'headers',
+        label: 'freezeRows / freezeColumns',
+        desc: "엑셀에서 스크롤해도 고정될 행·열. freezeRows: 'headers' 는 머리글(앞 내용 + 그룹 헤더 + 컬럼 헤더)까지, freezeColumns: 'pinned' 는 그리드에서 왼쪽 고정한 컬럼(여기선 ID)까지. 숫자도 됩니다.",
+        options: [
+          { value: 'none', label: '없음', desc: '고정 안 함' },
+          { value: 'headers', label: "freezeRows: 'headers'", desc: '머리글 행 고정' },
+          { value: 'both', label: "+ freezeColumns: 'pinned'", desc: '머리글 행 + 왼쪽 고정 컬럼' },
+        ],
+      },
+      {
+        key: 'group',
+        type: 'select',
+        default: 'none',
+        label: 'rowGroupExpandState',
+        desc: '행 그룹(여기선 DBMS)이 있을 때 엑셀 개요(왼쪽 +/− 버튼)로 묶습니다. 접힌 그룹의 하위 행도 모두 내보냅니다. suppressRowOutline: true 면 개요 없이 평평하게.',
+        options: [
+          { value: 'none', label: '그룹 없음', desc: '행 그룹 끔' },
+          { value: 'expanded', desc: '모두 펼친 상태로' },
+          { value: 'collapsed', desc: '모두 접힌 상태로 (그룹 행만 보임)' },
+          { value: 'match', desc: '그리드에서 펼친 상태 그대로' },
+        ],
+      },
+      {
+        key: 'table',
+        type: 'boolean',
+        default: false,
+        label: 'exportAsExcelTable',
+        desc: '컬럼 헤더 행 ~ 마지막 데이터 행을 엑셀 "표"로 만듭니다 (필터 버튼·줄무늬 스타일). 위의 제목·그룹 헤더 행과 아래 합계 행은 표 밖에 남습니다. 헤더 이름이 겹치면 표 규칙상 뒤에 숫자를 붙입니다.',
+        on: '엑셀 표 (필터 버튼)',
+        off: '일반 범위',
+      },
+      {
+        key: 'dates',
+        type: 'boolean',
+        default: true,
+        label: "excelStyles dataType: 'DateTime'",
+        desc: "수정일 컬럼에 dataType: 'DateTime' + numberFormat 스타일을 줍니다. 문자열 '2026-01-15' 가 엑셀 날짜 값으로 들어가 정렬·계산이 됩니다. 'Formula' 를 주면 '=' 로 시작하는 값이 수식으로 들어갑니다 (전체에 적용은 autoConvertFormulas).",
+        on: '엑셀 날짜 형식 (yyyy-mm-dd)',
+        off: '문자열 그대로',
+      },
+      {
+        key: 'print',
+        type: 'boolean',
+        default: false,
+        label: 'pageSetup · headerFooterConfig',
+        desc: "인쇄 설정. pageSetup: { orientation, pageSize }, margins(인치), headerFooterConfig 로 머리글·바닥글 (&[Page] / &[Pages] 쪽 번호, &[Date] 날짜).",
+        on: 'A4 가로 + 가운데 머리글 + 오른쪽 쪽 번호',
+        off: '엑셀 기본 인쇄 설정',
+      },
     ],
     render: (p, ctx) => <Excel p={p} ctx={ctx} />,
     code: () => `<R2Grid
@@ -251,7 +315,17 @@ api.exportDataAsExcel({
   fileName: '작업목록.xlsx',
   prependContent: [{ cells: [{ data: { type: 'String', value: '보고서' }, mergeAcross: cols - 1, styleId: 'title' }] }],
   appendContent: [{ cells: [{ data: { type: 'String', value: '합계' } }, ...] }],
-});`,
+  freezeRows: 'headers',          // 머리글 고정
+  freezeColumns: 'pinned',        // 왼쪽 고정 컬럼까지
+  rowGroupExpandState: 'collapsed', // 행 그룹 → 엑셀 개요(접힘)
+  exportAsExcelTable: { name: 'Tasks' }, // 엑셀 표 (필터 버튼)
+  pageSetup: { orientation: 'Landscape', pageSize: 'A4' },
+  headerFooterConfig: { all: { footer: [{ value: '&[Page] / &[Pages]', position: 'Right' }] } },
+});
+
+// 날짜·수식 셀: excelStyles 의 dataType
+// { id: 'excelDate', dataType: 'DateTime', numberFormat: { format: 'yyyy-mm-dd' } }  ← colDef.cellClass: 'excelDate'
+// { id: 'formula', dataType: 'Formula' }  ← 값이 '=SUM(B2:B10)' 이면 수식으로`,
     usage: {
       file: 'assets/ExcelDownload.jsx',
       code: `AgCharts.getImageDataURL(chartRef.current.chart).then(imageDataURL => {

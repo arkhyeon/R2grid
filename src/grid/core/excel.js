@@ -1,6 +1,9 @@
 // Excel(xlsx) 내보내기 — AG exportDataAsExcel / getDataAsExcel 파라미터 호환
 //  prependContent/appendContent(mergeAcross/mergeDown/styleId), rowHeight(fn), headerRowHeight,
 //  addImageToCell(rowIndex, column, value), columnWidth, excelStyles, 그룹 헤더, processCellCallback ...
+//  freezeRows('headers' | n | fn) / freezeColumns('pinned' | n), rowGroupExpandState('expanded' | 'collapsed' | 'match') + suppressRowOutline,
+//  exportAsExcelTable, excelStyles.dataType('String' | 'Number' | 'Boolean' | 'DateTime' | 'Formula') + autoConvertFormulas,
+//  pageSetup({ orientation, pageSize }), margins, headerFooterConfig
 import { downloadFile, resolveClassValue, toText } from './utils.js';
 import { zipAsync, zipSync } from './zip.js';
 
@@ -137,19 +140,93 @@ function exportColumns(core, p) {
   return base.filter(c => c.autoType !== 'selection' && c.autoType !== 'rowNumbers' && !c.colDef.skipExport);
 }
 
+// 내보낼 행: [{ node, level, hidden, collapsed }]
+//  행 그룹: 접힌 그룹의 자식도 내보내고 엑셀 개요(outline)로 묶음 (AG rowGroupExpandState, 기본 'expanded')
 function exportNodes(core, p) {
+  const skip = n => typeof p.shouldRowBeSkipped === 'function' && p.shouldRowBeSkipped({ node: n, api: core.api, context: core.gos.context });
   if (p.onlySelected) {
     return core
       .getSelectedNodes()
       .filter(n => p.onlySelectedAllPages || !core.gos.pagination || (n.rowIndex >= core.pageFirstRow && n.rowIndex < core.pageLastRow))
-      .sort((a, b) => (a.rowIndex ?? 0) - (b.rowIndex ?? 0));
+      .sort((a, b) => (a.rowIndex ?? 0) - (b.rowIndex ?? 0))
+      .filter(n => !skip(n))
+      .map(node => ({ node, level: 0 }));
+  }
+  if (core.isGroupMode() && core.groupSortedTop && p.exportedRows !== 'all') {
+    const state = p.rowGroupExpandState || 'expanded';
+    const outline = !p.suppressRowOutline;
+    const pivot = core.isPivotActive?.();
+    const out = [];
+    const walk = (list, depth, hidden) => {
+      for (const n of list) {
+        if (pivot && !n.group) continue;
+        if (n.detail || n.stub || skip(n)) continue;
+        const kids = n.group ? n.childrenAfterSort || [] : [];
+        const closed = kids.length > 0 && (state === 'collapsed' || (state === 'match' && !n.expanded));
+        out.push({ node: n, level: outline ? depth : 0, hidden: outline && hidden, collapsed: outline && closed });
+        if (kids.length) {
+          walk(kids, depth + 1, hidden || (outline && closed));
+          if (core.groupTotalPosition(n) === 'bottom') {
+            const f = core.getFooterNode(n);
+            f.aggData = n.aggData;
+            out.push({ node: f, level: outline ? depth + 1 : 0, hidden: outline && (hidden || closed) });
+          }
+        }
+      }
+    };
+    walk(core.groupSortedTop, 0, false);
+    // 총합계 행 (위/아래)
+    const shown = core.sortedNodes;
+    if (shown[0]?.footer && !shown[0].parent && shown[0].level === -1) out.unshift({ node: shown[0], level: 0 });
+    const last = shown[shown.length - 1];
+    if (last?.footer && last !== shown[0] && last.level === -1) out.push({ node: last, level: 0 });
+    return out;
   }
   let nodes = p.exportedRows === 'all' ? core.rootNodes : core.isSsrm() ? core.rootNodes : core.sortedNodes;
-  nodes = nodes.filter(n => !n.detail && !n.stub);
-  if (typeof p.shouldRowBeSkipped === 'function') {
-    nodes = nodes.filter(n => !p.shouldRowBeSkipped({ node: n, api: core.api, context: core.gos.context }));
+  return nodes.filter(n => !n.detail && !n.stub && !skip(n)).map(node => ({ node, level: 0 }));
+}
+
+// excelStyles.dataType 로 셀 값 형식 맞추기 (AG 동일)
+const EXCEL_EPOCH = Date.UTC(1899, 11, 30);
+function toExcelDate(v) {
+  let d = v instanceof Date ? v : null;
+  if (!d && typeof v === 'string' && v.trim()) {
+    const m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T ](\d{1,2}):(\d{2})(?::(\d{2}))?)?/.exec(v.trim());
+    if (m) return (Date.UTC(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0)) - EXCEL_EPOCH) / 86400000;
+    d = new Date(v);
   }
-  return nodes;
+  if (!d || Number.isNaN(d.getTime())) return null;
+  return (Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds()) - EXCEL_EPOCH) / 86400000;
+}
+
+function applyDataType(cell, dataType, raw, autoFormula) {
+  const text = cell.type === 'String' ? String(cell.value ?? '') : null;
+  if (dataType === 'Formula' || (autoFormula && text && text.startsWith('='))) {
+    if (text && text.startsWith('=')) {
+      cell.type = 'Formula';
+      cell.value = text.slice(1);
+    }
+    return;
+  }
+  if (dataType === 'DateTime') {
+    const serial = toExcelDate(raw instanceof Date || typeof raw === 'string' ? raw : cell.value);
+    if (serial != null) {
+      cell.type = 'Number';
+      cell.value = serial;
+    }
+  } else if (dataType === 'Number') {
+    const n = typeof raw === 'number' ? raw : Number(String(cell.value).replace(/,/g, ''));
+    if (cell.value !== '' && Number.isFinite(n)) {
+      cell.type = 'Number';
+      cell.value = n;
+    }
+  } else if (dataType === 'Boolean') {
+    cell.type = 'Boolean';
+    cell.value = raw === true || raw === 'true' || raw === 1;
+  } else if (dataType === 'String') {
+    cell.type = 'String';
+    cell.value = cell.value == null ? '' : String(cell.value);
+  }
 }
 
 function cellOut(core, node, col, p) {
@@ -194,6 +271,13 @@ function cellStyleIds(core, node, col, styles) {
   return cls.split(/\s+/).filter(id => id && styles.has(id));
 }
 
+// 마지막으로 dataType 을 준 스타일
+function dataTypeOf(styles, ids) {
+  let t;
+  for (const id of ids) if (styles.defs.get(id)?.dataType) t = styles.defs.get(id).dataType;
+  return t;
+}
+
 // 시트 1장의 모델 (getSheetDataForExcel 결과로도 사용)
 export function getSheetDataForExcel(core, params = {}) {
   const p = { ...(core.gos.defaultExcelExportParams || {}), ...params };
@@ -235,6 +319,8 @@ export function getSheetDataForExcel(core, params = {}) {
           value: d.value ?? '',
           xf: styles.xfFor(cell.styleId ? [].concat(cell.styleId) : []),
         };
+        if (cell.styleId) applyDataType(out, dataTypeOf(styles, [].concat(cell.styleId)), d.value, p.autoConvertFormulas);
+        else if (p.autoConvertFormulas) applyDataType(out, undefined, d.value, true);
         tryImage(excelRow, c, out.value, out);
         cells.push(out);
         if (ma || md) merges.push(`${colLetter(c)}${r + 1}:${colLetter(c + ma)}${r + 1 + md}`);
@@ -267,7 +353,9 @@ export function getSheetDataForExcel(core, params = {}) {
       r++;
     }
   }
+  let headerRow = -1;
   if (!p.skipColumnHeaders) {
+    headerRow = r;
     const excelRow = r + 1;
     const cells = cols.map((col, i) => {
       const name = typeof p.processHeaderCallback === 'function'
@@ -281,17 +369,23 @@ export function getSheetDataForExcel(core, params = {}) {
     rows.push({ cells, height: rowHeightFor(excelRow, true) });
     r++;
   }
-  exportNodes(core, p).forEach(node => {
+  const headersEnd = r; // 머리글(앞 내용 + 그룹 헤더 + 컬럼 헤더) 다음 행
+  const firstDataRow = r;
+  exportNodes(core, p).forEach(({ node, level, hidden, collapsed }) => {
     const excelRow = r + 1;
     const cells = cols.map((col, i) => {
       const out = cellOut(core, node, col, p);
-      const cell = { c: i, ...out, xf: styles.xfFor(cellStyleIds(core, node, col, styles)) };
+      const ids = cellStyleIds(core, node, col, styles);
+      const cell = { c: i, ...out, xf: styles.xfFor(ids) };
+      const dt = dataTypeOf(styles, ids);
+      if (dt || p.autoConvertFormulas) applyDataType(cell, dt, core.getCellValue(node, col), p.autoConvertFormulas);
       tryImage(excelRow, i, out.value, cell);
       return cell;
     });
-    rows.push({ cells, height: rowHeightFor(excelRow, false) });
+    rows.push({ cells, height: rowHeightFor(excelRow, false), outline: level || 0, hidden: !!hidden, collapsed: !!collapsed });
     r++;
   });
+  const lastDataRow = r - 1;
   pushContent(p.appendContent);
 
   const widths = cols.map((col, i) => {
@@ -300,13 +394,93 @@ export function getSheetDataForExcel(core, params = {}) {
     return px;
   });
   let sheetName = String(p.sheetName || 'Sheet1').replace(/[\\/?*[\]:]/g, '').slice(0, 31) || 'Sheet1';
-  return { __clmSheet: true, sheetName, rows, merges, images, widths, styles };
+  // 틀 고정: freezeRows 'headers' = 머리글까지, freezeColumns 'pinned' = 왼쪽 고정 컬럼까지
+  const fr = typeof p.freezeRows === 'function' ? p.freezeRows({ api: core.api, context: core.gos.context }) : p.freezeRows;
+  const freeze = {
+    rows: fr === 'headers' ? headersEnd : Math.max(0, Number(fr) || 0),
+    cols: p.freezeColumns === 'pinned' ? cols.filter(c => c.pinned === 'left').length : Math.max(0, Number(p.freezeColumns) || 0),
+  };
+  // 엑셀 표 (필터 버튼·줄무늬): 컬럼 헤더 행 ~ 마지막 데이터 행
+  let table = null;
+  if (p.exportAsExcelTable && headerRow >= 0 && cols.length) {
+    const t = typeof p.exportAsExcelTable === 'object' ? p.exportAsExcelTable : {};
+    const used = new Set();
+    const names = rows[headerRow].cells.map((c, i) => {
+      let n = String(c.value || `Column${i + 1}`);
+      const base = n;
+      let k = 2;
+      while (used.has(n.toLowerCase())) n = `${base}${k++}`;
+      used.add(n.toLowerCase());
+      return n;
+    });
+    // 표 컬럼 이름은 머리글 셀 값과 같아야 함 (다르면 엑셀이 복구 메시지)
+    rows[headerRow].cells.forEach((c, i) => {
+      c.type = 'String';
+      c.value = names[i];
+    });
+    table = {
+      name: String(t.name || `${sheetName}Table`).replace(/[^\w.]/g, '_').replace(/^(\d)/, '_$1'),
+      ref: `A${headerRow + 1}:${colLetter(cols.length - 1)}${Math.max(headerRow + 2, lastDataRow + 1)}`,
+      names,
+      showFilterButton: t.showFilterButton !== false,
+      showRowStripes: t.showRowStripes !== false,
+      showColumnStripes: !!t.showColumnStripes,
+      highlightFirstColumn: !!t.highlightFirstColumn,
+      highlightLastColumn: !!t.highlightLastColumn,
+    };
+  }
+  return {
+    __clmSheet: true,
+    sheetName,
+    rows,
+    merges,
+    images,
+    widths,
+    styles,
+    freeze,
+    table,
+    firstDataRow,
+    pageSetup: p.pageSetup,
+    margins: p.margins,
+    headerFooter: p.headerFooterConfig,
+  };
 }
 
-function sheetXmlChunks(sheet, drawingRid) {
+const PAGE_SIZES = { letter: 1, legal: 5, executive: 7, a3: 8, a4: 9, a5: 11, b4: 12, b5: 13 };
+
+// headerFooterConfig: { all | first | even: { header: [{ value, position: 'Left'|'Center'|'Right', font }], footer: [...] } }
+function headerFooterXml(cfg) {
+  if (!cfg) return '';
+  const part = list => {
+    const by = { Left: '', Center: '', Right: '' };
+    (list || []).forEach(it => {
+      const pos = it.position || 'Center';
+      const f = it.font || {};
+      const font = f.fontName || f.bold || f.italic ? `&"${f.fontName || 'Calibri'},${f.bold && f.italic ? 'Bold Italic' : f.bold ? 'Bold' : f.italic ? 'Italic' : 'Regular'}"` : '';
+      const size = f.size ? `&${f.size}` : '';
+      const val = String(it.value ?? '').replace(/&/g, '&&').replace(/&&\[(Page|Pages|Date|Time|Tab|File)\]/g, (_, k) => ({ Page: '&P', Pages: '&N', Date: '&D', Time: '&T', Tab: '&A', File: '&F' })[k]);
+      by[pos] = (by[pos] || '') + font + size + val;
+    });
+    return `${by.Left ? `&L${by.Left}` : ''}${by.Center ? `&C${by.Center}` : ''}${by.Right ? `&R${by.Right}` : ''}`;
+  };
+  const one = (tag, c) => (c ? `<${tag}Header>${xmlEsc(part(c.header))}</${tag}Header><${tag}Footer>${xmlEsc(part(c.footer))}</${tag}Footer>` : '');
+  const attrs = `${cfg.first ? ' differentFirst="1"' : ''}${cfg.even ? ' differentOddEven="1"' : ''}`;
+  return `<headerFooter${attrs}>${one('odd', cfg.all)}${one('even', cfg.even)}${one('first', cfg.first)}</headerFooter>`;
+}
+
+function sheetXmlChunks(sheet, drawingRid, tableRid) {
   const out = [];
+  const maxOutline = sheet.rows.reduce((m, r) => Math.max(m, r.outline || 0), 0);
+  const fz = sheet.freeze || { rows: 0, cols: 0 };
+  let pane = '';
+  if (fz.rows || fz.cols) {
+    const active = fz.rows && fz.cols ? 'bottomRight' : fz.rows ? 'bottomLeft' : 'topRight';
+    pane = `<pane${fz.cols ? ` xSplit="${fz.cols}"` : ''}${fz.rows ? ` ySplit="${fz.rows}"` : ''} topLeftCell="${colLetter(fz.cols)}${fz.rows + 1}" activePane="${active}" state="frozen"/><selection pane="${active}"/>`;
+  }
   out.push(
-    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="15"/>',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${
+      maxOutline || sheet.pageSetup?.fitToPage ? `<sheetPr>${maxOutline ? '<outlinePr summaryBelow="0"/>' : ''}${sheet.pageSetup?.fitToPage ? '<pageSetUpPr fitToPage="1"/>' : ''}</sheetPr>` : ''
+    }<sheetViews><sheetView workbookViewId="0">${pane}</sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"${maxOutline ? ` outlineLevelRow="${maxOutline}"` : ''}/>`,
   );
   if (sheet.widths.length) {
     out.push(
@@ -319,11 +493,15 @@ function sheetXmlChunks(sheet, drawingRid) {
   let buf = '';
   sheet.rows.forEach((row, ri) => {
     const rn = ri + 1;
-    buf += `<row r="${rn}"${row.height != null ? ` ht="${Math.round(row.height * 0.75 * 100) / 100}" customHeight="1"` : ''}>`;
+    buf += `<row r="${rn}"${row.height != null ? ` ht="${Math.round(row.height * 0.75 * 100) / 100}" customHeight="1"` : ''}${row.outline ? ` outlineLevel="${row.outline}"` : ''}${
+      row.hidden ? ' hidden="1"' : ''
+    }${row.collapsed ? ' collapsed="1"' : ''}>`;
     for (const cell of row.cells) {
       const ref = `${colLetter(cell.c)}${rn}`;
       const s = cell.xf ? ` s="${cell.xf}"` : '';
-      if (cell.type === 'Number' && typeof cell.value === 'number' && Number.isFinite(cell.value)) {
+      if (cell.type === 'Formula') {
+        buf += `<c r="${ref}"${s}><f>${xmlEsc(cell.value)}</f></c>`;
+      } else if (cell.type === 'Number' && typeof cell.value === 'number' && Number.isFinite(cell.value)) {
         buf += `<c r="${ref}"${s}><v>${cell.value}</v></c>`;
       } else if (cell.type === 'Boolean') {
         buf += `<c r="${ref}"${s} t="b"><v>${cell.value ? 1 : 0}</v></c>`;
@@ -346,9 +524,34 @@ function sheetXmlChunks(sheet, drawingRid) {
   if (sheet.merges.length) {
     out.push(`<mergeCells count="${sheet.merges.length}">${sheet.merges.map(m => `<mergeCell ref="${m}"/>`).join('')}</mergeCells>`);
   }
+  // 인쇄: 여백(인치) · 용지 · 머리글/바닥글
+  const m = sheet.margins;
+  if (m || sheet.pageSetup || sheet.headerFooter) {
+    out.push(
+      `<pageMargins left="${m?.left ?? 0.7}" right="${m?.right ?? 0.7}" top="${m?.top ?? 0.75}" bottom="${m?.bottom ?? 0.75}" header="${m?.header ?? 0.3}" footer="${m?.footer ?? 0.3}"/>`,
+    );
+  }
+  const ps = sheet.pageSetup;
+  if (ps) {
+    const size = PAGE_SIZES[String(ps.pageSize || '').toLowerCase().replace(/\s+/g, '')];
+    out.push(`<pageSetup${size ? ` paperSize="${size}"` : ''}${ps.orientation ? ` orientation="${String(ps.orientation).toLowerCase()}"` : ''}${ps.fitToPage ? ' fitToWidth="1" fitToHeight="0"' : ''}/>`);
+  }
+  out.push(headerFooterXml(sheet.headerFooter));
   if (drawingRid) out.push(`<drawing r:id="${drawingRid}"/>`);
+  if (tableRid) out.push(`<tableParts count="1"><tablePart r:id="${tableRid}"/></tableParts>`);
   out.push('</worksheet>');
   return out;
+}
+
+function tableXml(t, id) {
+  const style = `<tableStyleInfo name="TableStyleMedium2" showFirstColumn="${t.highlightFirstColumn ? 1 : 0}" showLastColumn="${t.highlightLastColumn ? 1 : 0}" showRowStripes="${
+    t.showRowStripes ? 1 : 0
+  }" showColumnStripes="${t.showColumnStripes ? 1 : 0}"/>`;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="${id}" name="${xmlEsc(t.name)}" displayName="${xmlEsc(
+    t.name,
+  )}" ref="${t.ref}" totalsRowShown="0">${t.showFilterButton ? `<autoFilter ref="${t.ref}"/>` : ''}<tableColumns count="${t.names.length}">${t.names
+    .map((n, i) => `<tableColumn id="${i + 1}" name="${xmlEsc(n)}"/>`)
+    .join('')}</tableColumns>${style}</table>`;
 }
 
 function base64ToBytes(b64) {
@@ -389,9 +592,12 @@ function buildFiles(sheets) {
   const styles = sheets[0].styles; // 첫 시트 스타일북 공용 (AG 도 단일 excelStyles)
   const media = []; // { key, ext, bytes }
   const sheetEntries = [];
+  let tableSeq = 0;
   sheets.forEach((sheet, si) => {
     const n = si + 1;
     let drawingRid = null;
+    let tableRid = null;
+    const rels = [];
     if (sheet.images.length) {
       const local = [];
       const indexOf = im => {
@@ -417,14 +623,24 @@ function buildFiles(sheets) {
           .map((l, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${l.mediaName}"/>`)
           .join('')}</Relationships>`,
       });
-      files.push({
-        name: `xl/worksheets/_rels/sheet${n}.xml.rels`,
-        content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing${n}.xml"/></Relationships>`,
-      });
+      rels.push(`<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing${n}.xml"/>`);
       drawingRid = 'rId1';
     }
-    files.push({ name: `xl/worksheets/sheet${n}.xml`, content: sheetXmlChunks(sheet, drawingRid) });
-    sheetEntries.push({ n, name: sheet.sheetName, drawing: !!drawingRid });
+    let tableN = 0;
+    if (sheet.table) {
+      tableN = ++tableSeq;
+      tableRid = `rId${rels.length + 1}`;
+      rels.push(`<Relationship Id="${tableRid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table${tableN}.xml"/>`);
+      files.push({ name: `xl/tables/table${tableN}.xml`, content: tableXml(sheet.table, tableN) });
+    }
+    if (rels.length) {
+      files.push({
+        name: `xl/worksheets/_rels/sheet${n}.xml.rels`,
+        content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels.join('')}</Relationships>`,
+      });
+    }
+    files.push({ name: `xl/worksheets/sheet${n}.xml`, content: sheetXmlChunks(sheet, drawingRid, tableRid) });
+    sheetEntries.push({ n, name: sheet.sheetName, drawing: !!drawingRid, table: tableN });
   });
   media.forEach((m, i) => files.push({ name: `xl/media/image${i + 1}.${m.ext}`, content: m.bytes }));
   // 시트 이름 중복 방지
@@ -444,7 +660,7 @@ function buildFiles(sheets) {
           s =>
             `<Override PartName="/xl/worksheets/sheet${s.n}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>${
               s.drawing ? `<Override PartName="/xl/drawings/drawing${s.n}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>` : ''
-            }`,
+            }${s.table ? `<Override PartName="/xl/tables/table${s.table}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>` : ''}`,
         )
         .join('')}</Types>`,
     },
