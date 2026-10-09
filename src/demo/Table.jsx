@@ -101,7 +101,7 @@ export default function Table({ width, height, ref, gridOptions, menuRole = 2, .
   );
 
   return (
-    <div ref={wrapperRef} className="r2-theme-alpine clm-table-wrapper" style={{ width: width ?? '100%', height: height ?? '300px' }}>
+    <div ref={wrapperRef} className="clm-table-wrapper" style={{ width: width ?? '100%', height: height ?? '300px' }}>
       <R2Grid
         {...props}
         gridOptions={mergedGridOptions}

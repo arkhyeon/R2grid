@@ -6,7 +6,7 @@
 
 const isNum = v => typeof v === 'number' && Number.isFinite(v);
 
-// 최소제곱 직선 y = a + b*x (x = 0..n-1) 로 n 번째 이후 값 예측 (AG 동일 방식)
+// 최소제곱 직선 y = a + b*x (x = 0..n-1) 로 n 번째 이후 값 예측
 function linearSeries(values) {
   const n = values.length;
   let sx = 0;

@@ -1,4 +1,4 @@
-// AG-Grid GridApi 호환 객체. 한 그리드당 하나, 그리드 수명 동안 동일 참조(ref.current.api 캐시 안전).
+// GridApi 객체. 한 그리드당 하나, 그리드 수명 동안 동일 참조(ref.current.api 캐시 안전).
 import { localeText } from './locale.js';
 import { copySelectionToClipboard, cutSelectionToClipboard, buildClipboardText } from './clipboard.js';
 import { exportDataAsCsv, getDataAsCsv } from './exporter.js';

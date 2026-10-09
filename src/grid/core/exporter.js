@@ -1,4 +1,4 @@
-// CSV 내보내기 (AG-Grid exportDataAsCsv / getDataAsCsv 동작)
+// CSV 내보내기 (exportDataAsCsv / getDataAsCsv 동작)
 import { downloadFile, toText } from './utils.js';
 
 function resolveColumns(core, params) {

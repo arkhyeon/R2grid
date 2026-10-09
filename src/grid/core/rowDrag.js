@@ -1,5 +1,5 @@
 // 행 드래그: rowDragManaged / rowDragEntireRow / rowDragMultiRow / colDef.rowDrag
-// 이벤트: rowDragEnter / rowDragMove / rowDragLeave / rowDragEnd / rowDragCancel (AG 동일 파라미터)
+// 이벤트: rowDragEnter / rowDragMove / rowDragLeave / rowDragEnd / rowDragCancel
 export const rowDragMethods = {
   isRowDragEnabled() {
     const g = this.gos;
@@ -16,7 +16,7 @@ export const rowDragMethods = {
     return true;
   },
 
-  // managed 이동 가능 여부 (AG: 정렬/필터/그룹 중에는 managed 이동 안 함)
+  // managed 이동 가능 여부 (정렬/필터/그룹 중에는 managed 이동 안 함)
   isManagedMoveAllowed() {
     if (!this.gos.rowDragManaged) return false;
     if (!this.isClientSide() || this.isGroupMode()) return false;
@@ -27,7 +27,7 @@ export const rowDragMethods = {
 
   rowDragText(node, nodes, column) {
     const fn = column?.colDef.rowDragText || this.gos.rowDragText;
-    // AG 기본: 드래그를 시작한 셀(없으면 첫 컬럼)의 값
+    // 기본: 드래그를 시작한 셀(없으면 첫 컬럼)의 값
     const src = column && !column.isAuto ? column : this.displayedColumns.find(c => !c.isAuto);
     const defaultTextValue = nodes.length > 1 ? `${nodes.length} rows` : src ? this.getCellText(node, src) : '';
     if (typeof fn === 'function') {
@@ -90,7 +90,7 @@ export const rowDragMethods = {
     this.dispatch('rowDragLeave', this.dragEventParams('rowDragLeave', -1, 0, event, null));
   },
 
-  // ── 행 드롭 영역 (다른 그리드/임의 요소로 행 끌어 놓기 — AG addRowDropZone) ──
+  // ── 행 드롭 영역 (다른 그리드/임의 요소로 행 끌어 놓기 — addRowDropZone) ──
   //  params: { getContainer(): HTMLElement, onDragEnter?, onDragLeave?, onDragging?, onDragStop?, onDragCancel? }
   addRowDropZone(params) {
     if (!params || typeof params.getContainer !== 'function') return;

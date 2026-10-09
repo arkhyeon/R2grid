@@ -2,7 +2,7 @@
 //  - reactive (기본, reactiveCustomComponents !== false): props.model / props.onModelChange + useGridFilter({ doesFilterPass })
 //  - imperative (reactiveCustomComponents: false): ref 로 isFilterActive / doesFilterPass / getModel / setModel,
 //    props.filterChangedCallback() 호출 시 필터 적용
-// 인스턴스는 고정 DOM(entry.el)에 portal 로 렌더 → 팝업을 닫았다 열어도 상태 유지 (AG 동일: 필터는 한번 만들면 유지)
+// 인스턴스는 고정 DOM(entry.el)에 portal 로 렌더 → 팝업을 닫았다 열어도 상태 유지
 import { createFilterPredicate, isModelActive, resolveFilterKind } from './filterService.js';
 import { getFieldValue } from './utils.js';
 

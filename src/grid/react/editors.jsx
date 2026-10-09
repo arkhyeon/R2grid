@@ -1,4 +1,4 @@
-// 셀 에디터. AG-Grid 내장 에디터 이름(agTextCellEditor 등) + 커스텀 React 에디터 지원.
+// 셀 에디터. 내장 에디터 이름(r2TextCellEditor 등) + 커스텀 React 에디터 지원.
 // 커스텀 에디터 props: value, onValueChange, eventKey, column, colDef, node, data, rowIndex, api, context, stopEditing ...
 import React, {
   createContext,
@@ -14,7 +14,7 @@ import { stableElement } from './renderComponent.js';
 import { Checkbox, Icon } from './common.jsx';
 import { bodyClipOf } from './popup.jsx';
 
-// useGridCellEditor (ag-grid-react 호환) — reactive 커스텀 에디터가 콜백 등록
+// useGridCellEditor — reactive 커스텀 에디터가 콜백 등록
 const CellEditorContext = createContext(null);
 export function useGridCellEditor(callbacks) {
   const ctx = useContext(CellEditorContext);
@@ -228,7 +228,7 @@ function LargeTextEditor({ core, ed, params }) {
   );
 }
 
-// agRichSelectCellEditor / agSelectCellEditor
+// r2RichSelectCellEditor / r2SelectCellEditor
 function RichSelectEditor({ core, ed, params, plain, getCellEl }) {
   const { node, column } = ed;
   const [values, setValues] = useState(() => (Array.isArray(params.values) ? params.values : []));
@@ -272,7 +272,7 @@ function RichSelectEditor({ core, ed, params, plain, getCellEl }) {
     if (search) setHi(findMatch(search));
   }, [search]);
 
-  // 목록 열림: rich 는 항상, select 는 Enter 로 시작했을 때만 (AG SelectCellEditor startedByEnter 동일), 필드 클릭으로 토글
+  // 목록 열림: rich 는 항상, select 는 Enter 로 시작했을 때만, 필드 클릭으로 토글
   const [open, setOpen] = useState(() => !plain || ed.eventKey === 'Enter');
   const listRef = useRef(null);
   const boxRef = useRef(null);
@@ -330,9 +330,9 @@ function RichSelectEditor({ core, ed, params, plain, getCellEl }) {
     }
   };
   const ItemRenderer = params.cellRenderer;
-  // 기본 상한 없음 — 그리드 바디 공간이 상한 (AG valueListMaxHeight 지정 시 그 값)
+  // 기본 상한 없음 — 그리드 바디 공간이 상한 (valueListMaxHeight 지정 시 그 값)
   const maxH = typeof params.valueListMaxHeight === 'number' ? params.valueListMaxHeight : Infinity;
-  // AG 구조: 셀(또는 팝업 에디터) 안에는 선택값 필드만, 목록은 필드 아래 별도 팝업
+  // 구조: 셀(또는 팝업 에디터) 안에는 선택값 필드만, 목록은 필드 아래 별도 팝업
   //  → 셀 overflow 에 잘리지 않고, 셀이 스크롤로 가려져도 그리드 경계에 붙어 계속 보임
   const fieldRef = useRef(null);
   return (

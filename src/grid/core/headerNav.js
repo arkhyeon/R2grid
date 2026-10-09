@@ -1,4 +1,4 @@
-// 헤더 키보드 이동 (AG 헤더 포커스 동작)
+// 헤더 키보드 이동 (헤더 포커스 동작)
 //  - 첫 행에서 ↑ → 같은 컬럼 헤더, 헤더에서 ←→ 이동, ↑↓ 로 그룹 헤더/컬럼 헤더/플로팅 필터 줄 이동, 마지막 줄에서 ↓ → 본문 첫 행
 //  - Enter: 정렬(Shift = 다중) / 그룹 헤더면 펼침·접기 / 플로팅 필터면 입력칸으로, Space: 선택 컬럼 전체 선택, Alt+↓: 컬럼 메뉴
 //  - Tab / Shift+Tab: 다음·이전 헤더 (끝에서 Tab → 본문 첫 셀)
@@ -40,7 +40,7 @@ export const headerNavMethods = {
     this.notify();
   },
 
-  // 헤더 위치 객체 (AG HeaderPosition 모양)
+  // 헤더 위치 객체 (HeaderPosition 모양)
   headerPosition(hf) {
     if (!hf) return null;
     const column = this.getColumn(hf.colId);
@@ -96,7 +96,7 @@ export const headerNavMethods = {
       this.notify();
       return true;
     };
-    // 사용자 지정 이동 (AG navigateToNextHeader / tabToNextHeader)
+    // 사용자 지정 이동 (navigateToNextHeader / tabToNextHeader)
     const navigate = (fnName, nextPos, fallback) => {
       const fn = this.gos[fnName];
       if (typeof fn === 'function') {

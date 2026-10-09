@@ -285,7 +285,7 @@ export function ColumnChooserList({ core, showSearch = true, toolPanel = false }
   const [search, setSearch] = useState('');
   const pivotUi = toolPanel && core.isPivotActive();
   const cols = core.allColumns.filter(c => !c.colDef.suppressColumnsToolPanel && !c.isAuto && !c.isPivotResult);
-  // 피벗 모드: 체크 = 값/행 그룹/피벗 중 허용된 첫 역할에 넣기·빼기 (AG 컬럼 툴패널 동일)
+  // 피벗 모드: 체크 = 값/행 그룹/피벗 중 허용된 첫 역할에 넣기·빼기 (컬럼 툴패널과 같음)
   const pivotRole = c => (c.colDef.enableValue ? 'values' : c.colDef.enableRowGroup ? 'rowGroup' : c.colDef.enablePivot ? 'pivot' : null);
   // 어느 영역(값/행 그룹/열 레이블)에든 들어 있으면 체크
   const rolesOf = c => [
@@ -301,7 +301,7 @@ export function ColumnChooserList({ core, showSearch = true, toolPanel = false }
   };
   const isOn = c => (pivotUi ? inRole(c) : c.visible);
   const toggle = c => (pivotUi ? toggleRole(c) : !c.colDef.lockVisible && core.setColumnsVisible([c], !c.visible, 'toolPanelUi'));
-  // 끌기: 목록 안 순서 변경(suppressMovable·lockPosition 제외) 또는 드롭 영역으로 (AG 컬럼 툴패널 동일)
+  // 끌기: 목록 안 순서 변경(suppressMovable·lockPosition 제외) 또는 드롭 영역으로 (컬럼 툴패널과 같음)
   const movable = c => !c.colDef.suppressMovable && !c.colDef.lockPosition;
   const canDrag = c => toolPanel && (movable(c) || c.colDef.enableRowGroup || c.colDef.enableValue || c.colDef.enablePivot);
   const s = search.trim().toLowerCase();

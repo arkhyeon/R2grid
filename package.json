@@ -3,7 +3,9 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
-  "description": "R2grid — AG-Grid 호환 자체 제작 데이터 그리드 (CLM30 대체 목표)",
+  "description": "R2grid — 자체 제작 React 데이터 그리드",
+  "author": "arkhyeon",
+  "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",

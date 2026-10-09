@@ -67,7 +67,7 @@ export const pivotMethods = {
     };
     let keys = [...keySet.values()].sort(comparator);
     const g = this.gos;
-    // pivotMaxGeneratedColumns: 결과 컬럼이 너무 많으면 만들지 않고 이벤트 (AG 동일)
+    // pivotMaxGeneratedColumns: 결과 컬럼이 너무 많으면 만들지 않고 이벤트
     const max = g.pivotMaxGeneratedColumns;
     if (max > 0 && keys.length * Math.max(1, vcols.length) > max) {
       if (this.__pivotExceededSig !== keys.length) {
@@ -186,7 +186,7 @@ export const pivotMethods = {
         makeCol(def, chain, siblings, { pivotKeyString: JSON.stringify(key), pivotValueColumn: vc });
       }
     }
-    // pivotColumnGroupTotals: 그룹마다 하위 합계 컬럼 (그룹을 접으면 합계만, 펼치면 자식 — AG 동일)
+    // pivotColumnGroupTotals: 그룹마다 하위 합계 컬럼 (그룹을 접으면 합계만, 펼치면 자식)
     const groupTotals = g.pivotColumnGroupTotals;
     if (groupTotals === 'before' || groupTotals === 'after') {
       for (const grp of groupMap.values()) {

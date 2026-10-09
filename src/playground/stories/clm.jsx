@@ -80,7 +80,7 @@ components={{ roleCheckbox: props => RoleCheckbox(props, setRoles) }}`,
     file: 'page/widget/message/modal/MessageAddress.jsx',
     Comp: GroupDemo,
     keywords: ['rowGroup', 'groupSelectsChildren'],
-    desc: '그룹을 체크하면 하위 사용자가 모두 선택되고 getSelectedNodes 는 리프만 반환합니다.\n⚠ 실제 화면은 columnDefs 를 gridOptions 에 넣는데 Table 이 columnDefs prop 으로 덮어써 그룹 컬럼이 빠질 수 있습니다 (AG 동일 동작) — 데모는 prop 으로 전달.',
+    desc: '그룹을 체크하면 하위 사용자가 모두 선택되고 getSelectedNodes 는 리프만 반환합니다.\n⚠ 실제 화면은 columnDefs 를 gridOptions 에 넣는데 Table 이 columnDefs prop 으로 덮어써 그룹 컬럼이 빠질 수 있습니다 — 데모는 prop 으로 전달.',
     usage: `groupSelectsChildren: true,
 columnDefs: [
   {

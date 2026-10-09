@@ -235,7 +235,7 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <h1>R2grid — AG-Grid 호환 데이터 그리드</h1>
+        <h1>R2grid — 데이터 그리드</h1>
         <div className="controls">
           {[10_000, 100_000, 500_000].map(n => (
             <button key={n} className={count === n ? 'on' : ''} onClick={() => regen(n)}>
@@ -368,7 +368,7 @@ function MasterDetailDemo() {
   );
   return (
     <div className="md-area">
-      <h2>마스터/디테일 (agGroupCellRenderer + detailCellRendererParams)</h2>
+      <h2>마스터/디테일 (r2GroupCellRenderer + detailCellRendererParams)</h2>
       <Table
         height="320px"
         rowData={rows}

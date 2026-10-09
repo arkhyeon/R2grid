@@ -3,7 +3,7 @@
 // - 상단/하단 고정행(floating), 그룹/트리 셀, 행 드래그, SSRM 블록 로드
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { canonName, clamp, cx, resolveClassRules, resolveClassValue, toText } from '../core/utils.js';
+import { clamp, cx, resolveClassRules, resolveClassValue, toText } from '../core/utils.js';
 import { Checkbox, Icon } from './common.jsx';
 import { EditorHost } from './editors.jsx';
 import { stableElement } from './renderComponent.js';
@@ -191,8 +191,7 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
     }
     if (!comp && col.dataType === 'boolean') comp = 'r2CheckboxCellRenderer';
     const extra = typeof rendererParams === 'function' ? rendererParams(base) : rendererParams;
-    // 내장 이름은 r2 별칭도 허용 (사용자 등록 컴포넌트가 같은 이름이면 그쪽 우선)
-    const bi = typeof comp === 'string' && !g.components?.[comp] ? canonName(comp) : comp;
+    const bi = comp;
     if (bi === 'r2SparklineCellRenderer') {
       content = (
         <SparklineCell
@@ -285,7 +284,7 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
     }
   }
 
-  // colDef.rowSpan: 아래 행까지 덮는 높이 (AG 동일하게 suppressRowTransform 과 함께 사용)
+  // colDef.rowSpan: 아래 행까지 덮는 높이 (suppressRowTransform 과 함께 사용)
   let spanHeight = cellSpan?.height;
   if (!cellSpan && typeof cd.rowSpan === 'function' && !node.stub && !node.rowPinned) {
     const n = Math.max(1, Number(cd.rowSpan({ ...base })) || 1);
@@ -302,7 +301,7 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
     const t = core.getCellTooltip(node, col);
     if (t != null && t !== '') tooltip = String(t);
   } else if (!col.autoType && !node.stub && (cd.tooltipComponent || cd.tooltipComponentSelector)) {
-    // 툴팁 컴포넌트만 있으면 셀 값으로 표시 (AG 동일)
+    // 툴팁 컴포넌트만 있으면 셀 값으로 표시
     const v = formatted ?? value;
     if (v != null && v !== '') tooltip = String(v);
   }
@@ -756,7 +755,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
-  // bodyScrollEnd: 스크롤이 멈추고 100ms 뒤 (AG 동일)
+  // bodyScrollEnd: 스크롤이 멈추고 100ms 뒤
   const scrollEndTimer = useRef(null);
   const scrollEnd = params => {
     clearTimeout(scrollEndTimer.current);
@@ -1073,7 +1072,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       });
     }
   };
-  // columnHoverHighlight: 같은 col-id 셀 + 헤더에 r2-column-hover (DOM 토글, 재렌더 없음 — AG 동일 클래스)
+  // columnHoverHighlight: 같은 col-id 셀 + 헤더에 r2-column-hover (DOM 토글, 재렌더 없음)
   const setColHover = colId => {
     if (colId === core.hoveredColId) return;
     const root = focusSinkRef.current;
@@ -1084,7 +1083,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     if (prev != null) sel(prev).forEach(el => el.classList.remove('r2-column-hover'));
     if (colId != null) sel(colId).forEach(el => el.closest('.r2-root') === root && el.classList.add('r2-column-hover'));
   };
-  // cellMouseOver / cellMouseOut (AG 동일 — 셀이 바뀔 때만)
+  // cellMouseOver / cellMouseOut (셀이 바뀔 때만)
   const setMouseCell = (rowKey, colId, e) => {
     const prev = core.__mouseCell;
     const key = rowKey != null && colId != null ? `${rowKey}|${colId}` : null;

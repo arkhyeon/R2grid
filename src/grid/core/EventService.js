@@ -1,4 +1,4 @@
-// AG-Grid api.addEventListener / removeEventListener / addGlobalListener 동작 재현
+// api.addEventListener / removeEventListener / addGlobalListener 동작 재현
 export class EventService {
   constructor() {
     this.listeners = new Map();

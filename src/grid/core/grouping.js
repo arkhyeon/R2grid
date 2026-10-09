@@ -72,7 +72,7 @@ export const groupingMethods = {
     });
   },
 
-  // groupDisplayType 'multipleColumns' (groupHideOpenParents 는 multipleColumns 를 함께 켬 — AG 동일)
+  // groupDisplayType 'multipleColumns' (groupHideOpenParents 는 multipleColumns 를 함께 켬)
   isMultipleGroupColumns() {
     const g = this.gos;
     return g.groupDisplayType === 'multipleColumns' || !!g.groupHideOpenParents;
@@ -144,7 +144,7 @@ export const groupingMethods = {
     return node;
   },
 
-  // 트리 경로: getDataPath 또는 (AG v33+) treeDataParentIdField / treeDataChildrenField 에서 id 경로를 만듦
+  // 트리 경로: getDataPath 또는 treeDataParentIdField / treeDataChildrenField 에서 id 경로를 만듦
   treeDataPathFn() {
     const g = this.gos;
     if (typeof g.getDataPath === 'function') return g.getDataPath;
@@ -357,7 +357,7 @@ export const groupingMethods = {
   },
 
   aggregateOwn(n, aggCols) {
-    // getGroupRowAgg: 그룹 행 집계를 직접 (AG 동일 — 다른 컬럼 값을 함께 써야 할 때)
+    // getGroupRowAgg: 그룹 행 집계를 직접 (다른 컬럼 값을 함께 써야 할 때)
     if (typeof this.gos.getGroupRowAgg === 'function') {
       n.aggData = this.gos.getGroupRowAgg({ nodes: n.childrenAfterFilter, api: this.api, context: this.gos.context }) || null;
       return;
@@ -600,7 +600,7 @@ export const groupingMethods = {
     return undefined;
   },
 
-  // forEachNode: 그룹 모드면 그룹 + 리프 깊이우선 (AG 동일)
+  // forEachNode: 그룹 모드면 그룹 + 리프 깊이우선
   forEachNodeAll(cb) {
     if (!this.isGroupMode() || !this.groupTop) {
       this.rootNodes.forEach((n, i) => cb(n, i));

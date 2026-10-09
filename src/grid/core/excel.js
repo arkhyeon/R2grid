@@ -1,4 +1,4 @@
-// Excel(xlsx) 내보내기 — AG exportDataAsExcel / getDataAsExcel 파라미터 호환
+// Excel(xlsx) 내보내기 — exportDataAsExcel / getDataAsExcel
 //  prependContent/appendContent(mergeAcross/mergeDown/styleId), rowHeight(fn), headerRowHeight,
 //  addImageToCell(rowIndex, column, value), columnWidth, excelStyles, 그룹 헤더, processCellCallback ...
 //  freezeRows('headers' | n | fn) / freezeColumns('pinned' | n), rowGroupExpandState('expanded' | 'collapsed' | 'match') + suppressRowOutline,
@@ -141,7 +141,7 @@ function exportColumns(core, p) {
 }
 
 // 내보낼 행: [{ node, level, hidden, collapsed }]
-//  행 그룹: 접힌 그룹의 자식도 내보내고 엑셀 개요(outline)로 묶음 (AG rowGroupExpandState, 기본 'expanded')
+//  행 그룹: 접힌 그룹의 자식도 내보내고 엑셀 개요(outline)로 묶음 (rowGroupExpandState, 기본 'expanded')
 function exportNodes(core, p) {
   const skip = n => typeof p.shouldRowBeSkipped === 'function' && p.shouldRowBeSkipped({ node: n, api: core.api, context: core.gos.context });
   if (p.onlySelected) {
@@ -186,7 +186,7 @@ function exportNodes(core, p) {
   return nodes.filter(n => !n.detail && !n.stub && !skip(n)).map(node => ({ node, level: 0 }));
 }
 
-// excelStyles.dataType 로 셀 값 형식 맞추기 (AG 동일)
+// excelStyles.dataType 로 셀 값 형식 맞추기
 const EXCEL_EPOCH = Date.UTC(1899, 11, 30);
 function toExcelDate(v) {
   let d = v instanceof Date ? v : null;
@@ -589,7 +589,7 @@ function drawingXml(sheet, mediaIndexOf) {
 // 여러 시트 모델 → xlsx 파일 목록
 function buildFiles(sheets) {
   const files = [];
-  const styles = sheets[0].styles; // 첫 시트 스타일북 공용 (AG 도 단일 excelStyles)
+  const styles = sheets[0].styles; // 첫 시트 스타일북 공용 (단일 excelStyles)
   const media = []; // { key, ext, bytes }
   const sheetEntries = [];
   let tableSeq = 0;

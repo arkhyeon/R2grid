@@ -1,11 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 // CLM30 main.jsx 와 동일한 초기화 코드
-import { provideGlobalGridOptions, r2Theme } from './grid/index.js';
+import { provideGlobalGridOptions, moonTheme } from './grid/index.js';
 import App from './App.jsx';
 import Playground from './playground/Playground.jsx';
 
-const gridTheme = r2Theme.withParams({ accentColor: '#4db8ff' }, 'dark');
+const gridTheme = moonTheme.withParams({ accentColor: '#4db8ff' }, 'dark');
 provideGlobalGridOptions({ theme: gridTheme });
 
 // 기본: 플레이그라운드 / ?demo: 기존 종합 데모 단독 화면

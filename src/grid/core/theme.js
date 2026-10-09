@@ -1,6 +1,6 @@
-// AG-Grid v33+ Theming API 호환: themeQuartz.withParams(params, mode?)
+// 테마: moonTheme.withParams(params, mode?)
 // 파라미터 → CSS 변수(--r2-accent-color 등)로 변환해 테마별 <style> 을 주입한다.
-// 다크 전환은 AG-Grid 와 동일하게 조상 요소의 data-r2-theme-mode="dark" 로 한다.
+// 다크 전환은 조상 요소의 data-r2-theme-mode="dark" 로 한다.
 
 let themeSeq = 0;
 
@@ -8,11 +8,11 @@ const toVarName = name => `--r2-${name.replace(/[A-Z]/g, m => `-${m.toLowerCase(
 
 // 다크 모드 기본값 (light 전용 파라미터를 다크에서 되돌릴 때 사용)
 const DARK_DEFAULTS = {
-  backgroundColor: '#2b2b2b',
-  foregroundColor: '#ffffff',
-  accentColor: '#2196f3',
-  borderColor: 'rgba(255, 255, 255, 0.16)',
-  chromeBackgroundColor: 'color-mix(in srgb, var(--r2-background-color), var(--r2-foreground-color) 5%)',
+  backgroundColor: '#12141c',
+  foregroundColor: '#e6e8f2',
+  accentColor: '#8b8cf8',
+  borderColor: 'color-mix(in srgb, transparent, #c7cce8 12%)',
+  chromeBackgroundColor: '#171a25',
   headerBackgroundColor: 'var(--r2-chrome-background-color)',
   oddRowBackgroundColor: 'var(--r2-background-color)',
 };
@@ -80,14 +80,6 @@ class Theme {
     return new Theme(this.name, next);
   }
 
-  withPart() {
-    return this;
-  }
-
-  withoutPart() {
-    return this;
-  }
-
   get className() {
     return `r2-theme-p${this.id}`;
   }
@@ -117,34 +109,9 @@ class Theme {
   }
 }
 
-export const themeQuartz = new Theme('quartz');
-export const themeAlpine = themeQuartz;
-export const themeBalham = themeQuartz;
-export const themeMaterial = themeQuartz;
-export const createTheme = () => new Theme('custom');
-
-// Part 스텁 (withPart 체이닝 호환)
-const part = name => ({ partName: name, withParams: () => part(name) });
-export const colorSchemeLight = part('colorSchemeLight');
-export const colorSchemeLightWarm = part('colorSchemeLightWarm');
-export const colorSchemeLightCold = part('colorSchemeLightCold');
-export const colorSchemeDark = part('colorSchemeDark');
-export const colorSchemeDarkWarm = part('colorSchemeDarkWarm');
-export const colorSchemeDarkBlue = part('colorSchemeDarkBlue');
-export const colorSchemeVariable = part('colorSchemeVariable');
-export const iconSetQuartz = part('iconSetQuartz');
-export const iconSetQuartzLight = part('iconSetQuartzLight');
-export const iconSetQuartzBold = part('iconSetQuartzBold');
-export const iconSetQuartzRegular = part('iconSetQuartzRegular');
-export const iconSetAlpine = part('iconSetAlpine');
-export const iconSetMaterial = part('iconSetMaterial');
-export const checkboxStyleDefault = part('checkboxStyleDefault');
-export const inputStyleBase = part('inputStyleBase');
-export const inputStyleBordered = part('inputStyleBordered');
-export const tabStyleQuartz = part('tabStyleQuartz');
-export const createPart = () => part('custom');
+export const moonTheme = new Theme('moon');
 
 export function resolveTheme(theme) {
   if (theme && theme instanceof Theme) return theme;
-  return themeQuartz;
+  return moonTheme;
 }

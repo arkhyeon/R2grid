@@ -1,4 +1,4 @@
-// Server-Side Row Model (rowModelType: 'serverSide') — AG 부분 스토어(partial store) 동작
+// Server-Side Row Model (rowModelType: 'serverSide') — 부분 스토어(partial store) 동작
 // Infinite Row Model (rowModelType: 'infinite') 도 같은 블록 엔진 사용: datasource.getRows({ startRow, endRow, sortModel, filterModel, successCallback, failCallback })
 //  - cacheBlockSize 단위 블록을 화면에 보일 때 getRows 로 요청
 //  - success({ rowData, rowCount }) / fail()  (레거시 successCallback(rows, lastRow) / failCallback 도 지원)
@@ -244,7 +244,7 @@ export const ssrmMethods = {
           successCallback: (rows, lastRow) => success({ rowData: rows, rowCount: lastRow != null && lastRow >= 0 ? lastRow : undefined }),
           failCallback: fail,
         };
-    // AG 처럼 비동기로 호출 (렌더 중 setState 방지)
+    // 비동기로 호출 (렌더 중 setState 방지)
     Promise.resolve().then(() => {
       if (!alive()) return;
       this.ssrmDatasource()?.getRows(params);
@@ -402,7 +402,7 @@ export const ssrmMethods = {
     this.dispatch('storeUpdated', {});
   },
 
-  // maxBlocksInCache 초과 시 오래 안 쓴 블록을 stub 으로 되돌림 (AG 동일, 스토어별)
+  // maxBlocksInCache 초과 시 오래 안 쓴 블록을 stub 으로 되돌림 (스토어별)
   ssrmEvictBlocks(keepBi, store = this.ssrm) {
     const max = this.gos.maxBlocksInCache;
     const st = store;
@@ -473,7 +473,7 @@ export const ssrmMethods = {
     return out;
   },
 
-  // AG getServerSideGroupLevelState: 만들어진 스토어(최상위 + 펼친 그룹) 목록
+  // getServerSideGroupLevelState: 만들어진 스토어(최상위 + 펼친 그룹) 목록
   getServerSideGroupLevelState() {
     if (!this.ssrm) return [];
     return [...this.ssrm.stores.values()].map(st => ({
@@ -565,7 +565,7 @@ export const ssrmMethods = {
     for (const [b, x] of blocks) if (x.state === 'loaded' && !st.lru.includes(b)) st.lru.push(b);
   },
 
-  // ── SSRM 트랜잭션 (AG applyServerSideTransaction) ──
+  // ── SSRM 트랜잭션 (applyServerSideTransaction) ──
   // 로드된 행에만 적용 (안 보인 행은 서버가 이미 반영했다고 보고 다음 로드에 받음). update/remove 는 getRowId 권장.
   //  - route: 그 그룹의 스토어에 적용 (그룹을 한 번도 안 펼쳤으면 StoreNotFound)
   //  - 로딩 중이면 적용 안 하고 status 'StoreLoading' (Async 판은 로드 끝난 뒤 적용)
@@ -658,7 +658,7 @@ export const ssrmMethods = {
     this.dispatch('asyncTransactionsFlushed', { results });
   },
 
-  // 서버 요청 없이 행 직접 넣기 (AG applyServerSideRowData)
+  // 서버 요청 없이 행 직접 넣기 (applyServerSideRowData)
   applyServerSideRowData({ successParams, startRow = 0, route } = {}) {
     if (this.gos.rowModelType !== 'serverSide') return;
     if (!this.ssrm) this.ssrmReset('rowData');
@@ -669,7 +669,7 @@ export const ssrmMethods = {
     this.ssrmRebuildBlocks(st);
   },
 
-  // ── SSRM 선택 상태 (AG getServerSideSelectionState) ──
+  // ── SSRM 선택 상태 (getServerSideSelectionState) ──
   // { selectAll, toggledNodes }: selectAll=true 면 toggledNodes 는 '선택 해제된' id, false 면 '선택된' id. 안 불러온 행도 포함
   getServerSideSelectionState() {
     if (!this.isSsrm()) return null;

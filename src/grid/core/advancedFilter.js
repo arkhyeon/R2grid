@@ -1,4 +1,4 @@
-// 고급 필터 (enableAdvancedFilter) — AG AdvancedFilterModel 호환
+// 고급 필터 (enableAdvancedFilter)
 //  model: { filterType: 'join', type: 'AND'|'OR', conditions: [...] }
 //       | { filterType: 'text'|'number'|'date'|'dateString'|'boolean'|'object', colId, type, filter? }
 //  식: [컬럼명] contains "abc" AND ([나이] > 20 OR [사용] is true)
