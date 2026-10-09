@@ -33,8 +33,13 @@ function focusAndPlace(input, eventKey) {
   if (!input) return;
   input.focus({ preventScroll: true });
   if (eventKey && eventKey.length === 1) {
+    // number/date 등은 setSelectionRange 를 지원하지 않아 예외 → 무시 (커서는 이미 끝에 있음)
     const len = input.value.length;
-    input.setSelectionRange?.(len, len);
+    try {
+      input.setSelectionRange?.(len, len);
+    } catch {
+      /* 선택 범위 미지원 input */
+    }
   } else {
     input.select?.();
   }
@@ -541,7 +546,7 @@ function CustomEditor({ core, ed, params, getCellEl }) {
   delete props.key;
   return (
     <CellEditorContext.Provider value={ctxValue}>
-      {stableElement(core, `editor:${column.colId}`, ed.editor.comp, props)}
+      {stableElement(core, `editor:${column.colId}`, ed.editor.comp, props, undefined, () => core.stopEditing(true))}
     </CellEditorContext.Provider>
   );
 }

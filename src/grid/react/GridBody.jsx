@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { clamp, cx, resolveClassRules, resolveClassValue, toText } from '../core/utils.js';
 import { Checkbox, Icon } from './common.jsx';
 import { EditorHost } from './editors.jsx';
-import { stableElement } from './renderComponent.js';
+import { SafeBoundary, stableElement } from './renderComponent.js';
 import { PopupLayer } from './popup.jsx';
 import { localeText } from '../core/locale.js';
 import { SparklineCell } from './sparkline.jsx';
@@ -149,7 +149,11 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
 
   let content;
   if (isEditing && !ced.editor.popup) {
-    content = <EditorHost core={core} ed={ced} getCellEl={() => cellRef.current} />;
+    content = (
+      <SafeBoundary label="cellEditor" onError={() => core.stopEditing(true)}>
+        <EditorHost core={core} ed={ced} getCellEl={() => cellRef.current} />
+      </SafeBoundary>
+    );
   } else if (node.stub) {
     const lcr = g.loadingCellRenderer;
     if (col.autoType) content = null;
@@ -278,7 +282,9 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
       content = (
         <>
           {content}
-          <EditorHost core={core} ed={ced} getCellEl={() => cellRef.current} />
+          <SafeBoundary label="cellEditor" onError={() => core.stopEditing(true)}>
+            <EditorHost core={core} ed={ced} getCellEl={() => cellRef.current} />
+          </SafeBoundary>
         </>
       );
     }
