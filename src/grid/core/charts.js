@@ -65,7 +65,7 @@ export const chartMethods = {
       cellRange: { rowStartIndex: Math.min(r0, r1), rowEndIndex: Math.max(r0, r1), columns: cols },
       chartThemeName: params.chartThemeName,
       title: params.chartThemeOverrides?.common?.title?.text,
-      container: params.chartContainer || null,
+      container: params.chartContainer || this.userChartContainer(chartId),
       suppressChartRanges: !!params.suppressChartRanges,
     };
     if (!this.charts) this.charts = new Map();
@@ -79,7 +79,16 @@ export const chartMethods = {
     };
     model.ref = ref;
     this.dispatch('chartCreated', { chartId });
+    this.callCreateChartContainer(model);
     return ref;
+  },
+
+  callCreateChartContainer(model) {
+    const pend = this.__pendingChartContainer;
+    if (!pend || pend.chartId !== model.chartId) return;
+    this.__pendingChartContainer = null;
+    model.ref.chartElement = pend.el;
+    this.gos.createChartContainer(model.ref);
   },
 
   newChartModel(modelType, params, extra) {
@@ -91,7 +100,7 @@ export const chartMethods = {
       chartType: params.chartType || 'groupedColumn',
       chartThemeName: params.chartThemeName,
       title: params.chartThemeOverrides?.common?.title?.text,
-      container: params.chartContainer || null,
+      container: params.chartContainer || this.userChartContainer(chartId),
       ...extra,
     };
     if (!this.charts) this.charts = new Map();
@@ -99,6 +108,7 @@ export const chartMethods = {
     this.notify();
     model.ref = { chartId, chartElement: null, destroyChart: () => this.destroyChart(chartId), focusChart: () => {} };
     this.dispatch('chartCreated', { chartId });
+    this.callCreateChartContainer(model);
     return model.ref;
   },
 
@@ -135,6 +145,16 @@ export const chartMethods = {
     this.setColumnFilterModel(col, values.length ? { filterType: 'set', values } : null);
   },
 
+  // createChartContainer: 차트를 띄울 곳을 사용자가 정함 — 빈 요소를 만들어 ref.chartElement 로 넘김
+  userChartContainer(chartId) {
+    if (typeof this.gos.createChartContainer !== 'function' || typeof document === 'undefined') return null;
+    const el = document.createElement('div');
+    el.className = 'r2-chart-container-user';
+    el.style.cssText = 'width:100%;height:100%;';
+    this.__pendingChartContainer = { chartId, el };
+    return el;
+  },
+
   destroyChart(chartId) {
     if (!this.charts?.has(chartId)) return;
     this.charts.delete(chartId);
@@ -142,12 +162,66 @@ export const chartMethods = {
     this.dispatch('chartDestroyed', { chartId });
   },
 
+  // 쓸 수 있는 팔레트: 기본 5종 + customChartThemes(palette.fills). chartThemes 를 주면 그 목록만
+  chartPalettes() {
+    const out = { ...CHART_PALETTES };
+    const custom = this.gos.customChartThemes || {};
+    for (const [name, t] of Object.entries(custom)) {
+      const fills = t?.palette?.fills || t?.baseTheme?.palette?.fills;
+      if (Array.isArray(fills) && fills.length) out[name] = fills;
+    }
+    const allow = this.gos.chartThemes;
+    if (Array.isArray(allow) && allow.length) {
+      const picked = {};
+      for (const n of allow) if (out[n]) picked[n] = out[n];
+      if (Object.keys(picked).length) return picked;
+    }
+    return out;
+  },
+
+  chartPaletteName(themeName) {
+    const pals = this.chartPalettes();
+    if (themeName && pals[themeName]) return themeName;
+    return Object.keys(pals)[0] || 'default';
+  },
+
   chartOptionsOf(m) {
-    if (!m.options) m.options = { ...DEFAULT_OPTIONS, title: m.title || '' };
+    if (!m.options) m.options = { ...DEFAULT_OPTIONS, title: m.title || '', palette: this.chartPaletteName(m.chartThemeName) };
     return m.options;
   },
 
-  // updateChart: chartType · cellRange · aggFunc(크로스 필터) · chartThemeOverrides(모양: common.title / legend) ·
+  // 설정 패널 탭 (chartToolPanelsDef: { panels: ['settings'|'data'|'format'], defaultToolPanel })
+  chartPanelTabs() {
+    const def = this.gos.chartToolPanelsDef;
+    const map = { settings: 'chart', data: 'data', format: 'format' };
+    const list = Array.isArray(def?.panels) ? def.panels.map(x => map[x]).filter(Boolean) : ['chart', 'data', 'format'];
+    return list.length ? list : ['chart', 'data', 'format'];
+  },
+
+  // 차트 제목줄 버튼 (chartMenuItems / getChartToolbarItems)
+  chartToolbarItems(m) {
+    const all = ['chartSettings', 'chartData', 'chartFormat', 'chartDownload'];
+    const g = this.gos;
+    let items = all;
+    if (Array.isArray(g.chartMenuItems)) items = g.chartMenuItems;
+    else if (typeof g.chartMenuItems === 'function') items = g.chartMenuItems({ defaultItems: all, chartId: m.chartId, api: this.api, context: g.context }) || all;
+    else if (typeof g.getChartToolbarItems === 'function') items = g.getChartToolbarItems({ defaultItems: all, api: this.api, context: g.context }) || all;
+    return items;
+  },
+
+  // 저장한 모델로 다시 만들기 (restoreChart)
+  restoreChart(model, chartContainer) {
+    if (!model) return undefined;
+    const base = { chartType: model.chartType, chartContainer, chartThemeName: model.chartThemeName };
+    let ref;
+    if (model.modelType === 'pivot') ref = this.createPivotChart(base);
+    else if (model.modelType === 'crossFilter') ref = this.createCrossFilterChart({ ...base, cellRange: model.cellRange, aggFunc: model.aggFunc });
+    else ref = this.createRangeChart({ ...base, cellRange: model.cellRange, suppressChartRanges: model.suppressChartRanges });
+    if (ref && model.chartOptions) this.updateChart({ chartId: ref.chartId, chartOptions: model.chartOptions });
+    return ref;
+  },
+
+  // updateChart: chartType · cellRange · aggFunc(크로스 필터) · chartThemeOverrides(common.title / legend) ·
   //   chartOptions(R2: title, legend, legendPosition, palette, labels, xTitle, yTitle) · categoryColId · hiddenSeries
   updateChart(params) {
     const m = this.charts?.get(params.chartId);
@@ -183,7 +257,9 @@ export const chartMethods = {
     const m = this.charts?.get(params.chartId);
     if (!m) return;
     const map = { settings: 'chart', data: 'data', format: 'format', chart: 'chart' };
-    m.panelOpen = map[params.panel] || 'chart';
+    const tabs = this.chartPanelTabs();
+    const def = map[params.panel] || map[this.gos.chartToolPanelsDef?.defaultToolPanel] || tabs[0];
+    m.panelOpen = tabs.includes(def) ? def : tabs[0];
     this.notify();
   },
 
@@ -356,6 +432,7 @@ export const chartMethods = {
       chartType: m.chartType,
       ...(m.cellRange ? { cellRange: { ...m.cellRange, columns: m.cellRange.columns.map(c => c.colId) } } : {}),
       ...(m.modelType === 'crossFilter' ? { aggFunc: m.aggFunc } : {}),
+      chartThemeName: m.chartThemeName,
       chartOptions: { ...this.chartOptionsOf(m) },
       suppressChartRanges: m.suppressChartRanges,
     }));

@@ -1,5 +1,5 @@
 // 컨텍스트 메뉴 / 컬럼 메뉴(legacy 탭형 + new 리스트형) / 컬럼 선택기
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { localeText } from '../core/locale.js';
 import { cx } from '../core/utils.js';
@@ -595,7 +595,26 @@ export function ColumnChooserPopup({ core }) {
   );
 }
 
+// postProcessPopup: 팝업이 자리 잡은 뒤 호출 (위치·스타일 직접 조정)
+function usePostProcessPopup(core) {
+  const p = core.popup;
+  const last = useRef(null);
+  useLayoutEffect(() => {
+    const fn = core.gos.postProcessPopup;
+    if (!p || last.current === p || typeof fn !== 'function') {
+      if (!p) last.current = null;
+      return;
+    }
+    last.current = p;
+    const layers = [...document.querySelectorAll('[data-r2-popup] > *')];
+    const ePopup = layers[layers.length - 1] || null;
+    const type = { contextMenu: 'contextMenu', columnMenu: 'columnMenu', filter: 'columnFilter', columnChooser: 'columnChooser', advancedFilterBuilder: 'advancedFilterBuilder' }[p.type] || p.type;
+    fn({ type, ePopup, column: p.column ?? null, rowNode: p.params?.node ?? null, eventSource: p.anchorEl ?? null, mouseEvent: p.event ?? null, api: core.api, context: core.gos.context });
+  });
+}
+
 export function Popups({ core }) {
+  usePostProcessPopup(core);
   const p = core.popup;
   if (!p) return null;
   if (p.type === 'contextMenu') return <ContextMenuPopup key={`cm${p.x},${p.y}`} core={core} popup={p} />;

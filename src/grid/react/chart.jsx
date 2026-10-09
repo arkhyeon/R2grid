@@ -26,9 +26,9 @@ function niceScale(min, max, ticks = 5) {
 const fmt = v => (Math.abs(v) >= 1e6 ? `${+(v / 1e6).toFixed(1)}M` : Math.abs(v) >= 1e3 ? `${+(v / 1e3).toFixed(1)}K` : `${+v.toFixed(2)}`);
 
 // options: { legend, legendPosition('top'|'bottom'), palette, labels(값 표시), xTitle, yTitle } — 설정 패널 꾸미기
-export function ChartSvg({ data, type, width, height, title, options = {} }) {
+export function ChartSvg({ data, type, width, height, title, options = {}, palettes = CHART_PALETTES }) {
   const { categories, series, cross } = data;
-  const palette = CHART_PALETTES[options.palette] || CHART_PALETTES.default;
+  const palette = palettes[options.palette] || CHART_PALETTES[options.palette] || CHART_PALETTES.default;
   const showLegend = options.legend !== false;
   const legendTop = showLegend && options.legendPosition === 'top';
   const isPie = type === 'pie' || type === 'donut';
@@ -314,7 +314,9 @@ function ChartSettings({ core, model }) {
           ['chart', '종류'],
           ['data', '데이터'],
           ['format', '꾸미기'],
-        ].map(([k, label]) => (
+        ]
+          .filter(([k]) => core.chartPanelTabs().includes(k))
+          .map(([k, label]) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'r2-selected' : undefined} onClick={() => core.openChartToolPanel({ chartId: model.chartId, panel: k })}>
             {label}
           </button>
@@ -395,7 +397,7 @@ function ChartSettings({ core, model }) {
             </label>
             <div className="r2-chart-field-title">색</div>
             <div className="r2-chart-palettes">
-              {Object.entries(CHART_PALETTES).map(([k, cols]) => (
+              {Object.entries(core.chartPalettes()).map(([k, cols]) => (
                 <button key={k} type="button" title={k} className={o.palette === k ? 'r2-selected' : undefined} onClick={() => set({ palette: k })}>
                   {cols.slice(0, 5).map(c => (
                     <i key={c} style={{ background: c }} />
@@ -453,27 +455,33 @@ function ChartPanel({ core, model, width, height, floating, onHeaderDown }) {
             </option>
           ))}
         </select>
-        {!core.gos.suppressChartToolPanelsButton && (
+        {!core.gos.suppressChartToolPanelsButton && ['chartSettings', 'chartData', 'chartFormat'].some(x => core.chartToolbarItems(model).includes(x)) && (
           <span
             className={`r2-panel-title-bar-button${model.panelOpen ? ' r2-selected' : ''}`}
             role="button"
             title="차트 설정"
             onPointerDown={e => e.stopPropagation()}
-            onClick={() => (model.panelOpen ? core.closeChartToolPanel({ chartId: model.chartId }) : core.openChartToolPanel({ chartId: model.chartId }))}
+            onClick={() => {
+              if (model.panelOpen) return core.closeChartToolPanel({ chartId: model.chartId });
+              const first = core.chartToolbarItems(model).find(x => x === 'chartSettings' || x === 'chartData' || x === 'chartFormat');
+              core.openChartToolPanel({ chartId: model.chartId, panel: { chartSettings: 'settings', chartData: 'data', chartFormat: 'format' }[first] });
+            }}
           >
             <Icon name="settings" />
           </span>
         )}
-        <span className="r2-panel-title-bar-button" role="button" title="PNG 다운로드" onPointerDown={e => e.stopPropagation()} onClick={download}>
+        {core.chartToolbarItems(model).includes('chartDownload') && (
+          <span className="r2-panel-title-bar-button" role="button" title="PNG 다운로드" onPointerDown={e => e.stopPropagation()} onClick={download}>
           <Icon name="save" />
         </span>
+        )}
         <span className="r2-panel-title-bar-button" role="button" title="닫기" onPointerDown={e => e.stopPropagation()} onClick={() => core.destroyChart(model.chartId)}>
           <Icon name="cross" />
         </span>
       </div>
       <div className="r2-chart-body-wrap">
         <div ref={svgWrap} className="r2-chart-body">
-          <ChartSvg data={data} type={model.chartType} width={width} height={height} title={title} options={options} />
+          <ChartSvg data={data} type={model.chartType} width={width} height={height} title={title} options={options} palettes={core.chartPalettes()} />
         </div>
         {model.panelOpen && <ChartSettings core={core} model={model} />}
       </div>

@@ -741,13 +741,26 @@ export class GridCore {
         col.dataType = null;
         continue;
       }
+      // dataTypeDefinitions: 사용자 정의 타입 (baseDataType 으로 필터·편집 기본값 결정)
+      const defs = this.gos.dataTypeDefinitions || {};
+      const useDef = name => {
+        const d = defs[name];
+        col.dataTypeDef = d || null;
+        col.dataType = d ? d.baseDataType || defs[d.extendsDataType]?.baseDataType || d.extendsDataType || name : name;
+      };
       if (typeof cdt === 'string') {
-        col.dataType = cdt;
+        useDef(cdt);
         continue;
       }
       if (col.dataTypeInferred || col.colDef.valueGetter || !col.colDef.field || !first) continue;
       const v = getFieldValue(first, col.colDef.field, this.gos.suppressFieldDotNotation);
       if (v == null) continue;
+      const matched = Object.keys(defs).find(k => typeof defs[k].dataTypeMatcher === 'function' && defs[k].dataTypeMatcher(v));
+      if (matched) {
+        useDef(matched);
+        col.dataTypeInferred = true;
+        continue;
+      }
       let t;
       if (typeof v === 'number') t = 'number';
       else if (typeof v === 'boolean') t = 'boolean';
@@ -1195,12 +1208,20 @@ export class GridCore {
     if (node.footer) return undefined;
     if (node.group && node.data === undefined) return undefined;
     const cd = column.colDef;
+    let v;
     if (cd.valueGetter) {
       const p = this.makeValueParams(node, column);
-      return typeof cd.valueGetter === 'function' ? cd.valueGetter(p) : evaluateExpression(cd.valueGetter, p);
+      v = typeof cd.valueGetter === 'function' ? cd.valueGetter(p) : evaluateExpression(cd.valueGetter, p);
+    } else if (cd.field) v = getFieldValue(node.data, cd.field, this.gos.suppressFieldDotNotation);
+    // enableCellExpressions: '=' 로 시작하는 값은 식으로 계산
+    if (this.gos.enableCellExpressions && typeof v === 'string' && v.startsWith('=')) {
+      try {
+        return evaluateExpression(v.slice(1), this.makeValueParams(node, column));
+      } catch {
+        return v;
+      }
     }
-    if (cd.field) return getFieldValue(node.data, cd.field, this.gos.suppressFieldDotNotation);
-    return undefined;
+    return v;
   }
 
   // valueFormatter 결과 (없으면 null — valueFormatted=null)
@@ -1233,6 +1254,9 @@ export class GridCore {
       return typeof vf === 'function' ? vf(p) : evaluateExpression(vf, p);
     }
     if (cd.refData && value != null) return cd.refData[value] ?? value;
+    // dataTypeDefinitions 의 valueFormatter
+    const dtf = column.dataTypeDef?.valueFormatter;
+    if (typeof dtf === 'function') return dtf({ ...this.makeValueParams(node, column), value });
     if (column.dataType === 'date' && value instanceof Date) {
       return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`;
     }
@@ -2792,6 +2816,8 @@ export class GridCore {
       if (cd.valueParser) {
         const p = { ...this.makeValueParams(node, column), oldValue, newValue };
         newValue = typeof cd.valueParser === 'function' ? cd.valueParser(p) : evaluateExpression(cd.valueParser, p);
+      } else if (typeof column.dataTypeDef?.valueParser === 'function') {
+        newValue = column.dataTypeDef.valueParser({ ...this.makeValueParams(node, column), oldValue, newValue });
       } else if (column.dataType === 'text' && newValue === '') {
         newValue = null;
       }

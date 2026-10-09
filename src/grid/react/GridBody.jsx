@@ -263,6 +263,31 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
         </div>
       );
     }
+    // colDef.dndSource: 브라우저 드래그로 행 데이터를 그리드 밖(다른 요소·앱)으로 (application/json + text/plain)
+    const dnd = !node.stub && !node.group && (typeof cd.dndSource === 'function' ? cd.dndSource({ ...core.makeValueParams(node, col) }) : !!cd.dndSource);
+    if (dnd) {
+      content = (
+        <div className="r2-cell-wrapper" role="presentation">
+          <div
+            className="r2-drag-handle r2-row-drag r2-dnd-source"
+            draggable
+            onPointerDown={e => e.stopPropagation()}
+            onDragStart={e => {
+              if (typeof cd.dndSourceOnRowDrag === 'function') {
+                cd.dndSourceOnRowDrag({ rowNode: node, dragEvent: e.nativeEvent, api: core.api, context: core.gos.context });
+                return;
+              }
+              const json = JSON.stringify(node.data);
+              e.dataTransfer.setData('application/json', json);
+              e.dataTransfer.setData('text/plain', json);
+            }}
+          >
+            <Icon name="grip" />
+          </div>
+          <span className="r2-cell-value">{content}</span>
+        </div>
+      );
+    }
     // 행 드래그 핸들 (colDef.rowDrag)
     if (core.showRowDragHandle(node, col)) {
       content = (
@@ -542,6 +567,27 @@ function GroupFullRow({ core, node, top, height, rp, handlers }) {
 }
 
 // isFullWidthRow + fullWidthCellRenderer: 컬럼을 무시하고 행 전체 폭으로 렌더
+// SSRM 로딩 행: 기본은 전체 폭 '로딩 중...' (suppressServerSideFullWidthLoadingRow 면 셀마다 스켈레톤)
+function LoadingFullRow({ core, node, top, height, rp }) {
+  const transform = !core.gos.suppressRowTransform;
+  return (
+    <div
+      className={cx(rp.className, 'r2-full-width-row r2-loading-full-row')}
+      role="row"
+      row-index={rowKey(node)}
+      row-id={node.id}
+      style={{ ...(transform ? { transform: `translateY(${top}px)` } : { top }), height, ...rp.style }}
+    >
+      <div className="r2-loading" style={{ paddingInlineStart: 12 + (node.level || 0) * 28 }}>
+        <span className="r2-loading-icon">
+          <Icon name="loading" />
+        </span>
+        <span className="r2-loading-text">{localeText(core, 'loadingOoo')}</span>
+      </div>
+    </div>
+  );
+}
+
 function FullWidthRow({ core, node, top, height, rp, handlers }) {
   const g = core.gos;
   const comp = g.fullWidthCellRenderer;
@@ -1175,6 +1221,18 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     renderedPrev.current = now;
   });
 
+  // 행 드롭 위치 표시줄 (suppressMoveWhenRowDragging · setRowDropPositionIndicator)
+  const dropLine = width => {
+    const ind = core.rowDropIndicator;
+    const n = ind?.row;
+    if (!n || n.rowIndex == null || n.rowPinned) return null;
+    const pi = n.rowIndex - core.pageFirstRow;
+    if (pi < 0 || pi >= rowCount) return null;
+    const pos = ind.dropIndicatorPosition;
+    const t = core.rowTopAt(pi) - offset + (pos === 'below' ? core.rowHeightAt(pi) : pos === 'inside' ? core.rowHeightAt(pi) / 2 : 0);
+    return <div className={`r2-row-drop-indicator r2-row-drop-indicator-${pos}`} style={{ top: t - 1, width }} aria-hidden="true" />;
+  };
+
   const leftRows = [];
   const centerRows = [];
   const rightRows = [];
@@ -1194,6 +1252,10 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     const common = { core, node, top, height: h, rp, handlers };
     if (node.group && !node.footer && core.isGroupRowsDisplay()) {
       fullRows.push(<GroupFullRow key={key} {...common} />);
+      return;
+    }
+    if (node.stub && g.rowModelType === 'serverSide' && !g.suppressServerSideFullWidthLoadingRow) {
+      fullRows.push(<LoadingFullRow key={key} {...common} />);
       return;
     }
     if (!node.group && !node.stub && typeof g.isFullWidthRow === 'function' && g.isFullWidthRow({ rowNode: node, api: core.api, context: g.context })) {
@@ -1310,6 +1372,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
           <div ref={centerVpRef} className="r2-center-cols-viewport" role="presentation" style={{ height: containerH }} onScroll={onCenterScroll}>
             <div className="r2-center-cols-container" role="rowgroup" style={{ width: core.centerWidth, height: containerH }}>
               {centerRows}
+              {dropLine(core.centerWidth)}
             </div>
           </div>
           <div

@@ -71,6 +71,7 @@ export function createApi(core) {
     setRowNodeExpanded: (node, expanded) => node && core.setNodeExpanded(node, !!expanded),
     expandAll: () => {
       core.dispatch('expandOrCollapseAll', { source: 'expandAll' });
+      if (core.isServerGrouping?.()) return core.ssrmExpandAllGroups(true);
       core.rootNodes.forEach(n => {
         if (n.master || n.group) n.expanded = true;
       });
@@ -81,6 +82,7 @@ export function createApi(core) {
     },
     collapseAll: () => {
       core.dispatch('expandOrCollapseAll', { source: 'collapseAll' });
+      if (core.isServerGrouping?.()) return core.ssrmExpandAllGroups(false);
       core.rootNodes.forEach(n => {
         n.expanded = false;
       });
@@ -430,6 +432,7 @@ export function createApi(core) {
     createRangeChart: params => core.createRangeChart(params),
     createPivotChart: params => core.createPivotChart(params),
     openChartToolPanel: params => core.openChartToolPanel(params),
+    restoreChart: (chartModel, chartContainer) => core.restoreChart(chartModel, chartContainer),
     closeChartToolPanel: params => core.closeChartToolPanel(params),
     createCrossFilterChart: params => core.createCrossFilterChart(params),
     getChartModels: () => core.getChartModels(),
@@ -497,6 +500,8 @@ export function createApi(core) {
     addRowDropZone: params => core.addRowDropZone(params),
     removeRowDropZone: params => core.removeRowDropZone(params),
     getRowDropZoneParams: events => core.getRowDropZoneParams(events),
+    setRowDropPositionIndicator: params => core.setRowDropPositionIndicator(params),
+    getRowDropPositionIndicator: () => core.getRowDropPositionIndicator(),
 
     // ── 그리드 상태 ──
     getState: () => core.getState(),

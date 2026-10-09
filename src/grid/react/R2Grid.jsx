@@ -105,6 +105,20 @@ function GridView({ core }) {
           )}
           role="treegrid"
           tabIndex={0}
+          onFocus={e => {
+            if (e.target !== gridRootRef.current) return;
+            const from = e.relatedTarget;
+            if (from instanceof Node && gridRootRef.current.contains(from)) return;
+            if (core.focus || core.headerFocus || core.editing) return;
+            const fromBottom = from instanceof Node && !!(gridRootRef.current.compareDocumentPosition(from) & Node.DOCUMENT_POSITION_FOLLOWING);
+            const fn = g.focusGridInnerElement;
+            if (typeof fn === 'function' && fn({ fromBottom, api: core.api, context: g.context })) return;
+            const cols = core.displayedColumns;
+            if (!cols.length || !(from instanceof Node)) return;
+            if (fromBottom && core.getRowCountInPage() > 0) core.setFocusedCell(core.pageLastRow - 1, cols[cols.length - 1].colId);
+            else if (!g.suppressHeaderFocus && g.headerHeight !== 0) core.setHeaderFocus(core.headerGroupDepth, cols[0].colId, 'ui');
+            else if (core.getRowCountInPage() > 0) core.setFocusedCell(core.pageFirstRow, cols[0].colId);
+          }}
           aria-rowcount={core.displayedNodes.length + 1}
           aria-colcount={core.displayedColumns.length}
           onKeyDown={onKeyDown}

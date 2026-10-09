@@ -8,7 +8,7 @@ import { getFieldValue } from './utils.js';
 
 export const customFilterMethods = {
   filterKindOf(col) {
-    return resolveFilterKind(col.colDef, this.gos.components);
+    return resolveFilterKind(col.colDef, this.gos.components, this.gos, col);
   },
 
   isCustomFilter(col) {

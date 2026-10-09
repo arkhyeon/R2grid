@@ -36,8 +36,12 @@ export const ssrmMethods = {
     return this.isInfinite() ? this.gos.datasource : this.gos.serverSideDatasource;
   },
 
-  ssrmBlockSize() {
-    return this.gos.cacheBlockSize ?? 100;
+  ssrmBlockSize(store) {
+    return store?.blockSize ?? this.gos.cacheBlockSize ?? 100;
+  },
+
+  ssrmMaxBlocks(store) {
+    return store?.maxBlocks ?? this.gos.maxBlocksInCache;
   },
 
   ssrmInitialRowCount() {
@@ -70,6 +74,13 @@ export const ssrmMethods = {
       lru: [],
       nodes: [],
     };
+    // getServerSideGroupLevelParams: 단계별 블록 크기·캐시 수
+    const fn = this.gos.getServerSideGroupLevelParams;
+    if (typeof fn === 'function' && !this.isInfinite()) {
+      const p = fn({ level: route.length, parentRowNode: parentNode || undefined, rowGroupColumns: this.rowGroupColumns(), pivotColumns: [], groupKeys: [...route], api: this.api, context: this.gos.context }) || {};
+      if (p.cacheBlockSize != null) st.blockSize = p.cacheBlockSize;
+      if (p.maxBlocksInCache != null) st.maxBlocks = p.maxBlocksInCache;
+    }
     this.ssrmResizeStore(st, st.rowCount);
     return st;
   },
@@ -185,7 +196,6 @@ export const ssrmMethods = {
     if (!this.isSsrm() || !this.ssrm) return;
     const ds = this.ssrmDatasource();
     if (!ds || typeof ds.getRows !== 'function') return;
-    const bs = this.ssrmBlockSize();
     const want = new Map();
     const nodes = this.displayedNodes;
     for (let i = Math.max(0, first); i <= last && i < nodes.length; i++) {
@@ -193,7 +203,7 @@ export const ssrmMethods = {
       const st = n.__store || this.ssrm;
       const local = n.__storeIndex ?? i;
       if (st.nodes[local] !== n) continue;
-      const bi = Math.floor(local / bs);
+      const bi = Math.floor(local / this.ssrmBlockSize(st));
       if (!n.stub && st.blocks.has(bi)) continue;
       if (!want.has(st)) want.set(st, new Set());
       want.get(st).add(bi);
@@ -204,7 +214,7 @@ export const ssrmMethods = {
   ssrmLoadBlock(bi, store = this.ssrm) {
     const st = store;
     if (st.blocks.has(bi)) return;
-    const bs = this.ssrmBlockSize();
+    const bs = this.ssrmBlockSize(st);
     const startRow = bi * bs;
     if (st.lastRowKnown && startRow >= st.rowCount) return;
     st.blocks.set(bi, { state: 'loading' });
@@ -212,14 +222,22 @@ export const ssrmMethods = {
     const root = this.ssrm;
     const alive = () => !this.destroyed && this.ssrm === root && st.version === version && root.stores.get(st.id) === st;
     let done = false;
+    const release = () => {
+      this.ssrmActive = Math.max(0, (this.ssrmActive || 0) - 1);
+      this.ssrmPump();
+    };
     const success = ({ rowData, rowCount } = {}) => {
-      if (done || !alive()) return;
+      if (done) return;
       done = true;
+      release();
+      if (!alive()) return;
       this.ssrmOnLoaded(bi, rowData || [], rowCount, st);
     };
     const fail = () => {
-      if (done || !alive()) return;
+      if (done) return;
       done = true;
+      release();
+      if (!alive()) return;
       st.blocks.set(bi, { state: 'failed' });
       this.notify();
     };
@@ -244,11 +262,29 @@ export const ssrmMethods = {
           successCallback: (rows, lastRow) => success({ rowData: rows, rowCount: lastRow != null && lastRow >= 0 ? lastRow : undefined }),
           failCallback: fail,
         };
-    // 비동기로 호출 (렌더 중 setState 방지)
-    Promise.resolve().then(() => {
-      if (!alive()) return;
+    // 비동기로 호출 (렌더 중 setState 방지). maxConcurrentDatasourceRequests 넘으면 대기, blockLoadDebounceMillis 만큼 늦춤
+    const run = () => {
+      if (!alive()) {
+        done = true;
+        return false;
+      }
+      this.ssrmActive = (this.ssrmActive || 0) + 1;
       this.ssrmDatasource()?.getRows(params);
-    });
+      return true;
+    };
+    (this.ssrmQueue ||= []).push(run);
+    const delay = this.gos.blockLoadDebounceMillis;
+    if (delay > 0) this.setTimer(() => this.ssrmPump(), delay);
+    else Promise.resolve().then(() => this.ssrmPump());
+  },
+
+  ssrmPump() {
+    const max = this.gos.maxConcurrentDatasourceRequests;
+    const limit = max === -1 || max == null ? Infinity : Math.max(1, max);
+    while (this.ssrmQueue?.length && (this.ssrmActive || 0) < limit) {
+      const run = this.ssrmQueue.shift();
+      run();
+    }
   },
 
   ssrmOnLoaded(bi, rows, rowCount, store = this.ssrm) {
@@ -256,7 +292,12 @@ export const ssrmMethods = {
     st.blocks.set(bi, { state: 'loaded' });
     st.lru = st.lru.filter(x => x !== bi);
     st.lru.push(bi);
-    this.ssrmWriteRows(bi * this.ssrmBlockSize(), rows, rowCount, bi, st);
+    this.ssrmWriteRows(bi * this.ssrmBlockSize(st), rows, rowCount, bi, st);
+    // refreshServerSide(비우지 않고) 뒤 다시 받은 블록이 다 오면 storeRefreshed
+    if (st.refreshing && ![...st.blocks.values()].some(b => b.state === 'loading')) {
+      st.refreshing = false;
+      this.dispatch('storeRefreshed', { route: [...st.route] });
+    }
     // 로딩 중이라 미뤄둔 비동기 트랜잭션
     if (this.ssrmTxQueue?.length && !this.ssrmIsLoading()) this.flushServerSideAsyncTransactions();
   },
@@ -339,7 +380,11 @@ export const ssrmMethods = {
       // 처음 만든 그룹 행: 기억된 펼침(정렬·필터로 다시 불러와도 유지) 또는 groupDefaultExpanded / isGroupOpenByDefault
       if (!node.__ssrmSeen) {
         const k = routeKey(route);
-        node.expanded = this.ssrmExpanded.has(k) || this.defaultExpandedFor(node);
+        const openFn = this.gos.isServerSideGroupOpenByDefault;
+        node.expanded =
+          this.ssrmExpanded.has(k) ||
+          (this.ssrmExpandAll === true && !this.ssrmCollapsed?.has(k)) ||
+          (typeof openFn === 'function' ? !!openFn({ data, rowNode: node, api: this.api, context: this.gos.context }) : this.defaultExpandedFor(node));
         if (node.expanded) this.ssrmExpanded.add(k);
         node.__ssrmSeen = true;
       }
@@ -364,7 +409,7 @@ export const ssrmMethods = {
 
   ssrmWriteRows(start, rows, rowCount, bi, store = this.ssrm) {
     const st = store;
-    const bs = this.ssrmBlockSize();
+    const bs = this.ssrmBlockSize(st);
     if (rowCount != null && rowCount >= 0) {
       st.rowCount = rowCount;
       st.lastRowKnown = true;
@@ -404,10 +449,10 @@ export const ssrmMethods = {
 
   // maxBlocksInCache 초과 시 오래 안 쓴 블록을 stub 으로 되돌림 (스토어별)
   ssrmEvictBlocks(keepBi, store = this.ssrm) {
-    const max = this.gos.maxBlocksInCache;
     const st = store;
+    const max = this.ssrmMaxBlocks(st);
     if (!max || max < 1) return;
-    const bs = this.ssrmBlockSize();
+    const bs = this.ssrmBlockSize(st);
     while (st.lru.length > max) {
       const victim = st.lru.find(b => b !== keepBi);
       if (victim == null) break;
@@ -429,7 +474,16 @@ export const ssrmMethods = {
     if (expanded) {
       this.ssrmExpanded.add(k);
       if (!node.childStore) this.ssrmOpenChildStore(node);
-    } else this.ssrmExpanded.delete(k);
+    } else {
+      this.ssrmExpanded.delete(k);
+      if (this.ssrmExpandAll) (this.ssrmCollapsed ||= new Set()).add(k);
+      // purgeClosedRowNodes: 접으면 하위 캐시를 버림 (다시 펼치면 새로 요청)
+      if (this.gos.purgeClosedRowNodes && node.childStore) {
+        this.ssrmDropStore(node.childStore);
+        node.childStore = null;
+        this.ssrmRebuildRootNodes();
+      }
+    }
     this.ssrmFlatten();
     this.ssrmRefreshView();
     node.__dispatchLocal('expandedChanged', { expanded });
@@ -466,7 +520,7 @@ export const ssrmMethods = {
   getCacheBlockState() {
     const out = {};
     if (!this.ssrm) return out;
-    const bs = this.ssrmBlockSize();
+    const bs = this.ssrmBlockSize(this.ssrm);
     for (const [bi, b] of this.ssrm.blocks) {
       out[bi] = { blockNumber: bi, startRow: bi * bs, endRow: (bi + 1) * bs, pageStatus: b.state };
     }
@@ -481,8 +535,8 @@ export const ssrmMethods = {
       rowCount: st.rowCount,
       lastRowIndexKnown: st.lastRowKnown,
       info: {},
-      pageSize: this.ssrmBlockSize(),
-      maxBlocksInCache: this.gos.maxBlocksInCache,
+      pageSize: this.ssrmBlockSize(st),
+      maxBlocksInCache: this.ssrmMaxBlocks(st),
     }));
   },
 
@@ -516,7 +570,28 @@ export const ssrmMethods = {
     st.version++;
     st.blocks.clear();
     st.lru = [];
+    st.refreshing = true;
     this.notify();
+  },
+
+  // SSRM 모두 펼치기/접기: 불러온 그룹 행 (ssrmExpandAllAffectsAllRows 면 나중에 불러올 그룹도)
+  ssrmExpandAllGroups(expand) {
+    this.ssrmExpandAll = this.gos.ssrmExpandAllAffectsAllRows ? expand : null;
+    this.ssrmCollapsed = new Set();
+    if (!expand) this.ssrmExpanded = new Set();
+    for (const st of [...(this.ssrm?.stores.values() || [])]) {
+      for (const n of st.nodes) {
+        if (!n.__ssrmGroup || n.expanded === expand) continue;
+        n.expanded = expand;
+        const k = routeKey(n.__route);
+        if (expand) {
+          this.ssrmExpanded.add(k);
+          if (!n.childStore) this.ssrmOpenChildStore(n);
+        }
+      }
+    }
+    this.ssrmFlatten();
+    this.ssrmRefreshView();
   },
 
   retryServerSideLoads() {
@@ -543,7 +618,7 @@ export const ssrmMethods = {
   // 블록 다시 계산: 전부 실제 행인 블록만 '로드됨', 나머지는 보일 때 다시 요청
   ssrmRebuildBlocks(st = this.ssrm) {
     const nodes = st.nodes;
-    const bs = this.ssrmBlockSize();
+    const bs = this.ssrmBlockSize(st);
     const blocks = new Map();
     for (let b = 0; b * bs < nodes.length; b++) {
       const prev = st.blocks.get(b);
@@ -574,6 +649,8 @@ export const ssrmMethods = {
     const st = this.ssrmFindStore(tx.route);
     if (!this.ssrm || !st) return { status: 'StoreNotFound' };
     if (this.ssrmIsLoading()) return { status: 'StoreLoading' };
+    const allow = this.gos.isApplyServerSideTransaction;
+    if (typeof allow === 'function' && allow({ transaction: tx, parentNode: st.parentNode || undefined, groupLevelInfo: {}, api: this.api, context: this.gos.context }) === false) return { status: 'Cancelled' };
     const nodes = st.nodes;
     const res = { status: 'Applied', add: [], update: [], remove: [] };
     const hasId = typeof this.gos.getRowId === 'function';

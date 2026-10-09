@@ -453,7 +453,7 @@ function ConditionFilterUI({ core, column, kind, onClose }) {
 }
 
 export function FilterUI({ core, column, onClose }) {
-  const kind = resolveFilterKind(column.colDef, core.gos.components);
+  const kind = resolveFilterKind(column.colDef, core.gos.components, core.gos, column);
   if (!kind) return null;
   if (kind === 'custom') return <CustomFilterSlot core={core} column={column} onClose={onClose} />;
   if (kind === 'set') return <SetFilterUI core={core} column={column} onClose={onClose} />;
@@ -621,7 +621,7 @@ function ReadOnlyFloating({ text }) {
 
 export function FloatingFilterCell({ core, col, height }) {
   const cd = col.colDef;
-  const kind = col.isAuto ? null : resolveFilterKind(cd, core.gos.components);
+  const kind = col.isAuto ? null : resolveFilterKind(cd, core.gos.components, core.gos, col);
   const enabled = !!kind && !!cd.floatingFilter;
   let body = null;
   if (enabled) {

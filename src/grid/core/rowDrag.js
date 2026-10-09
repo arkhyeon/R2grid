@@ -64,9 +64,56 @@ export const rowDragMethods = {
     d.overIndex = overIndex;
     const overNode = this.displayedNodes[overIndex];
     if (overNode && !overNode.detail && !d.nodes.includes(overNode) && this.isManagedMoveAllowed()) {
-      this.moveNodesManaged(d.nodes, overNode);
+      // 놓을 위치: 행의 위쪽 절반이면 위, 아래쪽 절반이면 아래
+      const pi = overIndex - this.pageFirstRow;
+      const top = this.rowTopAt(pi);
+      const position = y < top + this.rowHeightAt(pi) / 2 ? 'above' : 'below';
+      if (!this.rowDropAllowed(d.nodes, overNode, position)) {
+        d.pending = null;
+        this.setRowDropPositionIndicator(null);
+      } else if (this.gos.suppressMoveWhenRowDragging) {
+        // 끄는 동안은 자리만 표시하고 놓을 때 이동
+        d.pending = { overNode, position };
+        this.setRowDropPositionIndicator({ row: overNode, dropIndicatorPosition: position });
+      } else {
+        this.moveNodesManaged(d.nodes, overNode);
+      }
     }
     this.dispatch('rowDragMove', this.dragEventParams('rowDragMove', overIndex, y, event, vDirection));
+  },
+
+  // isRowValidDropPosition: false 를 돌려주면 그 자리로는 이동하지 않음
+  rowDropAllowed(nodes, target, position) {
+    const fn = this.gos.isRowValidDropPosition;
+    if (typeof fn !== 'function') return true;
+    return fn({ source: nodes[0], rows: nodes, target, position, newParent: target?.parent ?? null, api: this.api, context: this.gos.context }) !== false;
+  },
+
+  // 드롭 위치 표시줄 (setRowDropPositionIndicator / getRowDropPositionIndicator)
+  setRowDropPositionIndicator(params) {
+    const next = params?.row && params.dropIndicatorPosition && params.dropIndicatorPosition !== 'none' ? { row: params.row, dropIndicatorPosition: params.dropIndicatorPosition } : null;
+    const prev = this.rowDropIndicator;
+    if (prev?.row === next?.row && prev?.dropIndicatorPosition === next?.dropIndicatorPosition) return;
+    this.rowDropIndicator = next;
+    this.notify();
+  },
+
+  getRowDropPositionIndicator() {
+    return this.rowDropIndicator ? { ...this.rowDropIndicator } : { row: null, dropIndicatorPosition: 'none' };
+  },
+
+  // 놓을 자리(위/아래) 지정 이동
+  moveNodesManagedTo(nodes, overNode, position) {
+    const set = new Set(nodes);
+    const rest = this.rootNodes.filter(n => !set.has(n));
+    const overIdx = rest.indexOf(overNode);
+    if (overIdx < 0) return;
+    rest.splice(position === 'above' ? overIdx : overIdx + 1, 0, ...nodes);
+    rest.forEach((n, i) => {
+      n.sourceRowIndex = i;
+    });
+    this.rootNodes = rest;
+    this.refreshModel({ keepRenderedRows: true, silent: true });
   },
 
   moveNodesManaged(nodes, overNode) {
@@ -159,6 +206,8 @@ export const rowDragMethods = {
   rowDragEnd(event, overIndex, y, cancelled = false) {
     const d = this.rowDragState;
     if (!d) return;
+    if (d.pending && !cancelled) this.moveNodesManagedTo(d.nodes, d.pending.overNode, d.pending.position);
+    if (this.rowDropIndicator) this.setRowDropPositionIndicator(null);
     this.rowDragState = null;
     d.nodes.forEach(n => {
       n.__dragging = false;
