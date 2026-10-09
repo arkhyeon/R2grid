@@ -1574,6 +1574,23 @@ export class GridCore {
     this.dispatch('rowGroupOpened', { node, data: node.data, rowIndex: node.rowIndex, expanded });
   }
 
+  // keepDetailRows: 닫힌 상세 그리드 상태 보관 (keepDetailRowsCount 개, 기본 10 — 오래된 것부터 버림)
+  keepDetail(id, entry) {
+    const m = (this.keptDetails ||= new Map());
+    m.delete(id);
+    m.set(id, entry);
+    const max = this.gos.keepDetailRowsCount ?? 10;
+    while (m.size > Math.max(0, max)) m.delete(m.keys().next().value);
+  }
+
+  takeKeptDetail(id) {
+    const m = this.keptDetails;
+    if (!this.gos.keepDetailRows || !m?.has(id)) return null;
+    const e = m.get(id);
+    m.delete(id);
+    return e;
+  }
+
   getDetailNode(master) {
     if (!master.detailNode) {
       const d = new RowNode(this, master.data, `detail_${master.id}`);

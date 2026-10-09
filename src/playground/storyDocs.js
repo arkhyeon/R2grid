@@ -86,6 +86,10 @@ const STORY_DOCS = {
   },
   'master-detail': {
     whenToUse: ['행을 펼쳐 하위 목록(이력·상세)을 같은 화면에서 볼 때'],
+    notes: [
+      'keepDetailRows 를 켜면 접거나 스크롤로 사라졌던 상세 그리드를 다시 열 때 정렬·필터·스크롤·불러온 행이 남아 있습니다 (최근 keepDetailRowsCount 개, 기본 10).',
+      "마스터 행 데이터가 바뀌면 detailCellRendererParams.refreshStrategy 대로 상세를 갱신합니다 — 'rows'(기본) 행만 다시 불러옴, 'everything' 상세 그리드를 새로 만듦, 'nothing' 그대로.",
+    ],
   },
 
   // ─── 셀 ─────────────────────────────
@@ -164,13 +168,17 @@ const STORY_DOCS = {
 
   // ─── 그룹 · 피벗 ─────────────────────────────
   'row-grouping': {
+    badge: 'UPDATE',
     whenToUse: ['같은 값끼리 묶어 소계를 보여줄 때'],
+    notes: ['펼친 그룹 안을 스크롤하면 상위 그룹 행이 본문 맨 위에 붙어 지금 어느 그룹인지 보입니다. 끄려면 suppressGroupRowsSticky.'],
   },
   'group-display': {
     whenToUse: ['그룹 단계마다 컬럼을 따로 둘 때 — multipleColumns', '그룹을 제목 행처럼 보여줄 때 — groupRows'],
   },
   'total-rows': {
+    badge: 'UPDATE',
     whenToUse: ['그룹마다 소계 행, 맨 아래 총합계 행이 필요할 때'],
+    notes: ["합계 행이 화면 아래로 벗어나 있으면 본문 맨 아래에 붙어 보입니다. 끄려면 suppressStickyTotalRow: true (총합계만 'grand', 그룹 합계만 'group')."],
   },
   'row-group-panel': {
     whenToUse: ['사용자가 직접 그룹 기준을 바꿔가며 볼 때'],

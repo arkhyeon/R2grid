@@ -628,19 +628,52 @@ function DetailRow({ core, node, top, height }) {
   const g = core.gos;
   const p = g.detailCellRendererParams || {};
   const Grid = core.__R2Grid;
-  const [rows, setRows] = useState(null);
+  const detailId = `detail_${master.id}`;
+  // keepDetailRows: 접거나 화면 밖으로 나갔던 상세 그리드를 다시 열 때 행 데이터·정렬·필터·스크롤 등을 그대로
+  const [kept] = useState(() => core.takeKeptDetail(detailId));
+  const [rows, setRows] = useState(kept ? kept.rows : null);
+  const [gridKey, setGridKey] = useState(0);
   const ref = useRef(null);
+  const detailApi = useRef(null);
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+  const fetchRows = () => {
+    if (typeof p.getDetailRowData !== 'function') return;
+    p.getDetailRowData({
+      node: master,
+      data: master.data,
+      successCallback: data => setRows(data),
+      api: core.api,
+      context: g.context,
+    });
+  };
+  // 처음 열 때 불러옴 (보관해 둔 게 있으면 그걸 씀)
   useEffect(() => {
-    if (typeof p.getDetailRowData === 'function') {
-      p.getDetailRowData({
-        node: master,
-        data: master.data,
-        successCallback: data => setRows(data),
-        api: core.api,
-        context: g.context,
-      });
+    if (!kept) fetchRows();
+  }, [master]);
+  // 마스터 행 데이터가 바뀌면 refreshStrategy 대로: 'rows'(기본) 행만 다시, 'everything' 상세 그리드를 새로, 'nothing' 그대로
+  const ver = master.__version;
+  const firstVer = useRef(ver);
+  useEffect(() => {
+    if (ver === firstVer.current) return;
+    firstVer.current = ver;
+    const strategy = p.refreshStrategy || 'rows';
+    if (strategy === 'nothing') return;
+    if (strategy === 'everything') {
+      setRows(null);
+      setGridKey(k => k + 1);
     }
-  }, [master, master.data]);
+    fetchRows();
+  }, [ver]);
+  // 레이아웃 정리 단계(하위 그리드가 정리되기 전, DOM 이 아직 있을 때) 에 상태를 저장해야 스크롤까지 남음
+  useLayoutEffect(
+    () => () => {
+      core.api.removeDetailGridInfo(detailId);
+      const api = detailApi.current;
+      if (g.keepDetailRows && api && !api.isDestroyed?.()) core.keepDetail(detailId, { rows: rowsRef.current, state: api.getState() });
+    },
+    [],
+  );
   useLayoutEffect(() => {
     if (!g.detailRowAutoHeight) return undefined;
     const el = ref.current?.firstElementChild;
@@ -668,11 +701,14 @@ function DetailRow({ core, node, top, height }) {
       <div className={cx('r2-details-row', g.detailRowAutoHeight ? 'r2-details-row-auto-height' : 'r2-details-row-fixed-height')}>
         <div className="r2-details-grid" style={{ height: g.detailRowAutoHeight ? undefined : '100%' }}>
           <Grid
+            key={gridKey}
             {...dgo}
+            initialState={kept && !gridKey ? kept.state : dgo.initialState}
             rowData={rows ?? undefined}
             domLayout={g.detailRowAutoHeight ? 'autoHeight' : dgo.domLayout}
             onGridReady={e => {
-              core.api.addDetailGridInfo(`detail_${master.id}`, { id: `detail_${master.id}`, api: e.api });
+              detailApi.current = e.api;
+              core.api.addDetailGridInfo(detailId, { id: detailId, api: e.api });
               dgo.onGridReady?.(e);
             }}
           />
@@ -1267,6 +1303,37 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     if (core.displayedRight.length) rightRows.push(<Row key={key} cols={core.displayedRight} sectionCols={core.displayedRight} {...common} />);
   };
   for (let i = first; i <= last; i++) pushRow(i);
+
+  // 그룹 행 위에 붙이기: 스크롤해도 지금 보고 있는 행의 상위 그룹 행들이 본문 맨 위에 차례로 붙음.
+  //  그룹이 끝나면 다음 행에 밀려 올라감 (suppressGroupRowsSticky 로 끔)
+  const sticky = core.getStickyGroupRows(virtTop, rowCount, autoLayout);
+  sticky.forEach((st, si) => {
+    const node = st.node;
+    const rp = rowProps(core, node, total);
+    // 바깥 그룹이 위에 오도록 (안쪽 그룹이 밀려 올라갈 때 바깥 그룹 뒤로 들어감)
+    const sp = { ...rp, className: cx(rp.className, 'r2-sticky-row', st.last && 'r2-sticky-row-last'), style: { ...rp.style, zIndex: 20 - si } };
+    const common = { core, node, top: st.top - offset, height: st.height, rp: sp, handlers };
+    const key = `sticky:${node.id}`;
+    if (core.isGroupRowsDisplay()) {
+      fullRows.push(<GroupFullRow key={key} {...common} />);
+      return;
+    }
+    if (core.displayedLeft.length) leftRows.push(<Row key={key} cols={core.displayedLeft} sectionCols={core.displayedLeft} {...common} />);
+    centerRows.push(<Row key={key} cols={center} sectionCols={core.displayedCenter} {...common} />);
+    if (core.displayedRight.length) rightRows.push(<Row key={key} cols={core.displayedRight} sectionCols={core.displayedRight} {...common} />);
+  });
+  // 합계 행 아래에 붙이기
+  const stickyTotals = core.getStickyTotalRows(virtTop, vh || 0, rowCount, autoLayout);
+  stickyTotals.forEach((st, si) => {
+    const node = st.node;
+    const rp = rowProps(core, node, total);
+    const sp = { ...rp, className: cx(rp.className, 'r2-sticky-row r2-sticky-total-row', st.first && 'r2-sticky-total-row-first'), style: { ...rp.style, zIndex: 20 - si } };
+    const common = { core, node, top: st.top - offset, height: st.height, rp: sp, handlers };
+    const key = `stickyTotal:${node.id}`;
+    if (core.displayedLeft.length) leftRows.push(<Row key={key} cols={core.displayedLeft} sectionCols={core.displayedLeft} {...common} />);
+    centerRows.push(<Row key={key} cols={center} sectionCols={core.displayedCenter} {...common} />);
+    if (core.displayedRight.length) rightRows.push(<Row key={key} cols={core.displayedRight} sectionCols={core.displayedRight} {...common} />);
+  });
   const edNode = core.editing?.node;
   if (edNode && edNode.rowIndex != null && !edNode.rowPinned) {
     const ei = edNode.rowIndex - core.pageFirstRow;

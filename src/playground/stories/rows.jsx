@@ -167,22 +167,24 @@ function CellSpan({ p }) {
   );
 }
 
-function MasterDetail({ ctx }) {
+function MasterDetail({ p, ctx }) {
   const rows = useMemo(() => SAMPLE.slice(0, 20).map(r => ({ ...r, steps: makeRows(4, r.id * 10).map((s, k) => ({ step: k + 1, name: `${r.taskName}-단계${k + 1}`, rowCnt: s.rowCnt, status: s.status })) })), []);
   return (
     <Grid
       rowData={rows}
       columnDefs={[{ field: 'taskName', headerName: '작업명', cellRenderer: 'r2GroupCellRenderer', width: 200 }, ...BASE_COLUMNS.slice(2)]}
+      key={p.keep ? 'keep' : 'nokeep'}
       masterDetail
+      keepDetailRows={p.keep}
       detailRowHeight={200}
       onRowGroupOpened={e => ctx.log(`rowGroupOpened: ${e.data.taskName} expanded=${e.expanded}`)}
       detailCellRendererParams={{
         detailGridOptions: {
           columnDefs: [
             { field: 'step', headerName: '단계', width: 70 },
-            { field: 'name', headerName: '이름', flex: 1 },
-            { field: 'rowCnt', headerName: '행 수', type: 'numericColumn' },
-            { field: 'status', headerName: '상태' },
+            { field: 'name', headerName: '이름', flex: 1, minWidth: 120 },
+            { field: 'rowCnt', headerName: '행 수', type: 'numericColumn', width: 100 },
+            { field: 'status', headerName: '상태', width: 100 },
           ],
         },
         getDetailRowData: x => x.successCallback(x.data.steps),
@@ -558,11 +560,21 @@ rowDragManaged`,
     category: CAT,
     name: '마스터 / 디테일',
     desc: 'masterDetail + detailCellRendererParams(detailGridOptions, getDetailRowData) 로 행을 펼치면 하위 그리드가 열립니다.',
-    keywords: ['masterDetail', 'detailCellRendererParams', 'detailGridOptions', 'getDetailRowData', 'detailRowHeight', 'detailRowAutoHeight', 'isRowMaster', 'r2GroupCellRenderer', 'detailCellRenderer', 'onRowGroupOpened'],
-    controls: [],
-    render: (p, ctx) => <MasterDetail ctx={ctx} />,
-    code: () => `<R2Grid
-  masterDetail
+    keywords: ['masterDetail', 'detailCellRendererParams', 'detailGridOptions', 'getDetailRowData', 'detailRowHeight', 'detailRowAutoHeight', 'isRowMaster', 'r2GroupCellRenderer', 'detailCellRenderer', 'onRowGroupOpened', 'keepDetailRows', 'keepDetailRowsCount', 'refreshStrategy'],
+    controls: [
+      {
+        key: 'keep',
+        type: 'boolean',
+        default: true,
+        label: 'keepDetailRows',
+        desc: '접었다 다시 펼치거나 스크롤로 화면 밖에 나갔다 돌아올 때 상세 그리드를 처음부터 다시 만들지 않고 정렬·필터·스크롤·편집한 행을 그대로 보여 줍니다. 보관 개수는 keepDetailRowsCount(기본 10).',
+        on: '상세 그리드 상태 유지 — 상세에서 정렬한 뒤 접었다 펼쳐 보세요',
+        off: '펼칠 때마다 getDetailRowData 를 다시 불러 새로 그림',
+      },
+    ],
+    render: (p, ctx) => <MasterDetail p={p} ctx={ctx} />,
+    code: p => `<R2Grid
+  masterDetail${p.keep ? '\n  keepDetailRows' : ''}
   detailRowHeight={200}
   columnDefs={[{ field: 'taskName', cellRenderer: 'r2GroupCellRenderer' }, ...]}
   detailCellRendererParams={{

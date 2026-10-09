@@ -2097,3 +2097,15 @@ body.r2-dnd-dragging * {
   height: 16px;
   animation: r2-spin 1s linear infinite;
 }
+
+/* 위에 붙은 그룹 행 */
+.r2-row.r2-sticky-row {
+  background-color: var(--r2-background-color);
+}
+.r2-row.r2-sticky-row-last {
+  box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.18);
+}
+
+.r2-row.r2-sticky-total-row-first {
+  box-shadow: 0 -2px 4px -2px rgba(0, 0, 0, 0.18);
+}

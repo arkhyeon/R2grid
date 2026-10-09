@@ -82,6 +82,91 @@ export const groupingMethods = {
     return this.gos.groupDisplayType === 'groupRows' && this.groupMode === 'group';
   },
 
+  // 위에 붙일 그룹 행 계산: viewTop(페이지 내 픽셀) 기준 [{ node, top, height, last }]
+  getStickyGroupRows(viewTop, rowCount, autoLayout) {
+    if (this.gos.suppressGroupRowsSticky || autoLayout || !rowCount) return [];
+    if (!(this.isGroupMode() || this.isServerGrouping?.())) return [];
+    const first = this.pageFirstRow;
+    const pi = this.indexAtPixel(viewTop);
+    const atTop = this.getPageNode?.(pi) ?? this.displayedNodes[first + pi];
+    if (!atTop) return [];
+    // 보고 있는 맨 윗행의 상위 그룹 (화면 위로 지나간 것만), 바깥부터
+    const isUnder = (n, a) => {
+      if (n.footer && n.sibling === a) return true;
+      for (let p = n.parent; p; p = p.parent) if (p === a) return true;
+      return false;
+    };
+    const chain = [];
+    for (let p = atTop.group && !atTop.footer && atTop.expanded ? atTop : atTop.parent; p; p = p.parent) {
+      if (!p.displayed || p.rowIndex == null || !p.expanded || p.rowPinned) continue;
+      chain.unshift(p);
+    }
+    const out = [];
+    let stack = 0;
+    for (const a of chain) {
+      const ai = a.rowIndex - first;
+      if (ai < 0 || ai >= rowCount) continue;
+      const top0 = this.rowTopAt(ai);
+      if (top0 >= viewTop + stack) break; // 이미 제자리에서 보이는 그룹
+      const h = this.rowHeightAt(ai);
+      let top = viewTop + stack;
+      // 그룹이 끝나는 행(다음 형제)을 찾아 밀어 올림 — 붙은 줄 높이 근처만 보면 충분
+      const scanTo = Math.min(rowCount - 1, this.indexAtPixel(viewTop + stack + h) + 1);
+      for (let j = Math.max(ai + 1, pi); j <= scanTo; j++) {
+        const n = this.getPageNode?.(j) ?? this.displayedNodes[first + j];
+        if (n && !isUnder(n, a)) {
+          const endTop = this.rowTopAt(j);
+          if (top + h > endTop) top = endTop - h;
+          break;
+        }
+      }
+      out.push({ node: a, top, height: h });
+      stack += h;
+    }
+    if (out.length) out[out.length - 1].last = true;
+    return out;
+  },
+
+  // 아래에 붙일 합계 행: 그룹 합계(footer)·총합계가 화면 아래로 벗어나 있으면 본문 맨 아래에 붙임 (suppressStickyTotalRow: true | 'grand' | 'group')
+  getStickyTotalRows(viewTop, viewHeight, rowCount, autoLayout) {
+    const sup = this.gos.suppressStickyTotalRow;
+    if (sup === true || autoLayout || !rowCount || !this.isGroupMode()) return [];
+    const first = this.pageFirstRow;
+    const viewBottom = viewTop + viewHeight;
+    const bi = this.indexAtPixel(Math.max(0, viewBottom - 1));
+    const atBottom = this.getPageNode(bi);
+    if (!atBottom) return [];
+    const footers = [];
+    // 그룹 합계: 화면 맨 아래 행의 상위 그룹들 (안쪽부터)
+    if (sup !== 'group') {
+      for (let p = atBottom.footer ? atBottom.sibling?.parent : atBottom.parent; p; p = p.parent) {
+        if (!p.__footerShown) continue;
+        const f = this.getFooterNode(p);
+        if (f.rowIndex == null || !f.displayed) continue;
+        footers.push(f);
+      }
+    }
+    // 총합계 (아래 위치일 때)
+    if (sup !== 'grand') {
+      const last = this.displayedNodes[this.displayedNodes.length - 1];
+      if (last?.footer && last.level === -1) footers.push(last);
+    }
+    const out = [];
+    let stack = 0;
+    // 맨 아래 = 총합계, 그 위로 바깥 그룹 → 안쪽 그룹 합계 순
+    for (const f of footers.reverse()) {
+      const fi = f.rowIndex - first;
+      if (fi < 0 || fi >= rowCount) continue;
+      const h = this.rowHeightAt(fi);
+      const top0 = this.rowTopAt(fi);
+      if (top0 + h <= viewBottom - stack) continue; // 제자리에서 보임
+      out.push({ node: f, top: viewBottom - stack - h, height: h });
+      stack += h;
+    }
+    if (out.length) out[out.length - 1].first = true;
+    return out;
+  },
+
   isFirstDisplayedDescendant(node, anc) {
     return anc.__firstDisplayed === node;
   },
