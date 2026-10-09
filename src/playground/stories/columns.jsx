@@ -117,8 +117,17 @@ function ColumnState({ ctx }) {
   );
 }
 
-function RowNumbers({ p }) {
-  return <Grid key={`${p.width}`} rowData={SAMPLE} columnDefs={BASE_COLUMNS} rowNumbers={p.rowNumbers ? { width: p.width } : false} cellSelection={p.cellSelection} />;
+function RowNumbers({ p, ctx }) {
+  return (
+    <Grid
+      key={`${p.width}:${p.resizer}`}
+      rowData={SAMPLE}
+      columnDefs={BASE_COLUMNS}
+      rowNumbers={p.rowNumbers ? { width: p.width, enableRowResizer: p.resizer } : false}
+      cellSelection={p.cellSelection}
+      onRowResizeEnded={e => ctx.log(`rowResizeEnded: ${e.node.rowIndex + 1}행 → ${e.rowHeight}px`)}
+    />
+  );
 }
 
 function SelectionColumn({ p, ctx }) {
@@ -341,7 +350,7 @@ onColumnVisible={saveVisibleColumnsToCookie}`,
     category: CAT,
     name: '행 번호 컬럼',
     desc: 'rowNumbers 로 맨 앞에 행 번호 컬럼(colId r2-Grid-RowNumbersColumn)을 추가합니다. 정렬·필터 후의 표시 순서대로 1부터 매기고, 셀 범위 선택(cellSelection)이 켜져 있으면 번호를 눌러 그 행 전체를 범위로 잡습니다.',
-    keywords: ['rowNumbers', 'r2-Grid-RowNumbersColumn', '행 번호'],
+    keywords: ['rowNumbers', 'r2-Grid-RowNumbersColumn', '행 번호', 'enableRowResizer', 'onRowResizeStarted', 'onRowResizeEnded', 'suppressCellSelectionIntegration'],
     controls: [
       {
         key: 'rowNumbers',
@@ -362,10 +371,19 @@ onColumnVisible={saveVisibleColumnsToCookie}`,
         on: '번호 클릭 → 그 행 전체 범위 선택',
         off: '번호는 표시만',
       },
+      {
+        key: 'resizer',
+        type: 'boolean',
+        default: true,
+        label: 'rowNumbers.enableRowResizer',
+        desc: '행 번호 칸의 아래 가장자리를 끌어 그 행의 높이를 바꿉니다. 끝나면 rowResizeEnded({ node, rowHeight }) — 바꾼 높이를 저장하려면 여기서 받으세요.',
+        on: '번호 칸 아래 가장자리 드래그로 행 높이 조절',
+        off: '높이 고정',
+      },
     ],
-    render: p => <RowNumbers p={p} />,
+    render: (p, ctx) => <RowNumbers p={p} ctx={ctx} />,
     code: p => `<R2Grid
-  rowNumbers={${p.rowNumbers ? `{ width: ${p.width} }` : 'false'}}${p.cellSelection ? '\n  cellSelection' : ''}
+  rowNumbers={${p.rowNumbers ? `{ width: ${p.width}${p.resizer ? ', enableRowResizer: true' : ''} }` : 'false'}}${p.cellSelection ? '\n  cellSelection' : ''}
   ...
 />`,
     usage: { file: 'page/work/workGroup/WorkGroupList.jsx', code: `<Table\n  id="WorkGroupListTable"\n  ref={gridRef}\n  rowNumbers\n  rowData={workList}\n  columnDefs={columnDefs}\n  ...` },

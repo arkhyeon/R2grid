@@ -119,6 +119,7 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
   const cd = col.colDef;
   const ced = core.getEditingCell(node, col);
   const isEditing = !!ced;
+  const editErrors = isEditing ? core.editErrorsFor(ced) : null;
   const value = core.getCellValue(node, col);
   const formatted = col.autoType && col.autoType !== 'group' ? null : core.formatValue(node, col, value);
   const base = {
@@ -155,11 +156,15 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
       </SafeBoundary>
     );
   } else if (node.stub) {
-    const lcr = g.loadingCellRenderer;
+    // 불러오는 중인 칸: loadingCellRendererSelector(컬럼 → 그리드) 가 고른 것 → loadingCellRenderer → 기본 스켈레톤
+    const selFn = cd.loadingCellRendererSelector ?? g.loadingCellRendererSelector;
+    const sel = typeof selFn === 'function' ? selFn(base) : null;
+    const lcr = sel?.component ?? cd.loadingCellRenderer ?? g.loadingCellRenderer;
+    const lcp = sel?.params ?? cd.loadingCellRendererParams ?? g.loadingCellRendererParams;
     if (col.autoType) content = null;
     else if (lcr) {
       const impl = typeof lcr === 'string' ? g.components?.[lcr] : lcr;
-      content = impl ? stableElement(core, 'loadingCell', impl, { ...base, ...(g.loadingCellRendererParams || {}) }) : null;
+      content = impl ? stableElement(core, 'loadingCell', impl, { ...base, ...(lcp || {}) }) : null;
     } else content = <SkeletonCell />;
   } else if (col.autoType === 'selection') {
     const rs = core.rsOpts;
@@ -182,7 +187,16 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
       </div>
     ) : null;
   } else if (col.autoType === 'rowNumbers') {
-    content = node.rowPinned ? null : node.rowIndex + 1;
+    content = node.rowPinned ? null : cd.valueFormatter ? core.formatValue(node, col, value) : value;
+    // rowNumbers.enableRowResizer: 아래 가장자리를 끌어 행 높이 조절
+    if (!node.rowPinned && cd.enableRowResizer) {
+      content = (
+        <>
+          {content}
+          <div className="r2-row-number-row-resizer" onPointerDown={e => handlers.rowResizeDown(node, e)} />
+        </>
+      );
+    }
   } else {
     let comp = cd.cellRenderer;
     let rendererParams = cd.cellRendererParams;
@@ -350,6 +364,7 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
         cd.autoHeight ? 'r2-cell-auto-height' : 'r2-cell-normal-height',
         'r2-cell-value',
         core.batch && core.hasBatchValue(node, col) && 'r2-cell-batch-edit',
+        editErrors && 'r2-cell-editor-invalid',
         g.columnHoverHighlight && core.hoveredColId === col.colId && 'r2-column-hover',
         focused && 'r2-cell-focus',
         range && 'r2-cell-range-selected',
@@ -376,6 +391,7 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
       col-id={col.colId}
       aria-colindex={core.displayedIndex.get(col.colId) + 1}
       aria-colspan={colSpan > 1 ? colSpan : undefined}
+      aria-invalid={editErrors ? true : undefined}
       tabIndex={-1}
       style={{
         ...core.colPos(col.left),
@@ -393,6 +409,13 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
       onContextMenu={e => handlers.cellContextMenu(node, col, e)}
     >
       {content}
+      {editErrors && ced === core.editing?.primary && (
+        <div className={cx('r2-cell-editor-error', !node.rowPinned && node.rowIndex >= core.pageLastRow - 2 && node.rowIndex > core.pageFirstRow + 1 && 'r2-cell-editor-error-above')} role="alert">
+          {editErrors.map((m, i) => (
+            <div key={i}>{m}</div>
+          ))}
+        </div>
+      )}
       {showHandle && (
         <div
           className={fh.mode === 'fill' ? 'r2-fill-handle' : 'r2-range-handle'}
@@ -1073,11 +1096,44 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       focusSink(e.target);
       startRowDrag(node, col, e);
     },
+    // 행 번호 칸 아래 가장자리 드래그 → 행 높이 (rowResizeStarted / rowResizeEnded)
+    rowResizeDown(node, e) {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      e.preventDefault();
+      const startY = e.clientY;
+      const startH = node.rowHeight || core.getDefaultRowHeight();
+      const min = 16;
+      let h = startH;
+      core.dispatch('rowResizeStarted', { node, event: e.nativeEvent, rowHeight: startH });
+      const move = ev => {
+        const nh = Math.max(min, Math.round(startH + ev.clientY - startY));
+        if (nh === h) return;
+        h = nh;
+        node.setRowHeight(h);
+      };
+      const up = ev => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        document.body.classList.remove('r2-row-resizing');
+        core.__skipCellClick = true; // 드래그 끝의 click 은 무시 (행 범위 선택 안 함)
+        setTimeout(() => (core.__skipCellClick = false), 0);
+        core.dispatch('rowResizeEnded', { node, event: ev, rowHeight: h });
+      };
+      document.body.classList.add('r2-row-resizing');
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+    },
     cellPointerDown(node, col, e) {
       if (e.button !== 0) return;
       const ced = core.getEditingCell(node, col);
       if (ced) return;
-      if (core.editing) core.stopEditing(false);
+      // 검사에 걸린 값이라 편집을 못 끝내면(invalidEditValueMode:'block') 다른 칸으로 가지 않음
+      if (core.editing && !core.stopEditing(false)) {
+        e.preventDefault();
+        core.focusEditorInput();
+        return;
+      }
       core.dispatch('cellMouseDown', { ...core.cellEventParams(node, col, e) });
       if (col.autoType === 'rowNumbers' || node.stub) return;
       focusSink(e.target);
@@ -1098,8 +1154,10 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       }
     },
     cellClick(node, col, e) {
-      if (node.stub) return;
-      if (col.autoType === 'rowNumbers' && !node.rowPinned) core.selectRowAsRange(node.rowIndex, e.shiftKey);
+      if (node.stub || core.__skipCellClick) return;
+      // 편집을 못 끝낸 채(invalidEditValueMode:'block') 다른 칸을 누른 경우 — 편집 칸에 그대로
+      if (core.editing && !core.getEditingCell(node, col)) return core.focusEditorInput();
+      if (col.autoType === 'rowNumbers' && !node.rowPinned && !col.colDef.suppressCellSelectionIntegration) core.selectRowAsRange(node.rowIndex, e.shiftKey);
       else if (!core.isCellFocused(node, col.colId)) {
         if (!(e.shiftKey && core.ranges.length && !node.rowPinned)) core.setFocusedCell(node.rowIndex, col.colId, { rowPinned: node.rowPinned || null });
       }

@@ -1,5 +1,5 @@
 // undoRedoCellEditing: 편집/붙여넣기/삭제/잘라내기를 액션 단위로 기록 → Ctrl+Z / Ctrl+Y
-const RECORD_SOURCES = new Set(['edit', 'paste', 'cellClear', 'clipboardCut', 'rangeSvc', 'fill']);
+const RECORD_SOURCES = new Set(['bulk', 'edit', 'paste', 'cellClear', 'clipboardCut', 'rangeSvc', 'fill']);
 
 export const undoMethods = {
   undoEnabled() {

@@ -71,7 +71,7 @@ export function SideBar({ core }) {
         })}
       </div>
       {def.toolPanels.map(tp => (
-        <ToolPanelWrapper key={tp.id} hidden={open !== tp.id} tp={tp}>
+        <ToolPanelWrapper key={tp.id} hidden={open !== tp.id} tp={tp} core={core}>
           {core.mountedPanels.has(tp.id) && <ToolPanelContent core={core} tp={tp} />}
         </ToolPanelWrapper>
       ))}
@@ -81,18 +81,49 @@ export function SideBar({ core }) {
 
 // r2-hidden 은 classList 로만 토글. className prop 으로 바꾸면 리렌더 시
 // 외부에서 붙인 클래스(CLM: r2-visible / r2-animation-slideOut)가 지워진다.
-function ToolPanelWrapper({ hidden, tp, children }) {
+function ToolPanelWrapper({ hidden, tp, core, children }) {
   const ref = useRef(null);
+  const [width, setWidth] = useState(null);
   useLayoutEffect(() => {
     ref.current?.classList.toggle('r2-hidden', hidden);
   }, [hidden]);
+  // 패널 안쪽 가장자리를 끌어 폭 조절 → toolPanelSizeChanged({ started, ended, width })
+  const onResizeDown = e => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const el = ref.current;
+    const startX = e.clientX;
+    const startW = el.offsetWidth;
+    const sign = core.sideBarPosition === 'left' ? 1 : -1;
+    const lo = tp.minWidth ?? 100;
+    // 그리드 본문이 최소 150px 는 남게
+    const rootW = el.closest('.r2-root')?.clientWidth ?? Infinity;
+    const hi = tp.maxWidth ?? Math.max(lo, rootW - 150);
+    let w = startW;
+    core.dispatch('toolPanelSizeChanged', { started: true, ended: false, width: startW });
+    const move = ev => {
+      w = Math.max(lo, Math.min(hi, Math.round(startW + sign * (ev.clientX - startX))));
+      setWidth(w);
+      core.dispatch('toolPanelSizeChanged', { started: false, ended: false, width: w });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      document.body.classList.remove('r2-col-resizing');
+      core.dispatch('toolPanelSizeChanged', { started: false, ended: true, width: w });
+    };
+    document.body.classList.add('r2-col-resizing');
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
   return (
     <div
       ref={ref}
       className="r2-tool-panel-wrapper r2-hidden"
       role="tabpanel"
-      style={{ width: tp.width, minWidth: tp.minWidth, maxWidth: tp.maxWidth }}
+      style={{ width: width ?? tp.width, minWidth: tp.minWidth, maxWidth: tp.maxWidth }}
     >
+      <div className={cx('r2-tool-panel-horizontal-resize', `r2-tool-panel-resize-${core.sideBarPosition === 'left' ? 'right' : 'left'}`)} onPointerDown={onResizeDown} />
       {children}
     </div>
   );

@@ -2109,3 +2109,88 @@ body.r2-dnd-dragging * {
 .r2-row.r2-sticky-total-row-first {
   box-shadow: 0 -2px 4px -2px rgba(0, 0, 0, 0.18);
 }
+
+/* 편집 값 검사에 걸린 칸 */
+.r2-cell.r2-cell-editor-invalid {
+  border-color: var(--r2-invalid-color) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--r2-invalid-color) 25%, transparent) !important;
+}
+.r2-cell-editor-invalid .r2-input-field-input,
+.r2-cell-editor-invalid .r2-input-field-input:focus {
+  color: var(--r2-invalid-color);
+  border-color: var(--r2-invalid-color) !important;
+  box-shadow: none !important;
+}
+.r2-cell-editor-error {
+  position: absolute;
+  left: -1px;
+  top: calc(100% + 4px);
+  z-index: 5;
+  min-width: 100%;
+  max-width: 320px;
+  width: max-content;
+  padding: 4px 8px;
+  border-radius: var(--r2-border-radius);
+  background-color: var(--r2-invalid-color);
+  color: #fff;
+  font-size: calc(var(--r2-font-size) - 1px);
+  line-height: 1.4;
+  white-space: normal;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+.r2-cell-editor-error.r2-cell-editor-error-above {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+/* 행 번호 칸 아래 가장자리 — 행 높이 조절 */
+.r2-row-number-row-resizer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 6px;
+  z-index: 2;
+  cursor: ns-resize;
+}
+.r2-row-number-row-resizer:hover {
+  background-color: color-mix(in srgb, var(--r2-accent-color, #2196f3) 40%, transparent);
+}
+body.r2-row-resizing,
+body.r2-row-resizing * {
+  cursor: ns-resize !important;
+  user-select: none !important;
+}
+/* 행 그룹 칩 — 눌러서 정렬 */
+.r2-column-drop-horizontal .r2-column-drop-cell[col-id] {
+  cursor: pointer;
+}
+.r2-column-drop-cell-sort {
+  display: inline-flex;
+  margin-left: 2px;
+  opacity: 0.8;
+}
+/* 그룹 헤더 이름: 가로로 스크롤해도 보이는 쪽으로 따라옴 (위치는 스크립트가 translateX) */
+.r2-header-group-cell-label.r2-sticky-label {
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+/* 도구 패널 폭 조절 */
+.r2-tool-panel-wrapper {
+  position: relative;
+}
+.r2-tool-panel-horizontal-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  z-index: 3;
+  cursor: ew-resize;
+}
+.r2-tool-panel-resize-left {
+  left: -3px;
+}
+.r2-tool-panel-resize-right {
+  right: -3px;
+}

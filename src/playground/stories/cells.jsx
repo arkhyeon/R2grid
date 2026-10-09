@@ -111,6 +111,55 @@ function FullRowEdit({ ctx }) {
   );
 }
 
+function EditValidation({ p, ctx }) {
+  const ref = useRef(null);
+  const [rows] = useState(() => makeRows(20).map(r => ({ ...r, code: `T${String(r.id).padStart(3, '0')}`, qty: (r.id % 50) * 10, errCnt: r.id % 7, due: r.updatedAt })));
+  const defs = useMemo(
+    () => [
+      { field: 'code', headerName: '코드 (3~4자)', width: 130, cellEditorParams: { maxLength: 4, getValidationErrors: ({ value, internalErrors }) => internalErrors || (String(value ?? '').length < 3 ? ['3자 이상 입력하세요'] : null) } },
+      { field: 'qty', headerName: '수량 (0~1,000, 10 단위)', width: 190, cellEditor: 'r2NumberCellEditor', cellEditorParams: { min: 0, max: 1000, step: 10 } },
+      { field: 'errCnt', headerName: '불량 수', width: 110, cellEditor: 'r2NumberCellEditor', cellEditorParams: { min: 0 } },
+      { field: 'due', headerName: '마감일 (2025 이후)', width: 170, cellEditor: 'r2DateStringCellEditor', cellEditorParams: { min: '2025-01-01' } },
+      { field: 'taskName', headerName: '작업명', flex: 1, minWidth: 140 },
+    ],
+    [],
+  );
+  return (
+    <>
+      <div className="pg-toolbar">
+        <button
+          onClick={() => {
+            const r = ref.current.api.validateEdit();
+            ctx.log(`validateEdit: ${r ? JSON.stringify(r.map(x => [x.column?.colId, x.messages])) : 'null (편집 중 아님 또는 오류 없음)'}`);
+          }}
+        >
+          validateEdit()
+        </button>
+        <span className="pg-note">{p.fullRow ? '행을 더블클릭 → 불량 수가 수량보다 크면 행 오류' : '범위를 벗어난 값을 입력해 보세요'}</span>
+      </div>
+      <Grid
+        key={`${p.mode}:${p.fullRow}`}
+        gridRef={ref}
+        rowData={rows}
+        columnDefs={defs}
+        defaultColDef={{ editable: true }}
+        invalidEditValueMode={p.mode}
+        editType={p.fullRow ? 'fullRow' : undefined}
+        getFullRowEditValidationErrors={
+          p.fullRow
+            ? ({ editorsState }) => {
+                const v = id => editorsState.find(e => e.colId === id)?.newValue;
+                return v('errCnt') > v('qty') ? ['불량 수는 수량보다 클 수 없습니다'] : null;
+              }
+            : undefined
+        }
+        onCellValueChanged={e => ctx.log(`cellValueChanged ${e.colDef.field}: ${JSON.stringify(e.oldValue)} → ${JSON.stringify(e.newValue)}`)}
+        onCellEditingStopped={e => !e.valueChanged && e.newValue !== e.oldValue && ctx.log(`되돌림 ${e.colDef.field}: ${JSON.stringify(e.newValue)}`)}
+      />
+    </>
+  );
+}
+
 function RangeClipboard({ p, ctx }) {
   const [rows] = useState(() => makeRows(60));
   return (
@@ -350,6 +399,55 @@ api.redoCellEditing();`,
   height="580px"
 />`,
     },
+  },
+  {
+    id: 'edit-validation',
+    category: CAT,
+    name: '값 검사',
+    desc: '편집한 값을 확정하기 전에 검사합니다. 내장 에디터는 cellEditorParams 의 min·max·step(숫자), min·max(날짜), maxLength(글자) 를 그대로 검사 규칙으로 쓰고, getValidationErrors 로 직접 규칙을 더합니다. 틀린 값은 칸이 빨갛게 표시되고 아래에 이유가 나옵니다.',
+    keywords: ['getValidationErrors', 'invalidEditValueMode', 'getFullRowEditValidationErrors', 'validateEdit', 'cellEditorParams', 'min', 'max', 'step', 'maxLength', 'validationMin', 'validationMax'],
+    controls: [
+      {
+        key: 'mode',
+        type: 'select',
+        options: [
+          { value: 'revert', desc: '틀린 칸만 원래 값으로 되돌리고 편집 끝' },
+          { value: 'block', desc: '고칠 때까지 편집 유지 (Esc 로 취소)' },
+        ],
+        default: 'revert',
+        label: 'invalidEditValueMode',
+        desc: "틀린 값으로 편집을 끝내려 할 때. 'revert'(기본) 틀린 칸만 원래 값으로 되돌리고 편집을 끝냄, 'block' 고칠 때까지 편집을 끝내지 않음 (Enter·Tab·다른 칸 클릭 무시, Esc 로 취소는 가능).",
+      },
+      {
+        key: 'fullRow',
+        type: 'boolean',
+        default: false,
+        label: 'getFullRowEditValidationErrors',
+        desc: 'editType="fullRow" 에서 여러 칸을 같이 보는 행 단위 규칙. editorsState 의 newValue 로 칸끼리 비교합니다. 행 규칙에 걸리면 revert 는 행 전체를 되돌립니다.',
+        on: '행 편집 + 불량 수 ≤ 수량 규칙',
+        off: '셀 편집',
+      },
+    ],
+    render: (p, ctx) => <EditValidation p={p} ctx={ctx} />,
+    code: p => `<R2Grid
+  invalidEditValueMode="${p.mode}"${p.fullRow ? `
+  editType="fullRow"
+  getFullRowEditValidationErrors={({ editorsState }) => {
+    const v = id => editorsState.find(e => e.colId === id)?.newValue;
+    return v('errCnt') > v('qty') ? ['불량 수는 수량보다 클 수 없습니다'] : null;
+  }}` : ''}
+  columnDefs={[
+    { field: 'code', cellEditorParams: {
+        maxLength: 4,
+        getValidationErrors: ({ value, internalErrors }) =>
+          internalErrors || (String(value ?? '').length < 3 ? ['3자 이상 입력하세요'] : null),
+    } },
+    { field: 'qty', cellEditor: 'r2NumberCellEditor', cellEditorParams: { min: 0, max: 1000, step: 10 } },
+    { field: 'due', cellEditor: 'r2DateStringCellEditor', cellEditorParams: { min: '2025-01-01' } },
+  ]}
+/>
+
+api.validateEdit(); // 편집 중인 칸의 오류 [{ rowIndex, column, messages }] 또는 null`,
   },
   {
     id: 'range-clipboard',

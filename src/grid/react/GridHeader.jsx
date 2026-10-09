@@ -60,7 +60,7 @@ function HeaderGroupCell({ core, seg, level, height }) {
         </div>
       )}
       {seg.group && !def.headerGroupComponent && (
-        <div className="r2-header-group-cell-label" role="presentation">
+        <div className={cx('r2-header-group-cell-label', !def.suppressStickyLabel && 'r2-sticky-label')} role="presentation">
           <span className="r2-header-group-text" role="presentation">
             {def.headerName ?? ''}
           </span>
@@ -523,6 +523,26 @@ function useAutoHeaderHeight(core, ref) {
   });
 }
 
+// 그룹 헤더 이름이 가로 스크롤로 밀려나도 그룹 칸 안에서 보이는 쪽으로 따라옴 (colGroupDef.suppressStickyLabel 로 끔)
+function useStickyGroupLabels(core, vpRef) {
+  useLayoutEffect(() => {
+    const vp = vpRef.current;
+    if (!vp || core.isRtl()) return undefined;
+    const update = () => {
+      const sl = vp.scrollLeft;
+      for (const label of vp.querySelectorAll('.r2-sticky-label')) {
+        const cell = label.parentElement;
+        const max = cell.clientWidth - label.offsetLeft * 2 - label.offsetWidth;
+        const shift = Math.max(0, Math.min(sl - cell.offsetLeft, max));
+        label.style.transform = shift > 0 ? `translateX(${shift}px)` : '';
+      }
+    };
+    update();
+    vp.addEventListener('scroll', update, { passive: true });
+    return () => vp.removeEventListener('scroll', update);
+  });
+}
+
 export function GridHeader({ core, headerHeight, groupHeaderHeight, scrollbarWidth, registerHeaderViewport }) {
   const autoRef = useRef(null);
   useAutoHeaderHeight(core, autoRef);
@@ -530,13 +550,23 @@ export function GridHeader({ core, headerHeight, groupHeaderHeight, scrollbarWid
   const floatingHeight = core.getFloatingFiltersHeight(headerHeight);
   const total = depth * groupHeaderHeight + headerHeight + floatingHeight;
   const [drag, ghost] = useColumnDrag(core);
+  const vpRef = useRef(null);
+  useStickyGroupLabels(core, vpRef);
   if (core.gos.headerHeight === 0) return null;
   return (
     <div ref={autoRef} className="r2-header r2-pivot-off r2-header-allow-overflow" role="presentation" style={{ height: total, minHeight: total }}>
       <div className={cx('r2-pinned-left-header', !core.leftWidth && 'r2-hidden')} role="rowgroup" style={{ width: core.leftWidth, minWidth: core.leftWidth, maxWidth: core.leftWidth }}>
         <HeaderRows core={core} cols={core.displayedLeft} width={core.leftWidth} headerHeight={headerHeight} groupHeaderHeight={groupHeaderHeight} floatingHeight={floatingHeight} drag={drag} />
       </div>
-      <div className="r2-header-viewport" role="presentation" ref={registerHeaderViewport}>
+      <div
+        className="r2-header-viewport"
+        role="presentation"
+        ref={el => {
+          vpRef.current = el;
+          if (typeof registerHeaderViewport === 'function') registerHeaderViewport(el);
+          else if (registerHeaderViewport) registerHeaderViewport.current = el;
+        }}
+      >
         <div className="r2-header-container" role="rowgroup" style={{ width: core.centerWidth }}>
           <HeaderRows core={core} cols={core.displayedCenter} width={core.centerWidth} headerHeight={headerHeight} groupHeaderHeight={groupHeaderHeight} floatingHeight={floatingHeight} drag={drag} />
         </div>

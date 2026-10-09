@@ -1190,7 +1190,11 @@ export class GridCore {
 
   getCellValue(node, column) {
     if (!node || !column) return undefined;
-    if (column.autoType === 'rowNumbers') return node.rowIndex != null && !node.rowPinned ? node.rowIndex + 1 : null;
+    if (column.autoType === 'rowNumbers') {
+      if (node.rowIndex == null || node.rowPinned) return null;
+      const vg = column.colDef.valueGetter;
+      return typeof vg === 'function' ? vg(this.makeValueParams(node, column)) : node.rowIndex + 1;
+    }
     if (column.autoType === 'selection') return undefined;
     if (node.stub) return undefined;
     if (column.autoType === 'group') return this.getAutoGroupValue(node, column);
@@ -1364,7 +1368,9 @@ export class GridCore {
     this.editing = null;
     this.groupsDirty = true;
     // getRowId 없는 전체 교체면 맨 위로 (suppressScrollOnNewData 로 끔)
-    const isDelta = typeof getRowId === 'function' && this.rootNodes.length > 0;
+    // resetRowDataOnUpdate: getRowId 가 있어도 새 rowData 는 통째로 새 행 (선택·펼침 등 행 상태 초기화)
+    const reset = !!this.gos.resetRowDataOnUpdate;
+    const isDelta = typeof getRowId === 'function' && this.rootNodes.length > 0 && !reset;
     if (!initial && !isDelta && !this.gos.suppressScrollOnNewData && this.viewport) {
       this.viewport.setScrollTop(0);
     }
@@ -1377,7 +1383,7 @@ export class GridCore {
       this.nodeById = new Map();
     } else {
       this.rowDataSet = true;
-      if (typeof getRowId === 'function' && this.rootNodes.length) {
+      if (isDelta) {
         const oldById = this.nodeById;
         const newById = new Map();
         freshNodes = [];
@@ -1667,7 +1673,7 @@ export class GridCore {
   }
 
   applyFilters() {
-    const preds = [];
+    let preds = [];
     // 고급 필터가 켜지면 컬럼 필터 대신 고급 필터 모델만 적용
     const advanced = this.isAdvancedFilterEnabled();
     if (advanced && this.advancedFilterModel) {
@@ -1697,6 +1703,12 @@ export class GridCore {
       const pass = this.gos.doesExternalFilterPass;
       if (typeof pass === 'function') preds.push(node => pass(node));
     }
+    // alwaysPassFilter: true 인 행은 어떤 필터에도 남음
+    const always = this.gos.alwaysPassFilter;
+    if (typeof always === 'function' && preds.length) {
+      const all = preds.slice();
+      preds = [node => !!always(node) || all.every(p => p(node))];
+    }
     this.filterPreds = preds;
     if (!this.groupMode) {
       this.filteredNodes = preds.length ? this.rootNodes.filter(n => preds.every(p => p(n))) : this.rootNodes;
@@ -1720,8 +1732,10 @@ export class GridCore {
     return (a, b) => {
       for (const c of sortCols) {
         const desc = c.sort === 'desc';
-        const va = this.getCellValue(a, c);
-        const vb = this.getCellValue(b, c);
+        // 행 그룹 컬럼 정렬: 그 컬럼으로 묶인 그룹 행끼리는 그룹 값(key) 으로
+        const grp = a.group && b.group && a.rowGroupColumn === c && b.rowGroupColumn === c;
+        const va = grp ? (a.groupValue ?? a.key) : this.getCellValue(a, c);
+        const vb = grp ? (b.groupValue ?? b.key) : this.getCellValue(b, c);
         const cmp = c.colDef.comparator;
         const r = cmp ? cmp(va, vb, a, b, desc) : defaultComparator(va, vb, accented);
         if (r !== 0) return desc ? -r : r;
@@ -2736,8 +2750,188 @@ export class GridCore {
     ed.setValue = v => {
       ed.value = v;
       ed.valueChanged = true;
+      this.revalidateEditing(ed);
     };
     return ed;
+  }
+
+  // ── 편집 값 검증 ─────────────────────────────────────────
+  // 내장 에디터 규칙(숫자 min·max·step, 날짜 min·max, 글자 수 maxLength)
+  //  → 사용자 에디터의 getValidationErrors() → cellEditorParams.getValidationErrors 가 최종 결정
+  cellEditorErrors(ed) {
+    const inst = ed.ref.current;
+    const p = ed.editor.params || {};
+    const comp = ed.editor.comp;
+    let value = ed.value;
+    if (!ed.valueChanged && typeof inst?.getValue === 'function') value = inst.getValue();
+    const msg = (key, x) => String(localeText(this, key)).replace('${value}', x);
+    const errs = [];
+    if (comp === 'r2TextCellEditor' || comp === 'r2LargeTextCellEditor') {
+      const max = p.maxLength ?? (comp === 'r2LargeTextCellEditor' ? 200 : null);
+      if (max != null && typeof value === 'string' && value.length > max) errs.push(msg('validationMaxLength', max));
+    } else if (comp === 'r2NumberCellEditor') {
+      if (typeof value === 'number') {
+        if (p.min != null && value < p.min) errs.push(msg('validationMin', p.min));
+        if (p.max != null && value > p.max) errs.push(msg('validationMax', p.max));
+        if (p.step > 0) {
+          const base = p.min ?? (typeof ed.startValue === 'number' ? ed.startValue : 0);
+          const k = (value - base) / p.step;
+          if (Math.abs(k - Math.round(k)) > 1e-9) errs.push(msg('validationStep', p.step));
+        }
+      }
+    } else if (comp === 'r2DateCellEditor' || comp === 'r2DateStringCellEditor') {
+      const ymd = v => {
+        if (v == null || v === '') return null;
+        if (v instanceof Date) {
+          const z = n => (n < 10 ? `0${n}` : n);
+          return `${v.getFullYear()}-${z(v.getMonth() + 1)}-${z(v.getDate())}`;
+        }
+        return String(v).slice(0, 10);
+      };
+      const d = ymd(value);
+      if (d) {
+        const lo = ymd(p.min);
+        const hi = ymd(p.max);
+        if (lo && d < lo) errs.push(msg('validationMinDate', lo));
+        if (hi && d > hi) errs.push(msg('validationMaxDate', hi));
+      }
+    }
+    let internal = errs.length ? errs : null;
+    const own = typeof inst?.getValidationErrors === 'function' ? inst.getValidationErrors : ed.hooks?.getValidationErrors;
+    if (typeof own === 'function') internal = own() ?? null;
+    if (typeof p.getValidationErrors === 'function') {
+      const { node, column } = ed;
+      const cellEditorParams = { ...p, value, node, column, colDef: column.colDef, data: node.data, rowIndex: node.rowIndex, api: this.api, context: this.gos.context };
+      internal = p.getValidationErrors({ value, internalErrors: internal, cellEditorParams }) ?? null;
+    }
+    return internal && internal.length ? internal : null;
+  }
+
+  // 행 전체 편집(editType:'fullRow') 검증: getFullRowEditValidationErrors({ editorsState })
+  rowEditErrors(editing = this.editing) {
+    const fn = this.gos.getFullRowEditValidationErrors;
+    if (!editing?.fullRow || typeof fn !== 'function') return null;
+    const editorsState = [...editing.cells.values()].map(c => ({
+      rowIndex: c.node.rowIndex,
+      rowPinned: c.node.rowPinned || null,
+      colId: c.colId,
+      column: c.column,
+      oldValue: c.startValue,
+      newValue: c.valueChanged ? c.value : (c.ref.current?.getValue?.() ?? c.value),
+      state: 'editing',
+    }));
+    const r = fn({ editorsState, api: this.api, context: this.gos.context });
+    return r && r.length ? r : null;
+  }
+
+  // 값이 바뀔 때마다 다시 검사 — 결과가 달라졌을 때만 다시 그림
+  revalidateEditing(ed) {
+    const editing = this.editing;
+    if (!ed || !editing || !editing.cells.has(ed.colId) || editing.cells.get(ed.colId) !== ed) return;
+    const key = x => (x ? x.join('\u0001') : '');
+    const cellErrs = this.cellEditorErrors(ed);
+    const rowErrs = this.rowEditErrors(editing);
+    const changed = key(cellErrs) !== key(ed.errors) || key(rowErrs) !== key(editing.rowErrors);
+    ed.errors = cellErrs;
+    editing.rowErrors = rowErrs;
+    if (changed) this.notify();
+  }
+
+  // 지금 편집 중인 값 검사 결과 (api.validateEdit)
+  validateEdit() {
+    const editing = this.editing;
+    if (!editing) return null;
+    const out = [];
+    for (const c of editing.cells.values()) {
+      const m = this.cellEditorErrors(c);
+      c.errors = m;
+      if (m) out.push({ rowIndex: c.node.rowIndex, rowPinned: c.node.rowPinned || null, column: c.column, messages: m });
+    }
+    const rowErrs = this.rowEditErrors(editing);
+    editing.rowErrors = rowErrs;
+    if (rowErrs && !out.length) out.push({ rowIndex: editing.node.rowIndex, rowPinned: editing.node.rowPinned || null, column: editing.column, messages: rowErrs });
+    return out.length ? out : null;
+  }
+
+  // ── 범위 일괄 입력 (bulk edit) ─────────────────────────────
+  // 셀 범위를 고른 채 편집하다 Ctrl+Enter: 지금 입력한 값을 범위 안 편집 가능한 모든 칸에 넣음 (되돌리기 한 번)
+  //  일괄 편집(batch) 중이면 보류 값으로만 쌓음. bulkEditingStarted / bulkEditingStopped({ changes })
+  applyBulkEdit() {
+    const ed = this.editing;
+    const ranges = this.getCellRanges();
+    if (!ed || !ranges.length) return false;
+    if (this.validateEdit()) {
+      if (this.gos.invalidEditValueMode === 'block') {
+        this.notify();
+        return true;
+      }
+      this.stopEditing(true);
+      return true;
+    }
+    const src = ed.primary;
+    const inst = src.ref.current;
+    const raw = !src.valueChanged && typeof inst?.getValue === 'function' ? inst.getValue() : src.value;
+    this.editing = null;
+    if (!this.batch) this.dispatch('bulkEditingStarted', {});
+    const changes = [];
+    this.beginUndoBatch();
+    for (const r of ranges) {
+      const r0 = Math.min(r.startRow.rowIndex, r.endRow.rowIndex);
+      const r1 = Math.max(r.startRow.rowIndex, r.endRow.rowIndex);
+      for (let i = r0; i <= r1; i++) {
+        const node = this.displayedNodes[i];
+        if (!node || node.stub) continue;
+        for (const column of r.columns) {
+          if (!this.isCellEditable(column, node)) continue;
+          const oldValue = this.getCellValue(node, column);
+          const newValue = this.parseBulkValue(node, column, raw, oldValue);
+          if (newValue === oldValue) continue;
+          if (this.batch) this.stageBatchValue(node, column, newValue, oldValue);
+          else if (this.gos.readOnlyEdit) this.dispatch('cellEditRequest', { ...this.cellEventParams(node, column), oldValue, newValue, value: newValue, source: 'bulk' });
+          else if (!this.setCellValue(node, column, newValue, 'bulk', oldValue)) continue;
+          changes.push({ rowIndex: node.rowIndex, rowPinned: node.rowPinned || null, columnId: column.colId, oldValue, newValue });
+        }
+      }
+    }
+    this.endUndoBatch();
+    this.notify();
+    for (const c of ed.cells.values()) {
+      const node = c.node;
+      const now = this.getCellValue(node, c.column);
+      this.dispatch('cellEditingStopped', { ...this.cellEventParams(node, c.column), oldValue: c.startValue, newValue: now, valueChanged: now !== c.startValue });
+    }
+    if (ed.fullRow) this.dispatch('rowEditingStopped', this.rowEventParams(ed.node));
+    if (!this.batch) this.dispatch('bulkEditingStopped', { changes });
+    this.focusGrid();
+    return true;
+  }
+
+  parseBulkValue(node, column, value, oldValue) {
+    const cd = column.colDef;
+    let v = value;
+    if (cd.valueParser) {
+      const p = { ...this.makeValueParams(node, column), oldValue, newValue: v };
+      v = typeof cd.valueParser === 'function' ? cd.valueParser(p) : evaluateExpression(cd.valueParser, p);
+    } else if (typeof column.dataTypeDef?.valueParser === 'function') {
+      v = column.dataTypeDef.valueParser({ ...this.makeValueParams(node, column), oldValue, newValue: v });
+    } else if (column.dataType === 'number' && typeof v === 'string') {
+      const t = v.replace(/,/g, '').trim();
+      v = t === '' ? null : Number(t);
+    } else if (column.dataType === 'boolean' && typeof v === 'string') {
+      v = v.trim().toLowerCase() === 'true';
+    } else if (column.dataType === 'text' && v === '') {
+      v = null;
+    }
+    return typeof v === 'number' && Number.isNaN(v) ? null : v;
+  }
+
+  // 편집 칸에 보여 줄 오류 (셀 오류 + 행 오류는 지금 편집 칸에)
+  editErrorsFor(ced) {
+    const editing = this.editing;
+    if (!ced || !editing) return null;
+    const row = editing.primary === ced ? editing.rowErrors : null;
+    if (!ced.errors && !row) return null;
+    return [...(ced.errors || []), ...(row || [])];
   }
 
   // editing = 행 단위 (editType:'fullRow' 면 편집 가능한 모든 셀, 아니면 1셀)
@@ -2753,7 +2947,7 @@ export class GridCore {
         this.notify();
         return true;
       }
-      this.stopEditing(false);
+      if (!this.stopEditing(false)) return false;
     }
     if (!this.isCellEditable(column, node)) return false;
     const fullRow = this.gos.editType === 'fullRow';
@@ -2805,15 +2999,17 @@ export class GridCore {
     if (!e) return;
     e.value = v;
     e.valueChanged = true;
+    this.revalidateEditing(e);
     this.notify();
   }
 
-  // 내장 에디터는 자체 state 로 입력을 그리므로 재렌더 없이 값만 기록
+  // 내장 에디터는 자체 state 로 입력을 그리므로 재렌더 없이 값만 기록 (검사 결과가 바뀌면 그때만 그림)
   setEditorValueSilently(v, cellEd) {
     const e = cellEd || this.editing?.primary;
     if (!e) return;
     e.value = v;
     e.valueChanged = true;
+    this.revalidateEditing(e);
   }
 
   // 셀 편집 결과 반영 → cellEditingStopped 파라미터 반환
@@ -2864,13 +3060,23 @@ export class GridCore {
     };
   }
 
+  // 편집 끝내기. 검사에 걸린 값은 invalidEditValueMode 대로:
+  //  'revert'(기본) 틀린 칸만 원래 값으로 (행 검사에 걸리면 행 전체), 'block' 편집을 끝내지 않고 그대로 둠 → false 반환
   stopEditing(cancel = false, { noFocus = false } = {}) {
     const ed = this.editing;
-    if (!ed) return;
+    if (!ed) return true;
+    let revert = null;
+    if (!cancel && this.validateEdit()) {
+      if (this.gos.invalidEditValueMode === 'block') {
+        this.notify();
+        return false;
+      }
+      revert = ed.rowErrors ? new Set(ed.cells.keys()) : new Set([...ed.cells.values()].filter(c => c.errors).map(c => c.colId));
+    }
     this.editing = null;
     const results = [];
     this.beginUndoBatch();
-    for (const c of ed.cells.values()) results.push(this.commitCellEditor(c, cancel));
+    for (const c of ed.cells.values()) results.push(this.commitCellEditor(c, cancel || !!revert?.has(c.colId)));
     this.endUndoBatch();
     this.notify();
     for (const r of results) this.dispatch('cellEditingStopped', r.params);
@@ -2879,6 +3085,7 @@ export class GridCore {
       if (!cancel && results.some(r => r.valueChanged)) this.dispatch('rowValueChanged', this.rowEventParams(ed.node));
     }
     if (!noFocus) this.focusGrid();
+    return true;
   }
 
   // fullRow 편집 중 Tab: 같은 행의 다음 편집 셀로 이동
@@ -2894,12 +3101,21 @@ export class GridCore {
     this.focus = { rowIndex: ed.node.rowIndex, colId: next, rowPinned: ed.node.rowPinned || null };
     this.ensureColumnVisible(next);
     this.notify();
+    this.focusEditorInput();
+    return true;
+  }
+
+  // 지금 편집 칸의 입력 요소로 포커스 (검사에 걸려 편집을 못 끝냈을 때 다른 칸 클릭 후 되돌리기 등)
+  focusEditorInput() {
+    const ed = this.editing;
+    if (!ed) return;
+    const id = ed.primary.colId;
+    this.focus = { rowIndex: ed.node.rowIndex, colId: id, rowPinned: ed.node.rowPinned || null };
     const rowSel = ed.node.rowPinned ? `[row-index="${ed.node.rowPinned[0]}-${ed.node.rowIndex}"]` : `[row-index="${ed.node.rowIndex}"]`;
     setTimeout(() => {
-      const cell = this.eRoot?.querySelector(`.r2-row${rowSel} .r2-cell[col-id="${CSS.escape(next)}"]`);
+      const cell = this.eRoot?.querySelector(`.r2-row${rowSel} .r2-cell[col-id="${CSS.escape(id)}"]`);
       cell?.querySelector('input,textarea,select,[tabindex]')?.focus({ preventScroll: true });
     }, 0);
-    return true;
   }
 
   focusGrid() {
@@ -2979,8 +3195,9 @@ export class GridCore {
         this.stopEditing(true);
         return true;
       }
+      if (key === 'Enter' && (e.ctrlKey || e.metaKey) && this.cellSelectionOpts && this.ranges.length && this.applyBulkEdit()) return true;
       if (key === 'Enter' && !e.shiftKey && !ed.editor.handlesEnter) {
-        this.stopEditing(false);
+        if (!this.stopEditing(false)) return true;
         if (this.gos.enterNavigatesVerticallyAfterEdit) {
           this.moveFocusTo(this.nextRowIndex(node.rowIndex, 1), column.colId);
         }
@@ -2988,7 +3205,7 @@ export class GridCore {
       }
       if (key === 'Tab') {
         if (ed.fullRow && this.tabWithinEditingRow(e.shiftKey)) return true;
-        this.stopEditing(false);
+        if (!this.stopEditing(false)) return true;
         this.tabToNextEditable(node, column, e.shiftKey);
         return true;
       }

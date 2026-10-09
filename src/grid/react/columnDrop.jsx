@@ -155,6 +155,15 @@ export function ColumnDropZone({ core, kind, horizontal = false }) {
                 // 영역 밖(어디에도 안 받힘)에 놓으면 제거
                 if (e.dataTransfer.dropEffect === 'none' && !droppedInside.current) removeFromZone(core, kind, c);
               }}
+              // 행 그룹 칩을 누르면 그 그룹 정렬 바꿈 (rowGroupPanelSuppressSort 로 끔)
+              onClick={
+                kind === 'rowGroup' && !core.gos.rowGroupPanelSuppressSort && c.colDef.sortable !== false
+                  ? e => {
+                      if (e.target instanceof Element && e.target.closest('[role="button"],[role="listbox"]')) return;
+                      core.toggleColumnSort(c, e.shiftKey || e.ctrlKey || e.metaKey);
+                    }
+                  : undefined
+              }
             >
               <span className="r2-column-drop-cell-drag-handle">
                 <Icon name="grip" />
@@ -172,6 +181,11 @@ export function ColumnDropZone({ core, kind, horizontal = false }) {
                 {core.getDisplayName(c, true)}
                 {kind === 'values' && typeof c.colDef.aggFunc === 'string' ? ')' : null}
               </span>
+              {kind === 'rowGroup' && !core.gos.rowGroupPanelSuppressSort && c.sort && (
+                <span className="r2-column-drop-cell-sort" aria-hidden="true">
+                  <Icon name={c.sort === 'asc' ? 'asc' : 'desc'} />
+                </span>
+              )}
               {!(kind === 'rowGroup' && isGroupLocked(core, c)) && (
                 <span className="r2-column-drop-cell-button" role="button" aria-label="remove" onClick={() => removeFromZone(core, kind, c)}>
                   <Icon name="cross" />

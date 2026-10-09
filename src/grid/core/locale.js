@@ -116,6 +116,14 @@ export const R2_GRID_LOCALE_KR = {
   max: '최대',
   count: '개수',
   avg: '평균',
+
+  // 편집 값 검사
+  validationMin: '${value} 이상이어야 합니다',
+  validationMax: '${value} 이하여야 합니다',
+  validationStep: '${value} 단위로 입력하세요',
+  validationMaxLength: '${value}자 이하로 입력하세요',
+  validationMinDate: '${value} 이후 날짜여야 합니다',
+  validationMaxDate: '${value} 이전 날짜여야 합니다',
 };
 
 export function localeText(core, key, defaultValue) {

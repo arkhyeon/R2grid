@@ -539,7 +539,7 @@ function CustomEditor({ core, ed, params, getCellEl }) {
     parseValue: v => v,
     formatValue: v => core.formatValue(node, column, v) ?? v,
     eGridCell: getCellEl?.(),
-    validate: () => {},
+    validate: () => core.revalidateEditing(ed),
     onKeyDown: () => {},
     ref: ed.ref,
   };

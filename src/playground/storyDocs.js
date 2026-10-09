@@ -26,7 +26,10 @@ const STORY_DOCS = {
   },
   'column-groups': {
     whenToUse: ['헤더를 2단 이상으로 묶을 때', '세부 컬럼을 평소엔 접어두고 필요할 때만 펼칠 때 — columnGroupShow'],
-    notes: ['그룹을 접어도 컬럼 데이터·필터는 그대로입니다. 보이는 컬럼만 바뀝니다.'],
+    notes: [
+      '그룹을 접어도 컬럼 데이터·필터는 그대로입니다. 보이는 컬럼만 바뀝니다.',
+      '넓은 그룹을 가로로 스크롤하면 그룹 이름이 화면에 보이는 쪽으로 따라옵니다. 끄려면 그룹 정의에 suppressStickyLabel.',
+    ],
   },
   'column-sizing': {
     whenToUse: ['처음 열 때 내용에 맞춰 폭을 정할 때 — autoSizeStrategy', '그리드 폭에 컬럼을 꽉 채울 때 — fitGridWidth / flex'],
@@ -41,7 +44,11 @@ const STORY_DOCS = {
   },
   'row-numbers': {
     whenToUse: ['목록에 순번 컬럼이 필요할 때 (데이터에 번호 필드가 없어도 됨)', '번호를 눌러 행 전체를 복사 범위로 잡을 때'],
-    notes: ['번호는 정렬·필터 후의 표시 순서입니다. 데이터의 원래 순번이 필요하면 일반 컬럼을 쓰세요.'],
+    notes: [
+      '번호는 정렬·필터 후의 표시 순서입니다. 데이터의 원래 순번이 필요하면 일반 컬럼을 쓰세요.',
+      'rowNumbers.enableRowResizer 를 켜면 번호 칸 아래 가장자리를 끌어 행 높이를 바꿉니다 (rowResizeStarted / rowResizeEnded).',
+      '번호 클릭으로 행 범위를 잡지 않으려면 rowNumbers.suppressCellSelectionIntegration. 번호 대신 다른 값은 rowNumbers.valueGetter / valueFormatter.',
+    ],
   },
   'col-span': {
     whenToUse: ['특정 행에서 여러 컬럼을 하나로 합쳐 보여줄 때 (구분 행, 긴 설명)'],
@@ -116,6 +123,15 @@ const STORY_DOCS = {
     whenToUse: ['목록에서 바로 값을 고칠 때', '정해진 값 중 하나를 고를 때 — r2SelectCellEditor / r2RichSelectCellEditor'],
     notes: ['선택 목록은 셀 아래(공간이 없으면 위)에 붙고, 셀을 스크롤해 화면 밖으로 내보내면 함께 가려집니다.', '편집 중 필터·데이터 변경으로 행이 사라지면 편집이 취소됩니다.'],
   },
+  'edit-validation': {
+    badge: 'NEW',
+    whenToUse: ['입력 범위·글자 수가 정해진 값을 고칠 때 (잘못된 값이 저장되지 않게)', '여러 칸을 같이 봐야 맞는지 알 수 있을 때 — getFullRowEditValidationErrors'],
+    notes: [
+      "getValidationErrors 는 내장 규칙 결과(internalErrors)를 받아 최종 오류를 돌려줍니다. null 을 돌려주면 내장 규칙도 무시됩니다.",
+      "오류 문구는 localeText 의 validationMin·validationMax·validationStep·validationMaxLength·validationMinDate·validationMaxDate 로 바꿀 수 있습니다 (${value} 자리에 기준값).",
+      '사용자 에디터는 getValidationErrors() 를 ref 또는 useGridCellEditor 로 내보내면 같은 방식으로 검사합니다.',
+    ],
+  },
   'full-row-edit': {
     whenToUse: ['한 행의 여러 값을 같이 고친 뒤 한 번에 저장할 때 — onRowValueChanged', '실수로 고친 값을 Ctrl+Z 로 되돌릴 때'],
   },
@@ -135,7 +151,10 @@ const STORY_DOCS = {
   },
   'range-clipboard': {
     whenToUse: ['엑셀처럼 셀 범위를 복사·붙여넣기 할 때', '여러 셀 값을 한 번에 지울 때 — Delete'],
-    notes: ['붙여넣기는 편집 가능한 셀에만 들어갑니다.'],
+    notes: [
+      '붙여넣기는 편집 가능한 셀에만 들어갑니다.',
+      '범위를 잡은 채 한 칸을 편집하다 Ctrl+Enter(맥 ⌘+Enter) 를 누르면 그 값이 범위 안 편집 가능한 모든 칸에 들어갑니다 — bulkEditingStarted / bulkEditingStopped({ changes }), Ctrl+Z 한 번에 되돌림.',
+    ],
   },
   'fill-handle': {
     whenToUse: ['같은 값이나 1, 2, 3… 같은 연속 값을 여러 행에 채울 때'],
@@ -182,6 +201,7 @@ const STORY_DOCS = {
   },
   'row-group-panel': {
     whenToUse: ['사용자가 직접 그룹 기준을 바꿔가며 볼 때'],
+    notes: ['그룹 칩을 누르면 그 그룹 순서가 오름차순 → 내림차순 → 원래대로 바뀝니다 (Shift+클릭은 여러 기준). 끄려면 rowGroupPanelSuppressSort.'],
   },
   'tree-data': {
     whenToUse: ['메뉴·조직도처럼 부모-자식 경로가 있는 데이터'],
@@ -235,6 +255,7 @@ const STORY_DOCS = {
   // ─── UI 구성 ─────────────────────────────
   'side-bar': {
     whenToUse: ['컬럼 표시·필터를 오른쪽 패널에서 관리할 때', '선택한 행의 상세를 옆 패널에 보여줄 때 — 커스텀 툴패널'],
+    notes: ['패널 안쪽 가장자리를 끌어 폭을 바꿀 수 있습니다 (toolPanelSizeChanged). 범위는 툴패널의 minWidth·maxWidth.'],
   },
   'status-bar': {
     whenToUse: ['전체·선택 건수, 선택 범위 합계를 아래에 보여줄 때'],

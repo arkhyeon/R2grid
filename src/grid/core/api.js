@@ -148,7 +148,9 @@ export function createApi(core) {
       core.ensureColumnVisible(col);
       core.startEdit(node, col, key ?? null, 'api');
     },
-    stopEditing: cancel => core.stopEditing(!!cancel),
+    stopEditing: cancel => {
+      core.stopEditing(!!cancel);
+    },
     getEditingCells: () =>
       core.editing
         ? [...core.editing.cells.values()].map(c => ({ rowIndex: c.node.rowIndex, column: c.column, rowPinned: c.node.rowPinned || null }))
@@ -529,7 +531,7 @@ export function createApi(core) {
     cancelBatchEdit: () => core.cancelBatchEdit(),
     isBatchEditing: () => core.isBatchEditing(),
     getEditRowValues: node => core.getEditRowValues(node),
-    validateEdit: () => null,
+    validateEdit: () => core.validateEdit(),
 
     // ── 컬럼 그룹 표시 ──
     getCenterDisplayedColumnGroups: () => core.displayedGroupsOf?.('center') ?? [],
