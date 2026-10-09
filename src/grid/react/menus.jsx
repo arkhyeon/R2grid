@@ -83,7 +83,7 @@ function builtinItem(core, key, params) {
         ? { name: t('columnFilter'), icon: 'filter', action: () => setTimeout(() => core.openPopup({ type: 'filter', column: col, anchorColId: col.colId }), 0) }
         : null;
     case 'columnChooser':
-      return { name: t('columnChooser'), icon: 'columns', action: () => setTimeout(() => core.openPopup({ type: 'columnChooser' }), 0) };
+      return { name: t('columnChooser'), icon: 'columns', action: () => setTimeout(() => core.openPopup({ type: 'columnChooser', chooserParams: col?.colDef.columnChooserParams }), 0) };
     case 'chartRange':
       return core.gos.enableCharts && core.ranges.length
         ? {
@@ -280,8 +280,52 @@ export function ContextMenuPopup({ core, popup }) {
   );
 }
 
+// 컬럼 선택기에 보일 트리: columnLayout(사용자 배치) 또는 그리드 컬럼 그룹 구조
+//  노드 { type: 'group', key, name, children } | { type: 'col', col }
+function chooserTree(core, cols, layout) {
+  if (Array.isArray(layout) && layout.length) {
+    const used = new Set();
+    let seq = 0;
+    const walk = defs =>
+      defs
+        .map(d => {
+          if (Array.isArray(d.children)) {
+            const children = walk(d.children);
+            return children.length ? { type: 'group', key: `layout:${d.groupId ?? d.headerName ?? ''}:${seq++}`, name: d.headerName ?? '', children } : null;
+          }
+          const col = core.getColumn(d.colId ?? d.field);
+          if (!col || !cols.includes(col) || used.has(col)) return null;
+          used.add(col);
+          return { type: 'col', col };
+        })
+        .filter(Boolean);
+    return walk(layout);
+  }
+  const root = { children: [] };
+  let path = []; // [{ group, node }]
+  for (const col of cols) {
+    const chain = (col.groupChain || []).filter(g => !g.colGroupDef?.suppressColumnsToolPanel);
+    let k = 0;
+    while (k < path.length && k < chain.length && path[k].group === chain[k]) k++;
+    path = path.slice(0, k);
+    for (let j = k; j < chain.length; j++) {
+      const parent = j === 0 ? root : path[j - 1].node;
+      const g = chain[j];
+      const node = { type: 'group', key: g.groupId, name: g.colGroupDef?.headerName ?? '', children: [] };
+      parent.children.push(node);
+      path.push({ group: g, node });
+    }
+    (path.length ? path[path.length - 1].node : root).children.push({ type: 'col', col });
+  }
+  return root.children;
+}
+
+const leavesOf = node => (node.type === 'col' ? [node.col] : node.children.flatMap(leavesOf));
+
 // ── 컬럼 선택기 (columnsMenuTab / 컬럼 툴패널 / columnChooser 공용) ──
-export function ColumnChooserList({ core, showSearch = true, toolPanel = false }) {
+// params(columnChooserParams · 컬럼 툴패널 toolPanelParams): suppressColumnFilter, suppressColumnSelectAll,
+//  suppressColumnExpandAll, contractColumnSelection(그룹 접힌 채 시작), columnLayout(보여 줄 배치)
+export function ColumnChooserList({ core, showSearch = true, toolPanel = false, params = {} }) {
   const [search, setSearch] = useState('');
   const pivotUi = toolPanel && core.isPivotActive();
   const cols = core.allColumns.filter(c => !c.colDef.suppressColumnsToolPanel && !c.isAuto && !c.isPivotResult);
@@ -301,15 +345,57 @@ export function ColumnChooserList({ core, showSearch = true, toolPanel = false }
   };
   const isOn = c => (pivotUi ? inRole(c) : c.visible);
   const toggle = c => (pivotUi ? toggleRole(c) : !c.colDef.lockVisible && core.setColumnsVisible([c], !c.visible, 'toolPanelUi'));
+  const setAll = (list, on) =>
+    pivotUi ? list.filter(c => isOn(c) !== on).forEach(toggleRole) : core.setColumnsVisible(list.filter(c => !c.colDef.lockVisible), on, 'toolPanelUi');
+  const triState = list => {
+    const n = list.filter(isOn).length;
+    return !list.length ? false : n === list.length ? true : n === 0 ? false : null;
+  };
   // 끌기: 목록 안 순서 변경(suppressMovable·lockPosition 제외) 또는 드롭 영역으로 (컬럼 툴패널과 같음)
   const movable = c => !c.colDef.suppressMovable && !c.colDef.lockPosition;
   const canDrag = c => toolPanel && (movable(c) || c.colDef.enableRowGroup || c.colDef.enableValue || c.colDef.enablePivot);
   const s = search.trim().toLowerCase();
-  const shown = s ? cols.filter(c => core.getDisplayName(c, true).toLowerCase().includes(s)) : cols;
+  const matches = c => !s || core.getDisplayName(c, true).toLowerCase().includes(s);
+
+  const tree = chooserTree(core, cols, params.columnLayout);
+  const hasGroups = tree.some(n => n.type === 'group');
+  const groupKeys = [];
+  (function collect(nodes) {
+    for (const n of nodes) if (n.type === 'group') groupKeys.push(n.key) || collect(n.children);
+  })(tree);
+  // 접힌 그룹 (contractColumnSelection 이면 처음엔 전부 접힘)
+  const [collapsed, setCollapsed] = useState(() => new Set(params.contractColumnSelection ? groupKeys : []));
+  const toggleGroup = key =>
+    setCollapsed(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  const allCollapsed = groupKeys.length > 0 && groupKeys.every(k => collapsed.has(k));
+
+  // 화면에 그릴 줄: 검색 중이면 맞는 컬럼과 그 상위 그룹만 (그룹은 펼친 채)
+  const rows = [];
+  (function flatten(nodes, depth) {
+    for (const n of nodes) {
+      if (n.type === 'col') {
+        if (matches(n.col)) rows.push({ ...n, depth });
+        continue;
+      }
+      const leaves = leavesOf(n).filter(matches);
+      if (!leaves.length) continue;
+      const open = s ? true : !collapsed.has(n.key);
+      rows.push({ ...n, depth, open, leaves });
+      if (open) flatten(n.children, depth + 1);
+    }
+  })(tree, 0);
+  const shownCols = cols.filter(matches);
+
   const listRef = useRef(null);
-  const [insertAt, setInsertAt] = useState(null); // 삽입 표시 위치 (shown 인덱스)
+  const [insertAt, setInsertAt] = useState(null); // 삽입 표시 위치 (컬럼 줄 인덱스)
+  const colItems = () => [...(listRef.current?.querySelectorAll('.r2-column-select-column[data-col-id]') || [])];
   const indexAt = e => {
-    const items = [...(listRef.current?.querySelectorAll('.r2-column-select-column') || [])];
+    const items = colItems();
     const i = items.findIndex(it => {
       const r = it.getBoundingClientRect();
       return e.clientY < r.top + r.height / 2;
@@ -345,30 +431,38 @@ export function ColumnChooserList({ core, showSearch = true, toolPanel = false }
             return;
           }
           if (!movable(col)) return;
+          const items = colItems().map(it => core.getColumn(it.getAttribute('data-col-id'))).filter(c => c && c !== col);
           const i = indexAt(e);
+          const before = colItems()
+            .slice(0, i)
+            .filter(it => it.getAttribute('data-col-id') !== col.colId).length;
           const rest = core.allColumns.filter(c => c !== col);
-          const target = shown.filter(c => c !== col)[shown.slice(0, i).filter(c => c !== col).length];
-          const lastShown = shown.filter(c => c !== col).at(-1);
-          const toIndex = target ? rest.indexOf(target) : lastShown ? rest.indexOf(lastShown) + 1 : rest.length;
+          const target = items[before];
+          const last = items.at(-1);
+          const toIndex = target ? rest.indexOf(target) : last ? rest.indexOf(last) + 1 : rest.length;
           if (core.allColumns.indexOf(col) !== toIndex) core.moveColumns([col], toIndex, 'toolPanelUi');
         },
       }
     : {};
-  const visibleCount = shown.filter(isOn).length;
-  const allState = !shown.length ? false : visibleCount === shown.length ? true : visibleCount === 0 ? false : null;
+  const allState = triState(shownCols);
+  const showFilter = showSearch && !params.suppressColumnFilter;
+  let colRow = -1;
   return (
     <div className="r2-column-select" role="presentation">
+      {((hasGroups && !params.suppressColumnExpandAll) || !params.suppressColumnSelectAll || showFilter) && (
       <div className="r2-column-select-header" role="presentation">
-        <Checkbox
-          className="r2-column-select-header-checkbox"
-          checked={allState}
-          onToggle={() =>
-            pivotUi
-              ? shown.filter(c => isOn(c) === (allState === true)).forEach(toggleRole)
-              : core.setColumnsVisible(shown.filter(c => !c.colDef.lockVisible), allState !== true, 'toolPanelUi')
-          }
-        />
-        {showSearch && (
+        {hasGroups && !params.suppressColumnExpandAll && (
+          <span
+            className="r2-column-select-header-icon"
+            role="button"
+            aria-label={localeText(core, allCollapsed ? 'expandAll' : 'collapseAll', allCollapsed ? '모두 펼치기' : '모두 접기')}
+            onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(groupKeys))}
+          >
+            <Icon name={allCollapsed ? 'tree-closed' : 'tree-open'} />
+          </span>
+        )}
+        {!params.suppressColumnSelectAll && <Checkbox className="r2-column-select-header-checkbox" checked={allState} onToggle={() => setAll(shownCols, allState !== true)} />}
+        {showFilter && (
           <div className="r2-column-select-header-filter-wrapper r2-text-field r2-input-field">
             <input
               className="r2-input-field-input r2-text-field-input"
@@ -380,37 +474,62 @@ export function ColumnChooserList({ core, showSearch = true, toolPanel = false }
           </div>
         )}
       </div>
+      )}
       <div ref={listRef} className="r2-column-select-list" role="tree" {...listDnd}>
-        {shown.map((c, i) => (
-          <div
-            key={c.colId}
-            data-insert-before={insertAt === i || undefined}
-            data-insert-after={insertAt === shown.length && i === shown.length - 1 ? true : undefined}
-            className={cx(
-              'r2-column-select-column',
-              canDrag(c) && 'r2-column-select-column-draggable',
-              typeof c.colDef?.toolPanelClass === 'function' ? c.colDef.toolPanelClass({ colDef: c.colDef, column: c, api: core.api, context: core.gos.context }) : c.colDef?.toolPanelClass,
-            )}
-            style={{ paddingLeft: 8 + c.groupChain.length * 16 }}
-            role="treeitem"
-            draggable={canDrag(c) || undefined}
-            onDragStart={canDrag(c) ? e => setDragColumn(e, c, null) : undefined}
-            onClick={() => toggle(c)}
-          >
-            {canDrag(c) && (
-              <span className="r2-column-select-column-drag-handle">
-                <Icon name="grip" />
-              </span>
-            )}
-            <Checkbox
-              className="r2-column-select-checkbox"
-              checked={isOn(c)}
-              disabled={!pivotUi && !!c.colDef.lockVisible}
-              onToggle={() => toggle(c)}
-            />
-            <span className="r2-column-select-column-label">{core.getDisplayName(c, true)}</span>
-          </div>
-        ))}
+        {rows.map(r => {
+          if (r.type === 'group') {
+            const st = triState(r.leaves);
+            return (
+              <div
+                key={`g:${r.key}`}
+                className="r2-column-select-column-group"
+                style={{ paddingLeft: 8 + r.depth * 16 }}
+                role="treeitem"
+                aria-expanded={r.open}
+                onClick={() => !s && toggleGroup(r.key)}
+              >
+                <span className="r2-column-select-column-group-icon">
+                  <Icon name={r.open ? 'tree-open' : 'tree-closed'} />
+                </span>
+                <Checkbox className="r2-column-select-checkbox" checked={st} onToggle={() => setAll(r.leaves, st !== true)} />
+                <span className="r2-column-select-column-label">{r.name}</span>
+              </div>
+            );
+          }
+          const c = r.col;
+          colRow++;
+          return (
+            <div
+              key={c.colId}
+              data-col-id={c.colId}
+              data-insert-before={insertAt === colRow || undefined}
+              data-insert-after={insertAt === shownCols.length && colRow === shownCols.length - 1 ? true : undefined}
+              className={cx(
+                'r2-column-select-column',
+                canDrag(c) && 'r2-column-select-column-draggable',
+                typeof c.colDef?.toolPanelClass === 'function' ? c.colDef.toolPanelClass({ colDef: c.colDef, column: c, api: core.api, context: core.gos.context }) : c.colDef?.toolPanelClass,
+              )}
+              style={{ paddingLeft: 8 + r.depth * 16 + (hasGroups ? 16 : 0) }}
+              role="treeitem"
+              draggable={canDrag(c) || undefined}
+              onDragStart={canDrag(c) ? e => setDragColumn(e, c, null) : undefined}
+              onClick={() => toggle(c)}
+            >
+              {canDrag(c) && (
+                <span className="r2-column-select-column-drag-handle">
+                  <Icon name="grip" />
+                </span>
+              )}
+              <Checkbox
+                className="r2-column-select-checkbox"
+                checked={isOn(c)}
+                disabled={!pivotUi && !!c.colDef.lockVisible}
+                onToggle={() => toggle(c)}
+              />
+              <span className="r2-column-select-column-label">{core.getDisplayName(c, true)}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -500,7 +619,7 @@ export function ColumnMenuPopup({ core, popup }) {
           {tab === 'generalMenuTab' && (
             <MenuList core={core} items={mainMenuItems(core, column, true)} params={params} onClose={close} autoFocus={false} />
           )}
-          {tab === 'columnsMenuTab' && <ColumnChooserList core={core} />}
+          {tab === 'columnsMenuTab' && <ColumnChooserList core={core} params={column?.colDef.columnChooserParams || {}} />}
         </div>
       </>
     );
@@ -588,7 +707,7 @@ export function ColumnChooserPopup({ core }) {
             <Icon name="cross" />
           </span>
         </div>
-        <ColumnChooserList core={core} />
+        <ColumnChooserList core={core} params={core.popup?.chooserParams || {}} />
       </div>
     </PopupLayer>,
     core.getPopupParent(),

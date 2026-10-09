@@ -2194,3 +2194,54 @@ body.r2-row-resizing * {
 .r2-tool-panel-resize-right {
   right: -3px;
 }
+
+/* 컬럼 도구 패널에서 헤더로 끌어 놓을 자리 */
+.r2-header-panel-drop-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  z-index: 5;
+  pointer-events: none;
+  background-color: var(--r2-accent-color, #2196f3);
+}
+.r2-date-component {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+}
+
+/* 그리드 밖에 둔 고급 필터 입력줄 (advancedFilterParent) */
+.r2-advanced-filter-header.r2-advanced-filter-header-outside {
+  font-family: var(--r2-font-family);
+  font-size: var(--r2-font-size);
+  color: var(--r2-foreground-color);
+  background-color: var(--r2-background-color);
+  border: 1px solid var(--r2-border-color);
+  border-radius: var(--r2-border-radius);
+}
+.r2-advanced-filter-builder-move {
+  padding: 0 2px;
+}
+
+/* 컬럼 선택기 그룹 줄 */
+.r2-column-select-column-group {
+  display: flex;
+  align-items: center;
+  gap: var(--r2-spacing);
+  height: var(--r2-list-item-height);
+  padding-right: var(--r2-spacing);
+  white-space: nowrap;
+  cursor: pointer;
+  font-weight: 500;
+}
+.r2-column-select-column-group:hover {
+  background-color: var(--r2-row-hover-color);
+}
+.r2-column-select-column-group-icon,
+.r2-column-select-header-icon {
+  display: inline-flex;
+  cursor: pointer;
+  opacity: 0.8;
+}

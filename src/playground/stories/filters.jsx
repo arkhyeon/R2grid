@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGridFilter } from '../../grid/index.js';
 import { BASE_COLUMNS, SAMPLE } from '../data.js';
 import { Grid } from './_shared.jsx';
@@ -34,7 +34,34 @@ function Sorting({ p, ctx }) {
   );
 }
 
-function ColumnFilters({ ctx }) {
+// 날짜 입력 사용자 컴포넌트 예: 'YYYY.MM.DD' 로 직접 타이핑 + 오늘 버튼
+function DotDateInput({ date, onDateChanged, placeholder }) {
+  const fmt = d => (d ? `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}` : '');
+  const [text, setText] = useState(() => fmt(date));
+  useEffect(() => setText(fmt(date)), [date?.getTime()]);
+  return (
+    <span style={{ display: 'flex', gap: 4, width: '100%' }}>
+      <input
+        className="r2-input-field-input r2-text-field-input"
+        style={{ flex: 1, minWidth: 0 }}
+        placeholder={placeholder || 'YYYY.MM.DD'}
+        value={text}
+        onChange={e => {
+          const v = e.target.value;
+          setText(v);
+          const m = /^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})$/.exec(v.trim());
+          if (m) onDateChanged(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+          else if (!v.trim()) onDateChanged(null);
+        }}
+      />
+      <button type="button" onClick={() => onDateChanged(new Date())}>
+        오늘
+      </button>
+    </span>
+  );
+}
+
+function ColumnFilters({ p, ctx }) {
   const ref = useRef(null);
   const set = m => ref.current.api.setFilterModel(m);
   return (
@@ -47,9 +74,11 @@ function ColumnFilters({ ctx }) {
         <button onClick={() => set(null)}>필터 해제</button>
       </div>
       <Grid
+        key={String(p.dateComponent)}
         gridRef={ref}
         rowData={SAMPLE}
         columnDefs={FILTER_COLS}
+        dateComponent={p.dateComponent ? DotDateInput : undefined}
         onFilterChanged={e => ctx.log(`filterChanged → ${e.api.getDisplayedRowCount()}행 · ${JSON.stringify(e.api.getFilterModel())}`)}
       />
     </>
@@ -107,10 +136,16 @@ function CustomFilter({ ctx }) {
   );
 }
 
-function Advanced({ ctx }) {
+function Advanced({ p, ctx }) {
   const ref = useRef(null);
+  const [outer, setOuter] = useState(null);
   return (
     <>
+      {p.outside && (
+        <div ref={setOuter} style={{ marginBottom: 8 }}>
+          <span className="pg-note">↓ 그리드 밖(페이지 상단 검색 영역 등)에 둔 고급 필터 입력줄</span>
+        </div>
+      )}
       <div className="pg-toolbar">
         <button
           onClick={() =>
@@ -130,11 +165,15 @@ function Advanced({ ctx }) {
         <button onClick={() => ref.current.api.setAdvancedFilterModel(null)}>해제</button>
       </div>
       <Grid
+        key={`${p.outside}`}
         gridRef={ref}
         height={400}
         rowData={SAMPLE}
         columnDefs={BASE_COLUMNS}
         enableAdvancedFilter
+        advancedFilterParent={p.outside ? outer : null}
+        advancedFilterParams={{ buttons: p.buttons === 'all' ? ['apply', 'clear', 'reset', 'cancel'] : ['apply'] }}
+        advancedFilterBuilderParams={{ showMoveButtons: p.move }}
         onFilterChanged={e => ctx.log(`filterChanged → ${e.api.getDisplayedRowCount()}행`)}
       />
     </>
@@ -212,9 +251,19 @@ api.applyColumnState({ state: [{ colId: 'rowCnt', sort: 'desc' }], defaultState:
     category: CAT,
     name: '컬럼 필터 (텍스트/숫자/날짜/Set)',
     desc: '헤더의 필터 아이콘. r2TextColumnFilter / r2NumberColumnFilter / r2DateColumnFilter / r2SetColumnFilter(filter: true 기본). 조건 2개(AND/OR), setFilterModel 로 코드 제어.',
-    keywords: ['filter', 'r2TextColumnFilter', 'r2NumberColumnFilter', 'r2DateColumnFilter', 'r2SetColumnFilter', 'filterParams', 'setFilterModel', 'getFilterModel', 'setColumnFilterModel', 'getColumnFilterInstance', 'onFilterChanged', 'maxNumConditions', 'buttons', 'debounceMs', 'filterValueGetter', 'inRange'],
-    controls: [],
-    render: (p, ctx) => <ColumnFilters ctx={ctx} />,
+    keywords: ['filter', 'r2TextColumnFilter', 'r2NumberColumnFilter', 'r2DateColumnFilter', 'r2SetColumnFilter', 'filterParams', 'setFilterModel', 'getFilterModel', 'setColumnFilterModel', 'getColumnFilterInstance', 'onFilterChanged', 'maxNumConditions', 'buttons', 'debounceMs', 'filterValueGetter', 'inRange', 'dateComponent', 'dateComponentParams', 'minValidYear', 'maxValidYear', 'minValidDate', 'maxValidDate'],
+    controls: [
+      {
+        key: 'dateComponent',
+        type: 'boolean',
+        default: false,
+        label: 'dateComponent',
+        desc: "날짜 필터의 입력 칸을 직접 만든 컴포넌트로 바꿉니다. props 로 date(Date|null)·onDateChanged(Date|null)·placeholder 를 받습니다. 그리드 전체(gridOptions), 컬럼(colDef), 필터(filterParams) 어디에 둬도 되고 좁은 쪽이 우선. 추가 값은 dateComponentParams.",
+        on: "'YYYY.MM.DD' 직접 입력 + 오늘 버튼 (수정일 컬럼 필터에서 확인)",
+        off: '브라우저 기본 날짜 입력',
+      },
+    ],
+    render: (p, ctx) => <ColumnFilters p={p} ctx={ctx} />,
     code: () => `const columnDefs = [
   { field: 'id', filter: 'r2NumberColumnFilter' },
   { field: 'taskName', filter: 'r2TextColumnFilter' },
@@ -301,9 +350,39 @@ function MinCountFilter({ model, onModelChange, getValue }) {
     category: CAT,
     name: '고급 필터 (식 / 빌더)',
     desc: '헤더 위 입력줄에 [컬럼] 연산자 값 식을 AND/OR/괄호로 조합합니다. 빌더 팝업으로 조건을 편집할 수도 있습니다. 켜면 컬럼별 필터는 비활성화됩니다.',
-    keywords: ['enableAdvancedFilter', 'setAdvancedFilterModel', 'getAdvancedFilterModel', 'showAdvancedFilterBuilder', 'hideAdvancedFilterBuilder', 'includeHiddenColumnsInAdvancedFilter', 'join', 'AND', 'OR'],
-    controls: [],
-    render: (p, ctx) => <Advanced ctx={ctx} />,
+    keywords: ['enableAdvancedFilter', 'setAdvancedFilterModel', 'getAdvancedFilterModel', 'showAdvancedFilterBuilder', 'hideAdvancedFilterBuilder', 'includeHiddenColumnsInAdvancedFilter', 'join', 'AND', 'OR', 'advancedFilterParent', 'advancedFilterParams', 'advancedFilterBuilderParams', 'showMoveButtons', 'suppressBuilderButton'],
+    controls: [
+      {
+        key: 'outside',
+        type: 'boolean',
+        default: false,
+        label: 'advancedFilterParent',
+        desc: '입력줄을 넣을 그리드 밖 DOM 요소. 페이지 상단 검색 영역 등에 두고 싶을 때. null 이면 그리드 위.',
+        on: '그리드 위쪽 별도 영역에 입력줄',
+        off: '그리드 안 헤더 위',
+      },
+      {
+        key: 'buttons',
+        type: 'select',
+        default: 'apply',
+        label: 'advancedFilterParams.buttons',
+        desc: "입력줄 오른쪽 버튼과 순서. 'apply' 적용, 'clear' 입력만 비움, 'reset' 비우고 해제까지, 'cancel' 적용된 식으로 되돌림. suppressBuilderButton 으로 빌더 버튼 숨김.",
+        options: [
+          { value: 'apply', desc: "['apply'] (기본)" },
+          { value: 'all', desc: "['apply', 'clear', 'reset', 'cancel']" },
+        ],
+      },
+      {
+        key: 'move',
+        type: 'boolean',
+        default: true,
+        label: 'advancedFilterBuilderParams.showMoveButtons',
+        desc: '빌더에서 조건·그룹을 위/아래로 옮기는 버튼. 이 밖에 minWidth(팝업 최소 폭), buttons(아래 버튼 목록)도 정할 수 있습니다.',
+        on: '조건마다 ▲▼ 버튼',
+        off: '이동 버튼 없음',
+      },
+    ],
+    render: (p, ctx) => <Advanced p={p} ctx={ctx} />,
     code: () => `<R2Grid enableAdvancedFilter ... />
 
 // 입력줄 예:  [DBMS] = "Oracle" AND ([행 수] > 4000000 OR [상태] = "오류")

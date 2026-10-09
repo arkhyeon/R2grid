@@ -74,7 +74,7 @@ export function setDragColumn(e, col, fromZone) {
   e.dataTransfer.effectAllowed = 'move';
 }
 
-function readDrag(e) {
+export function readDrag(e) {
   try {
     return JSON.parse(e.dataTransfer.getData(DND_TYPE) || 'null');
   } catch {

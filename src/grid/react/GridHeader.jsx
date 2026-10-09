@@ -1,12 +1,12 @@
 // 헤더: 좌고정 / 중앙(가로 스크롤 동기화) / 우고정 + 그룹 헤더 행
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { cx, resolveClassValue } from '../core/utils.js';
 import { Checkbox, Icon, IconsContext } from './common.jsx';
 import { stableElement } from './renderComponent.js';
-import { PopupLayer } from './popup.jsx';
+import { DragImage, PopupLayer } from './popup.jsx';
 import { FloatingFilterCell } from './filters.jsx';
-import { canDropInZone, dropIntoZone } from './columnDrop.jsx';
+import { DND_TYPE, canDropInZone, dropIntoZone, readDrag } from './columnDrop.jsx';
 
 // 그룹이 없는(패딩) 레벨을 컬럼 헤더가 위로 덮는지 — 기본, colDef.suppressSpanHeaderHeight 로 끔
 const spansHeaderHeight = col => !col.colDef.suppressSpanHeaderHeight;
@@ -486,11 +486,17 @@ function useColumnDrag(core) {
   const ghost = g
     ? createPortal(
         <PopupLayer core={core}>
-          <div ref={ghostRef} className="r2-dnd-ghost r2-unselectable" style={{ position: 'fixed', left: g.x + 12, top: g.y + 12 }}>
-            <span className="r2-dnd-ghost-icon r2-shake-left-to-right">
-              <Icon name={g.zone === 'rowGroup' ? 'group' : g.zone === 'values' ? 'aggregation' : g.zone === 'pivot' ? 'pivot' : g.hidden ? 'eye-slash' : 'arrows'} />
-            </span>
-            <div className="r2-dnd-ghost-label">{g.name}</div>
+          <div ref={ghostRef} style={{ display: 'contents' }}>
+            <DragImage
+              core={core}
+              x={g.x}
+              y={g.y}
+              label={g.name}
+              icon={g.zone === 'rowGroup' ? 'group' : g.zone === 'values' ? 'aggregate' : g.zone === 'pivot' ? 'pivot' : g.hidden ? 'hide' : 'move'}
+              dragSource={{ type: 'header' }}
+              iconClassName="r2-shake-left-to-right"
+              defaultIcon={<Icon name={g.zone === 'rowGroup' ? 'group' : g.zone === 'values' ? 'aggregation' : g.zone === 'pivot' ? 'pivot' : g.hidden ? 'eye-slash' : 'arrows'} />}
+            />
           </div>
           {g.insertX != null && !g.zone && !g.hidden && <div className="r2-column-move-indicator" style={{ position: 'fixed', left: g.insertX - 1, top: g.insertTop, height: g.insertH }} />}
         </PopupLayer>,
@@ -543,6 +549,52 @@ function useStickyGroupLabels(core, vpRef) {
   });
 }
 
+// allowDragFromColumnsToolPanel: 컬럼 도구 패널의 컬럼을 헤더에 끌어 놓으면 그 자리에 보이게 (고정 영역이면 고정까지)
+function usePanelDrop(core) {
+  const [line, setLine] = useState(null); // { x } 헤더 기준
+  const rootRef = useRef(null);
+  const targetOf = e => {
+    const cell = e.target instanceof Element ? e.target.closest('.r2-header-cell[col-id]') : null;
+    const col = cell ? core.getColumn(cell.getAttribute('col-id')) : null;
+    if (!cell || !col) return null;
+    const r = cell.getBoundingClientRect();
+    const after = core.isRtl() ? e.clientX < r.left + r.width / 2 : e.clientX > r.left + r.width / 2;
+    return { col, after, x: (core.isRtl() ? !after : after) ? r.right : r.left };
+  };
+  if (!core.gos.allowDragFromColumnsToolPanel) return [{}, null, rootRef];
+  const props = {
+    onDragOver: e => {
+      if (![...e.dataTransfer.types].includes(DND_TYPE)) return;
+      const t = targetOf(e);
+      if (!t) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const x = Math.round(t.x - (rootRef.current?.getBoundingClientRect().left ?? 0));
+      if (line?.x !== x) setLine({ x });
+    },
+    onDragLeave: e => {
+      if (!e.currentTarget.contains(e.relatedTarget)) setLine(null);
+    },
+    onDrop: e => {
+      setLine(null);
+      const d = readDrag(e);
+      const t = targetOf(e);
+      if (!d || d.from || !t) return;
+      e.preventDefault();
+      const col = core.getColumn(d.colId);
+      if (!col || col === t.col) return;
+      if (col.colDef.lockPinned !== true && (col.pinned || null) !== (t.col.pinned || null)) core.setColumnsPinned([col], t.col.pinned || null, 'toolPanelDragAndDrop');
+      if (!col.colDef.suppressMovable && !col.colDef.lockPosition) {
+        const rest = core.allColumns.filter(c => c !== col);
+        core.moveColumns([col], rest.indexOf(t.col) + (t.after ? 1 : 0), 'toolPanelDragAndDrop');
+      }
+      if (!col.visible) core.setColumnsVisible([col], true, 'toolPanelDragAndDrop');
+    },
+  };
+  const indicator = line ? <div className="r2-header-panel-drop-line" style={{ left: line.x }} /> : null;
+  return [props, indicator, rootRef];
+}
+
 export function GridHeader({ core, headerHeight, groupHeaderHeight, scrollbarWidth, registerHeaderViewport }) {
   const autoRef = useRef(null);
   useAutoHeaderHeight(core, autoRef);
@@ -552,9 +604,20 @@ export function GridHeader({ core, headerHeight, groupHeaderHeight, scrollbarWid
   const [drag, ghost] = useColumnDrag(core);
   const vpRef = useRef(null);
   useStickyGroupLabels(core, vpRef);
+  const [panelDrop, panelDropLine, panelDropRef] = usePanelDrop(core);
   if (core.gos.headerHeight === 0) return null;
   return (
-    <div ref={autoRef} className="r2-header r2-pivot-off r2-header-allow-overflow" role="presentation" style={{ height: total, minHeight: total }}>
+    <div
+      ref={el => {
+        autoRef.current = el;
+        panelDropRef.current = el;
+      }}
+      className="r2-header r2-pivot-off r2-header-allow-overflow"
+      role="presentation"
+      style={{ height: total, minHeight: total }}
+      {...panelDrop}
+    >
+      {panelDropLine}
       <div className={cx('r2-pinned-left-header', !core.leftWidth && 'r2-hidden')} role="rowgroup" style={{ width: core.leftWidth, minWidth: core.leftWidth, maxWidth: core.leftWidth }}>
         <HeaderRows core={core} cols={core.displayedLeft} width={core.leftWidth} headerHeight={headerHeight} groupHeaderHeight={groupHeaderHeight} floatingHeight={floatingHeight} drag={drag} />
       </div>

@@ -1,6 +1,7 @@
 // 팝업 공용: body 포털 + 테마 변수 레이어 + 위치 계산(화면 밖이면 뒤집기) + 바깥 클릭 닫기
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { cx } from '../core/utils.js';
+import { stableElement } from './renderComponent.js';
 
 // 팝업도 그리드와 같은 CSS 변수(테마/다크)를 받도록 같은 클래스로 감싼다.
 // 레이어는 팝업 부모(기본: 그리드 루트 래퍼) 안의 0x0 원점 — 팝업은 이 원점 기준 absolute 좌표로 놓여
@@ -122,4 +123,23 @@ export function useClickOutside(ref, onClose, { ignore } = {}) {
     document.addEventListener('mousedown', handler, true);
     return () => document.removeEventListener('mousedown', handler, true);
   }, []);
+}
+
+// 끌고 있는 것 옆에 따라다니는 이미지. dragAndDropImageComponent 를 주면 그 컴포넌트로
+//  props: { icon: 'move'|'hide'|'group'|'aggregate'|'pivot'|'notAllowed', label, dragSource: { type: 'header'|'row' }, api, context, ...dragAndDropImageComponentParams }
+export function DragImage({ core, x, y, icon, label, dragSource, defaultIcon, iconClassName }) {
+  const g = core.gos;
+  const comp = typeof g.dragAndDropImageComponent === 'string' ? g.components?.[g.dragAndDropImageComponent] : g.dragAndDropImageComponent;
+  return (
+    <div className={cx(comp ? 'r2-dnd-ghost-custom' : 'r2-dnd-ghost', 'r2-unselectable')} style={{ position: 'fixed', left: x + 12, top: y + 12 }}>
+      {comp ? (
+        stableElement(core, 'dndImage', comp, { icon, label, dragSource, api: core.api, context: g.context, ...(g.dragAndDropImageComponentParams || {}) })
+      ) : (
+        <>
+          <span className={cx('r2-dnd-ghost-icon', iconClassName)}>{defaultIcon}</span>
+          <div className="r2-dnd-ghost-label">{label}</div>
+        </>
+      )}
+    </div>
+  );
 }

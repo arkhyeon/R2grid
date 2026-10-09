@@ -47,8 +47,9 @@ function SideBar({ p, ctx }) {
   );
   return (
     <Grid
-      key={`${p.position}${p.open}`}
+      key={`${p.position}${p.open}${p.dragFromPanel}`}
       height={400}
+      allowDragFromColumnsToolPanel={p.dragFromPanel}
       rowData={SAMPLE}
       columnDefs={BASE_COLUMNS.map(c => ({ ...c, filter: true }))}
       rowSelection={{ mode: 'singleRow', checkboxes: false, enableClickSelection: true }}
@@ -173,7 +174,7 @@ export default [
     category: CAT,
     name: '사이드바 · 툴패널',
     desc: '내장 컬럼/필터 툴패널과 커스텀 툴패널(컴포넌트). openToolPanel / closeToolPanel / getSideBar 로 제어합니다.',
-    keywords: ['sideBar', 'toolPanels', 'r2ColumnsToolPanel', 'r2FiltersToolPanel', 'toolPanel', 'defaultToolPanel', 'openToolPanel', 'closeToolPanel', 'getSideBar', 'isToolPanelShowing', 'onToolPanelVisibleChanged', 'suppressColumnsToolPanel', 'suppressFiltersToolPanel'],
+    keywords: ['sideBar', 'toolPanels', 'r2ColumnsToolPanel', 'r2FiltersToolPanel', 'toolPanel', 'defaultToolPanel', 'openToolPanel', 'closeToolPanel', 'getSideBar', 'isToolPanelShowing', 'onToolPanelVisibleChanged', 'suppressColumnsToolPanel', 'suppressFiltersToolPanel', 'allowDragFromColumnsToolPanel', 'onToolPanelSizeChanged'],
     controls: [
       {
         key: 'position',
@@ -194,6 +195,15 @@ export default [
         desc: '처음부터 열어 둘 툴패널 id. 지정하지 않으면 탭 버튼만 보이고 패널은 닫혀 있습니다.',
         on: "'detail' 패널이 열린 채 시작",
         off: '닫힌 채 시작 — 탭 버튼으로 열기',
+      },
+      {
+        key: 'dragFromPanel',
+        type: 'boolean',
+        default: true,
+        label: 'allowDragFromColumnsToolPanel',
+        desc: '컬럼 툴패널의 항목을 그리드 헤더로 끌어 놓으면 그 자리로 옮기고 숨겨져 있었으면 보이게 합니다. 고정 영역 헤더에 놓으면 고정도 같이 바뀝니다.',
+        on: '컬럼 패널 → 헤더로 끌어 놓기',
+        off: '패널 안 순서 바꾸기·그룹 영역으로만',
       },
     ],
     render: (p, ctx) => <SideBar p={p} ctx={ctx} />,

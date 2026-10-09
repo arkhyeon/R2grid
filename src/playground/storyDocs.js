@@ -166,6 +166,10 @@ const STORY_DOCS = {
   },
   'column-filters': {
     whenToUse: ['컬럼 값으로 행을 거를 때', '코드값처럼 종류가 정해진 컬럼 — r2SetColumnFilter (체크 목록)'],
+    notes: [
+      '날짜 입력 칸은 dateComponent 로 바꿀 수 있습니다 (사내 날짜 선택기 등). 플로팅 필터에도 같은 컴포넌트가 쓰입니다.',
+      '날짜 필터 filterParams 의 minValidYear·maxValidYear(또는 minValidDate·maxValidDate) 로 고를 수 있는 범위를 제한합니다.',
+    ],
   },
   'floating-filters': {
     whenToUse: ['필터를 자주 쓰는 목록에서 메뉴를 열지 않고 바로 입력할 때'],
@@ -237,6 +241,8 @@ const STORY_DOCS = {
     notes: [
       '서버는 groupKeys 길이로 단계를 판단해 그룹 행(그룹 필드 + 집계값) 또는 리프 행을 돌려줘야 합니다.',
       '그룹 행 id 를 getRowId 로 직접 정할 땐 params.parentKeys 를 포함해 단계 사이에 겹치지 않게 하세요.',
+      '정렬을 바꾸면 영향받는 단계만 다시 요청합니다 (그룹 컬럼·집계 컬럼 → 그룹 단계, 그 밖 → 맨 아래 단계). 항상 전부 다시 받으려면 serverSideSortAllLevels, 다 불러온 상태에선 그리드가 직접 정렬하게 하려면 serverSideEnableClientSideSort.',
+      '하위 단계 그룹 컬럼 필터만 바꿀 땐 serverSideOnlyRefreshFilteredGroups 로 그 단계만 다시 요청합니다 (위 단계 그룹·펼침 유지).',
       "groupSelects: 'descendants' 의 선택 상태는 행 목록이 아니라 그룹 트리입니다. 실제 대상 행은 서버가 이 트리와 같은 조건으로 계산해야 합니다 (getSelectedRows 는 불러온 행만).",
     ],
   },
@@ -255,7 +261,11 @@ const STORY_DOCS = {
   // ─── UI 구성 ─────────────────────────────
   'side-bar': {
     whenToUse: ['컬럼 표시·필터를 오른쪽 패널에서 관리할 때', '선택한 행의 상세를 옆 패널에 보여줄 때 — 커스텀 툴패널'],
-    notes: ['패널 안쪽 가장자리를 끌어 폭을 바꿀 수 있습니다 (toolPanelSizeChanged). 범위는 툴패널의 minWidth·maxWidth.'],
+    notes: [
+      '컬럼 목록은 컬럼 그룹 트리로 보입니다. toolPanelParams 의 contractColumnSelection(접힌 채 시작)·suppressColumnExpandAll·suppressColumnSelectAll·suppressColumnFilter 로 모양을 바꿉니다.',
+      '패널 안쪽 가장자리를 끌어 폭을 바꿀 수 있습니다 (toolPanelSizeChanged). 범위는 툴패널의 minWidth·maxWidth.',
+      'allowDragFromColumnsToolPanel 을 켜면 컬럼 패널 항목을 헤더로 끌어 놓아 그 자리에 보이게 할 수 있습니다.',
+    ],
   },
   'status-bar': {
     whenToUse: ['전체·선택 건수, 선택 범위 합계를 아래에 보여줄 때'],
@@ -265,6 +275,10 @@ const STORY_DOCS = {
   },
   'column-menu': {
     whenToUse: ['헤더 메뉴 항목을 화면에 맞게 줄이거나 추가할 때'],
+    notes: [
+      "컬럼 선택기(columnChooser·컬럼 탭) 모양은 colDef.columnChooserParams 로: contractColumnSelection, suppressColumnExpandAll, suppressColumnSelectAll, suppressColumnFilter, columnLayout(목록에 보일 묶음·순서를 따로 지정).",
+      'api.showColumnChooser(params) 로 코드에서 열 때도 같은 params 를 넘깁니다.',
+    ],
   },
   overlays: {
     whenToUse: ['조회 중 로딩 표시, 결과 없음 안내 문구를 바꿀 때'],

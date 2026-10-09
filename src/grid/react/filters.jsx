@@ -263,6 +263,60 @@ function SetFilterUI({ core, column, onClose }) {
   );
 }
 
+// ── 날짜 입력 칸 ─────────────────────────────────────────────
+// dateComponent(필터 파라미터 → 컬럼 → 그리드 순): 날짜 고르는 UI 를 직접 만든 컴포넌트로 바꿈
+//  props: { date: Date|null, onDateChanged(date|null), placeholder, filterParams, column, colDef, api, context, ...dateComponentParams }
+function ymdToDate(s) {
+  if (!s) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s));
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+}
+function dateToYmd(d) {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return '';
+  const z = n => (n < 10 ? `0${n}` : n);
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+}
+function resolveDateComponent(core, column, fp) {
+  const c = fp?.dateComponent ?? column.colDef.dateComponent ?? core.gos.dateComponent;
+  if (!c) return null;
+  return typeof c === 'string' ? core.gos.components?.[c] ?? null : c;
+}
+
+function DateField({ core, column, fp, slot, value, onChange, placeholder, inputRef, onKeyDown, className, ariaLabel }) {
+  const custom = resolveDateComponent(core, column, fp);
+  if (custom) {
+    return (
+      <div className="r2-date-component" onKeyDown={e => e.stopPropagation()}>
+        {stableElement(core, `date:${column.colId}:${slot}`, custom, {
+          date: ymdToDate(value),
+          onDateChanged: d => onChange(d instanceof Date ? dateToYmd(d) : typeof d === 'string' ? d.slice(0, 10) : ''),
+          placeholder,
+          filterParams: fp,
+          column,
+          colDef: column.colDef,
+          api: core.api,
+          context: core.gos.context,
+          ...(fp?.dateComponentParams ?? column.colDef.dateComponentParams ?? {}),
+        })}
+      </div>
+    );
+  }
+  return (
+    <input
+      ref={inputRef}
+      className={className}
+      type="date"
+      min={fp?.minValidDate ? String(fp.minValidDate).slice(0, 10) : fp?.minValidYear ? `${fp.minValidYear}-01-01` : undefined}
+      max={fp?.maxValidDate ? String(fp.maxValidDate).slice(0, 10) : fp?.maxValidYear ? `${fp.maxValidYear}-12-31` : undefined}
+      placeholder={placeholder}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      onKeyDown={onKeyDown}
+      aria-label={ariaLabel}
+    />
+  );
+}
+
 // ── 조건 필터 (text / number / date) ─────────────────────────
 const NO_INPUT = new Set(['blank', 'notBlank', 'empty']);
 
@@ -398,30 +452,63 @@ function ConditionFilterUI({ core, column, kind, onClose }) {
               {!NO_INPUT.has(c.type) && (
                 <div className="r2-filter-body" role="presentation">
                   <div className="r2-filter-from r2-filter-filter r2-input-field">
-                    <input
-                      ref={i === 0 ? firstInput : undefined}
-                      className="r2-input-field-input r2-text-field-input"
-                      type={inputType}
-                      placeholder={localeText(core, c.type === 'inRange' ? 'inRangeStart' : 'filterOoo')}
-                      value={c.from}
-                      onChange={e => setCond(i, { from: e.target.value })}
-                      onKeyDown={e => {
-                        e.stopPropagation();
-                        if (e.key === 'Enter') applyNow(state);
-                        if (e.key === 'Escape') onClose?.();
-                      }}
-                    />
+                    {kind === 'date' ? (
+                      <DateField
+                        core={core}
+                        column={column}
+                        fp={fp}
+                        slot={`${i}:from`}
+                        inputRef={i === 0 ? firstInput : undefined}
+                        className="r2-input-field-input r2-text-field-input"
+                        placeholder={localeText(core, c.type === 'inRange' ? 'inRangeStart' : 'filterOoo')}
+                        value={c.from}
+                        onChange={v => setCond(i, { from: v })}
+                        onKeyDown={e => {
+                          e.stopPropagation();
+                          if (e.key === 'Enter') applyNow(state);
+                          if (e.key === 'Escape') onClose?.();
+                        }}
+                      />
+                    ) : (
+                      <input
+                        ref={i === 0 ? firstInput : undefined}
+                        className="r2-input-field-input r2-text-field-input"
+                        type={inputType}
+                        placeholder={localeText(core, c.type === 'inRange' ? 'inRangeStart' : 'filterOoo')}
+                        value={c.from}
+                        onChange={e => setCond(i, { from: e.target.value })}
+                        onKeyDown={e => {
+                          e.stopPropagation();
+                          if (e.key === 'Enter') applyNow(state);
+                          if (e.key === 'Escape') onClose?.();
+                        }}
+                      />
+                    )}
                   </div>
                   {c.type === 'inRange' && (
                     <div className="r2-filter-to r2-filter-filter r2-input-field">
-                      <input
-                        className="r2-input-field-input r2-text-field-input"
-                        type={inputType}
-                        placeholder={localeText(core, 'inRangeEnd')}
-                        value={c.to}
-                        onChange={e => setCond(i, { to: e.target.value })}
-                        onKeyDown={e => e.stopPropagation()}
-                      />
+                      {kind === 'date' ? (
+                        <DateField
+                          core={core}
+                          column={column}
+                          fp={fp}
+                          slot={`${i}:to`}
+                          className="r2-input-field-input r2-text-field-input"
+                          placeholder={localeText(core, 'inRangeEnd')}
+                          value={c.to}
+                          onChange={v => setCond(i, { to: v })}
+                          onKeyDown={e => e.stopPropagation()}
+                        />
+                      ) : (
+                        <input
+                          className="r2-input-field-input r2-text-field-input"
+                          type={inputType}
+                          placeholder={localeText(core, 'inRangeEnd')}
+                          value={c.to}
+                          onChange={e => setCond(i, { to: e.target.value })}
+                          onKeyDown={e => e.stopPropagation()}
+                        />
+                      )}
                     </div>
                   )}
                 </div>
@@ -590,6 +677,9 @@ function ConditionFloatingInput({ core, column, kind }) {
   return (
     <div className="r2-floating-filter-input">
       <div className={cx('r2-input-field', kind === 'number' ? 'r2-number-field' : kind === 'date' ? 'r2-date-field' : 'r2-text-field')}>
+        {kind === 'date' && resolveDateComponent(core, column, fp) ? (
+          <DateField core={core} column={column} fp={fp} slot="floating" value={text} onChange={v => onChange({ target: { value: v } })} ariaLabel={`${core.getDisplayName(column)} Filter Input`} />
+        ) : (
         <input
           className={cx('r2-input-field-input', kind === 'number' ? 'r2-number-field-input' : kind === 'date' ? 'r2-date-field-input' : 'r2-text-field-input')}
           type={kind === 'number' ? 'number' : kind === 'date' ? 'date' : 'text'}
@@ -604,6 +694,7 @@ function ConditionFloatingInput({ core, column, kind }) {
           }}
           aria-label={`${core.getDisplayName(column)} Filter Input`}
         />
+        )}
       </div>
     </div>
   );

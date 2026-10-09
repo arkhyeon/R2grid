@@ -383,6 +383,7 @@ export class GridCore {
       rebuild = true;
     }
     if (rebuild) this.buildColumns(false);
+    else if (changed('hidePaddedHeaderRows')) this.layoutColumns();
     if (changed('sideBar')) this.normalizeSideBar(false);
     if (changed('pivotMode')) {
       this.pivotModeOverride = undefined;
@@ -882,6 +883,9 @@ export class GridCore {
     this.displayedRight = right;
     this.displayedColumns = [...left, ...center, ...right];
     this.displayedIndex = new Map(this.displayedColumns.map((c, i) => [c.colId, i]));
+    // hidePaddedHeaderRows: 보이는 컬럼에 그룹이 하나도 없는 헤더 줄은 숨김 (기본은 전체 컬럼 기준 깊이)
+    const depthOf = list => list.reduce((m, c) => Math.max(m, c.groupChain?.length || 0), 0);
+    this.headerGroupDepth = this.gos.hidePaddedHeaderRows ? depthOf(this.displayedColumns) : depthOf(this.allColumns);
     this.hasColSpan = this.displayedColumns.some(c => typeof c.colDef.colSpan === 'function');
   }
 
@@ -892,12 +896,53 @@ export class GridCore {
     this.bodyWidth = width;
     this.bodyHeight = height;
     if (wChanged) this.layoutColumns();
+    if (wChanged) this.keepPinnedNarrowerThanViewport();
     if (wChanged && /^fit(GridWidth|ProvidedWidth)$/.test(this.gos.autoSizeStrategy?.type || '')) this.applyAutoSizeStrategy(false);
     if (hChanged && this.gos.pagination && this.gos.paginationAutoPageSize) {
       this.refreshModel({ newPageSize: true });
     }
     this.notify();
     this.dispatch('gridSizeChanged', { clientWidth: width, clientHeight: height });
+  }
+
+  // 그리드가 좁아져 고정 컬럼이 본문 폭(-50px)을 넘으면 고정 해제: 오른쪽 고정 → 왼쪽 고정 순으로 번갈아 하나씩.
+  //  processUnpinnedColumns({ columns, viewportWidth }) 로 풀 컬럼을 바꿀 수 있음 (빈 배열이면 그대로 둠)
+  keepPinnedNarrowerThanViewport() {
+    const bw = this.bodyWidth;
+    if (!(bw > 50) || this.gos.domLayout === 'print') return;
+    const avail = bw - 50;
+    let need = this.leftWidth + this.rightWidth - avail;
+    if (this.leftWidth + this.rightWidth < avail) return;
+    const L = [...this.displayedLeft];
+    const R = [...this.displayedRight];
+    let li = 0;
+    let ri = 0;
+    let locked = false;
+    const out = [];
+    while ((li < L.length || ri < R.length) && need > 0) {
+      if (ri < R.length) {
+        const c = R[ri++];
+        if (c.colDef.lockPinned) locked = true;
+        else {
+          need -= c.actualWidth;
+          out.push(c);
+        }
+      }
+      if (li < L.length && need > 0) {
+        const c = L[li++];
+        if (c.colDef.lockPinned) locked = true;
+        else {
+          need -= c.actualWidth;
+          out.push(c);
+        }
+      }
+    }
+    if (!out.length && !locked) return;
+    let cols = out;
+    const fn = this.gos.processUnpinnedColumns;
+    if (typeof fn === 'function') cols = fn({ columns: out, viewportWidth: bw, api: this.api, context: this.gos.context }) || [];
+    cols = cols.map(c => this.getColumn(c)).filter(c => c && c.autoType !== 'rowNumbers');
+    if (cols.length) this.setColumnsPinned(cols, null, 'viewportSizeFeature');
   }
 
   getColumn(key) {
@@ -1144,7 +1189,10 @@ export class GridCore {
     this.columnsVersion++;
     this.layoutColumns();
     if (sortChanged || modelChanged) {
-      if (this.isSsrm()) this.ssrmReset(sortChanged ? 'sort' : 'columns');
+      if (this.isSsrm()) {
+        if (modelChanged) this.ssrmReset('columns');
+        else this.ssrmOnSortChanged();
+      }
       else this.refreshModel({});
     }
     this.notify();
@@ -2103,7 +2151,7 @@ export class GridCore {
     this.quickFilterVersion++;
     if (this.isSsrm()) {
       this.updateFilterActiveFlags();
-      this.ssrmReset('filter');
+      this.ssrmOnFilterChanged();
     } else this.refreshModel({ resetPage: true });
     this.dispatch('filterChanged', {
       source,
@@ -2203,7 +2251,7 @@ export class GridCore {
       c.sortIndex = i;
     });
     if (!column.sort) column.sortIndex = null;
-    if (this.isSsrm()) this.ssrmReset('sort');
+    if (this.isSsrm()) this.ssrmOnSortChanged();
     else this.refreshModel({ skipFilter: true });
     this.dispatch('sortChanged', { source, columns: [column] });
   }

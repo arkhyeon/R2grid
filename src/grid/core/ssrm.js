@@ -85,7 +85,94 @@ export const ssrmMethods = {
     return st;
   },
 
+  // 지금 정렬 상태 { colId: 'asc'|'desc' } — 정렬 변경 때 어떤 컬럼이 바뀌었는지 비교용
+  ssrmSortState() {
+    const out = {};
+    for (const c of this.allColumns) if (c.sort) out[c.colId] = `${c.sort}:${c.sortIndex ?? 0}`;
+    return out;
+  },
+
+  // 정렬이 바뀌었을 때
+  //  - serverSideEnableClientSideSort 이고 모든 행을 다 불러온 상태: 서버에 묻지 않고 그리드가 직접 정렬
+  //  - serverSideSortAllLevels: 모든 단계를 다시 요청
+  //  - 기본: 정렬에 영향받는 단계의 스토어만 다시 요청 (그룹 단계는 그 단계 그룹 컬럼·집계 컬럼·자동 그룹 컬럼, 맨 아래는 그 밖의 컬럼)
+  ssrmOnSortChanged() {
+    const prev = this.ssrmLastSort || {};
+    const cur = this.ssrmSortState();
+    this.ssrmLastSort = cur;
+    if (!this.ssrm || this.isInfinite()) return this.ssrmReset('sort');
+    if (this.gos.serverSideEnableClientSideSort && this.ssrmAllLoaded()) return this.ssrmClientSort();
+    if (this.gos.serverSideSortAllLevels) return this.ssrmReset('sort');
+    const ids = new Set([...Object.keys(prev), ...Object.keys(cur)].filter(k => prev[k] !== cur[k]));
+    const changed = [...ids].map(id => this.getColumn(id)).filter(Boolean);
+    if (!changed.length) return undefined;
+    const groups = this.isServerTree() ? [] : this.rowGroupColumns();
+    const affects = st => {
+      const lvl = st.route.length;
+      if (this.isServerTree()) return true;
+      if (lvl >= groups.length) return changed.some(c => !groups.includes(c) && c.autoType !== 'group');
+      return changed.some(c => c === groups[lvl] || c.autoType === 'group' || (!!c.colDef.aggFunc && !groups.includes(c)));
+    };
+    const stores = [...this.ssrm.stores.values()].filter(affects);
+    if (stores.includes(this.ssrm) && stores.length === this.ssrm.stores.size) return this.ssrmReset('sort');
+    for (const st of stores) this.refreshServerSide({ route: st.route });
+    this.notify();
+    return undefined;
+  },
+
+  // 필터가 바뀌었을 때. serverSideOnlyRefreshFilteredGroups 이고 바뀐 필터가 모두 N 단계 이하 그룹 컬럼이면
+  //  N 단계 스토어만 다시 요청 (위 단계 그룹은 그대로). 그 밖에는 전부 다시
+  ssrmOnFilterChanged() {
+    const groups = this.isServerTree() ? [] : this.rowGroupColumns();
+    // 바뀐 필터 컬럼: 직전 필터 모델과 컬럼별로 비교
+    const prev = this.ssrmLastFilter || {};
+    const cur = this.ssrmFilterState();
+    this.ssrmLastFilter = cur;
+    const ids = [...new Set([...Object.keys(prev), ...Object.keys(cur)])].filter(k => prev[k] !== cur[k]);
+    const cols = ids.map(id => this.getColumn(id) || { colId: id });
+    if (!this.ssrm || this.isInfinite() || !this.gos.serverSideOnlyRefreshFilteredGroups || !groups.length || !cols.length) return this.ssrmReset('filter');
+    const lv = Math.min(...cols.map(c => Math.max(0, groups.indexOf(c))));
+    if (lv === 0) return this.ssrmReset('filter');
+    for (const st of [...this.ssrm.stores.values()]) if (st.route.length === lv) this.refreshServerSide({ route: st.route, purge: true });
+    return undefined;
+  },
+
+  // 모든 스토어의 행 수가 확정되고 빈 칸(stub) 이 없음
+  ssrmAllLoaded() {
+    for (const st of this.ssrm.stores.values()) {
+      if (!st.lastRowKnown) return false;
+      if (st.nodes.some(n => n.stub)) return false;
+    }
+    return true;
+  },
+
+  // 불러온 행을 그리드가 직접 정렬 (정렬이 없어지면 서버가 준 순서로)
+  ssrmClientSort() {
+    const cmp = this.makeSortComparator();
+    for (const st of this.ssrm.stores.values()) {
+      st.nodes.forEach((n, i) => {
+        if (n.__serverIdx == null) n.__serverIdx = i;
+      });
+      st.nodes.sort(cmp || ((a, b) => a.__serverIdx - b.__serverIdx));
+      st.nodes.forEach((n, i) => (n.__storeIndex = i));
+      this.ssrmRebuildBlocks(st);
+    }
+    this.ssrmRebuildRootNodes();
+    this.ssrmFlatten();
+    this.ssrmRefreshView('sort');
+  },
+
+  ssrmFilterState() {
+    const out = {};
+    const m = this.getFilterModel?.() || {};
+    for (const [k, v] of Object.entries(m)) out[k] = JSON.stringify(v);
+    if (this.isAdvancedFilterEnabled?.()) out.__advanced = JSON.stringify(this.getAdvancedFilterModel?.() ?? null);
+    return out;
+  },
+
   ssrmReset(reason = 'reset') {
+    this.ssrmLastSort = this.ssrmSortState();
+    this.ssrmLastFilter = this.ssrmFilterState();
     // 그룹 기준이 바뀌면 펼침 기억도 의미가 없어짐
     const sig = this.rowGroupColumns().map(c => c.colId).join('|');
     if (sig !== this.ssrmGroupSig) {

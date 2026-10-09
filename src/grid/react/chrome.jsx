@@ -20,7 +20,7 @@ function ToolPanelContent({ core, tp }) {
     return (
       <div className="r2-column-panel">
         {!p.suppressPivotMode && <PivotModeToggle core={core} />}
-        <ColumnChooserList core={core} toolPanel showSearch={!p.suppressColumnFilter} />
+        <ColumnChooserList core={core} toolPanel params={p} />
         {!p.suppressRowGroups && <ColumnDropZone core={core} kind="rowGroup" />}
         {!p.suppressValues && <ColumnDropZone core={core} kind="values" />}
         {pivot && !p.suppressPivots && <ColumnDropZone core={core} kind="pivot" />}

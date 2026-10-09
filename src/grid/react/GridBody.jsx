@@ -7,7 +7,7 @@ import { clamp, cx, resolveClassRules, resolveClassValue, toText } from '../core
 import { Checkbox, Icon } from './common.jsx';
 import { EditorHost } from './editors.jsx';
 import { SafeBoundary, stableElement } from './renderComponent.js';
-import { PopupLayer } from './popup.jsx';
+import { DragImage, PopupLayer } from './popup.jsx';
 import { localeText } from '../core/locale.js';
 import { SparklineCell } from './sparkline.jsx';
 
@@ -1525,12 +1525,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       {dragGhost &&
         createPortal(
           <PopupLayer core={core}>
-            <div className="r2-dnd-ghost r2-unselectable" style={{ position: 'fixed', left: dragGhost.x + 12, top: dragGhost.y + 12 }}>
-              <span className="r2-dnd-ghost-icon">
-                <Icon name="grip" />
-              </span>
-              <div className="r2-dnd-ghost-label">{dragGhost.text}</div>
-            </div>
+            <DragImage core={core} x={dragGhost.x} y={dragGhost.y} label={dragGhost.text} icon="move" dragSource={{ type: 'row' }} defaultIcon={<Icon name="grip" />} />
           </PopupLayer>,
           document.body,
         )}

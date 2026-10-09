@@ -326,7 +326,7 @@ export function createApi(core) {
       const column = params.column ? core.getColumn(params.column) : null;
       core.openContextMenu({ node, column, x: params.x ?? 0, y: params.y ?? 0 });
     },
-    showColumnChooser: () => core.openPopup({ type: 'columnChooser' }),
+    showColumnChooser: params => core.openPopup({ type: 'columnChooser', chooserParams: params }),
     hideColumnChooser: () => core.closePopup(),
 
     // ── 오버레이 ──
