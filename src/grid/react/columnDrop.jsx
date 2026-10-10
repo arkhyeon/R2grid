@@ -27,7 +27,7 @@ export function canDropInZone(col, kind) {
 
 // 영역에 컬럼 넣기 (index 위치, 이미 있으면 이동)
 export function dropIntoZone(core, kind, col, index) {
-  if (!canDropInZone(col, kind)) return;
+  if (core.gos.functionsReadOnly || !canDropInZone(col, kind)) return;
   if (kind === 'values') {
     if (!col.colDef.aggFunc) core.addValueColumns([col], 'toolPanelUi');
     return;
@@ -58,6 +58,7 @@ export function isGroupLocked(core, col) {
 }
 
 export function removeFromZone(core, kind, col) {
+  if (core.gos.functionsReadOnly) return;
   if (kind === 'values') core.removeValueColumns([col], 'toolPanelUi');
   else if (kind === 'rowGroup') {
     if (isGroupLocked(core, col)) return;
@@ -146,7 +147,7 @@ export function ColumnDropZone({ core, kind, horizontal = false }) {
             <span
               className="r2-column-drop-cell"
               col-id={c.colId}
-              draggable
+              draggable={!core.gos.functionsReadOnly}
               onDragStart={e => {
                 droppedInside.current = false;
                 setDragColumn(e, c, kind);
@@ -173,7 +174,7 @@ export function ColumnDropZone({ core, kind, horizontal = false }) {
                   <span
                     className="r2-column-drop-cell-agg"
                     role="button"
-                    onClick={() => setAggMenu(aggMenu === c.colId ? null : c.colId)}
+                    onClick={() => !core.gos.functionsReadOnly && setAggMenu(aggMenu === c.colId ? null : c.colId)}
                   >
                     {localeText(core, c.colDef.aggFunc, c.colDef.aggFunc)}(
                   </span>
@@ -186,7 +187,7 @@ export function ColumnDropZone({ core, kind, horizontal = false }) {
                   <Icon name={c.sort === 'asc' ? 'asc' : 'desc'} />
                 </span>
               )}
-              {!(kind === 'rowGroup' && isGroupLocked(core, c)) && (
+              {!core.gos.functionsReadOnly && !(kind === 'rowGroup' && isGroupLocked(core, c)) && (
                 <span className="r2-column-drop-cell-button" role="button" aria-label="remove" onClick={() => removeFromZone(core, kind, c)}>
                   <Icon name="cross" />
                 </span>

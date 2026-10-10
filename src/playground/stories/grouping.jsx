@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { SALES, SAMPLE, TREE } from '../data.js';
 import { Grid } from './_shared.jsx';
 
@@ -25,6 +25,38 @@ function RowGrouping({ p, ctx }) {
       suppressAggFuncInHeader={!p.aggHeader}
       onSelectionChanged={e => ctx.log(`선택 리프 ${e.api.getSelectedNodes().length}행`)}
       onRowGroupOpened={e => ctx.log(`rowGroupOpened ${e.node.key} ${e.expanded}`)}
+    />
+  );
+}
+
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const HIER_ROWS = SAMPLE.map((r, i) => ({ ...r, updatedAt: ymd(new Date(2025, 6 + (i % 14), 1 + ((i * 7) % 28))) }));
+const HIER_PRESETS = {
+  'year,month': ['year', 'month'],
+  'year,quarter,formattedMonth': ['year', 'quarter', 'formattedMonth'],
+  'year,half,month': ['year', 'half', 'month'],
+};
+
+function DateHierarchy({ p, ctx }) {
+  const cols = useMemo(
+    () => [
+      { field: 'updatedAt', headerName: '수정일', rowGroup: true, hide: true, enableRowGroup: true, sort: 'asc', groupHierarchy: HIER_PRESETS[p.parts] },
+      { field: 'taskName', headerName: '작업명', minWidth: 140 },
+      { field: 'dbms', headerName: 'DBMS', width: 110 },
+      { field: 'rowCnt', headerName: '행 수', width: 130, aggFunc: 'sum', valueFormatter: x => (x.value == null ? '' : x.value.toLocaleString()) },
+    ],
+    [p.parts],
+  );
+  return (
+    <Grid
+      key={p.parts}
+      rowData={HIER_ROWS}
+      columnDefs={cols}
+      groupDefaultExpanded={1}
+      autoGroupColumnDef={{ headerName: '수정일', minWidth: 220 }}
+      groupHierarchyConfig={{ half: { headerName: '반기', valueGetter: x => (Number(String(x.data?.updatedAt).slice(5, 7)) <= 6 ? '상반기' : '하반기') } }}
+      rowGroupPanelShow="always"
+      onRowGroupOpened={e => ctx.log(`${e.node.rowGroupColumn?.colDef.headerName}: ${e.node.key} ${e.expanded ? '펼침' : '접음'}`)}
     />
   );
 }
@@ -70,15 +102,27 @@ function TotalRows({ p }) {
   );
 }
 
+// 끌어 옮기기용: 부모 id 필드 방식 (getDataPath 는 경로가 데이터에서 계산돼 자동 이동 대상이 아님)
+const TREE_BY_PARENT = TREE.map(r => ({ id: r.path.join('/'), pid: r.path.length > 1 ? r.path.slice(0, -1).join('/') : null, name: r.path.at(-1), headcount: r.headcount, budget: r.budget }));
+
 function TreeData({ p, ctx }) {
+  const [rows] = useState(() => TREE_BY_PARENT.map(r => ({ ...r })));
+  const dragProps = p.drag
+    ? {
+        rowData: rows,
+        treeDataParentIdField: 'pid',
+        getRowId: x => x.data.id,
+        rowDragManaged: true,
+        onRowDragEnd: e => e.dropPosition && ctx.log(`${e.node.data.name} → ${e.dropPosition === 'inside' ? `${e.newParent?.data.name} 안` : `${e.overNode?.data.name} ${e.dropPosition === 'above' ? '위' : '아래'}`} (pid=${e.node.data.pid})`),
+      }
+    : { rowData: TREE, getDataPath: d => d.path };
   return (
     <Grid
-      key={String(p.expanded)}
-      rowData={TREE}
+      key={`${p.expanded}${p.drag}`}
+      {...dragProps}
       treeData
-      getDataPath={d => d.path}
       groupDefaultExpanded={p.expanded}
-      autoGroupColumnDef={{ headerName: '조직', minWidth: 240 }}
+      autoGroupColumnDef={{ headerName: '조직', minWidth: 240, rowDrag: !!p.drag, ...(p.drag ? { valueGetter: x => x.data?.name } : null) }}
       columnDefs={[
         { field: 'headcount', headerName: '인원', aggFunc: 'sum', width: 120 },
         { field: 'budget', headerName: '예산(백만)', aggFunc: 'sum', width: 140 },
@@ -186,6 +230,37 @@ rowSelection: {
     },
   },
   {
+    id: 'date-hierarchy',
+    category: CAT,
+    name: '날짜 계층으로 묶기',
+    desc: "날짜 컬럼 하나로 연 → 분기 → 월처럼 여러 단계로 묶습니다. colDef.groupHierarchy 에 단계를 나열하면 그 컬럼을 그룹으로 지정할 때 단계마다 묶음이 생깁니다. 원본 컬럼은 하나로 남아 그룹 패널·상태 저장·정렬은 원본 기준.",
+    keywords: ['groupHierarchy', 'groupHierarchyConfig', 'year', 'quarter', 'month', 'formattedMonth', 'day', 'hour', 'minute', 'second', '날짜 그룹'],
+    controls: [
+      {
+        key: 'parts',
+        type: 'select',
+        default: 'year,month',
+        label: 'groupHierarchy',
+        desc: "단계 목록. 내장: 'year' 'quarter' 'month' 'formattedMonth'(월 이름) 'day' 'hour' 'minute' 'second'. 직접 만든 단계는 groupHierarchyConfig 에 이름으로 정의하거나 colDef 를 그대로 넣습니다.",
+        options: [
+          { value: 'year,month', desc: "['year', 'month']" },
+          { value: 'year,quarter,formattedMonth', desc: "['year', 'quarter', 'formattedMonth']" },
+          { value: 'year,half,month', desc: "['year', 'half', 'month'] — half 는 groupHierarchyConfig 로 정의한 반기" },
+        ],
+      },
+    ],
+    render: (p, ctx) => <DateHierarchy p={p} ctx={ctx} />,
+    code: p => `<R2Grid
+  columnDefs={[
+    { field: 'updatedAt', rowGroup: true, hide: true, groupHierarchy: ${JSON.stringify(HIER_PRESETS[p.parts]).replace(/"/g, "'")} },
+    { field: 'rowCnt', aggFunc: 'sum' },
+  ]}${p.parts.includes('half') ? `
+  groupHierarchyConfig={{
+    half: { headerName: '반기', valueGetter: p => (Number(p.data.updatedAt.slice(5, 7)) <= 6 ? '상반기' : '하반기') },
+  }}` : ''}
+/>`,
+  },
+  {
     id: 'group-display',
     category: CAT,
     name: '그룹 표시 방식',
@@ -290,7 +365,7 @@ rowSelection: {
     category: CAT,
     name: '트리 데이터',
     desc: 'treeData + getDataPath 로 경로 배열을 계층으로 표시합니다. 부모 행 값은 aggFunc 로 집계됩니다.',
-    keywords: ['treeData', 'getDataPath', 'autoGroupColumnDef', 'groupDefaultExpanded', 'aggFunc', 'suppressAggFuncInHeader', 'getRowId'],
+    keywords: ['treeData', 'getDataPath', 'autoGroupColumnDef', 'groupDefaultExpanded', 'aggFunc', 'suppressAggFuncInHeader', 'getRowId', 'treeDataParentIdField', 'treeDataChildrenField', 'rowDragManaged', 'rowDragInsertDelay', 'isRowValidDropPosition', 'treeDataDisplayType'],
     controls: [{
         key: 'expanded',
         type: 'select',
@@ -302,6 +377,15 @@ rowSelection: {
           { value: 1, desc: '1단계(본부)까지' },
           { value: -1, desc: '전부 펼침' },
         ],
+      },
+      {
+        key: 'drag',
+        type: 'boolean',
+        default: false,
+        label: 'rowDragManaged',
+        desc: "트리 행을 끌어 다른 행의 위·아래(같은 부모) 또는 가운데(그 행의 자식)로 옮깁니다. 부모가 데이터에 있는 treeDataParentIdField · treeDataChildrenField 방식에서만 그리드가 직접 옮기고, 접힌 행 가운데에 rowDragInsertDelay(기본 500ms) 머무르면 펼쳐집니다.",
+        on: '부모 id 필드(pid) 트리 + 끌어 옮기기',
+        off: 'getDataPath 경로 트리',
       }],
     render: (p, ctx) => <TreeData p={p} ctx={ctx} />,
     code: p => `<R2Grid

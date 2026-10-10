@@ -62,6 +62,7 @@ const MENU = [
   ['필터 · 정렬', '그리드 필터', 'advanced-filter', '고급 필터'],
 
   ['그룹 · 피벗', '행 그룹', 'row-grouping', '그룹 · 집계'],
+  ['그룹 · 피벗', '행 그룹', 'date-hierarchy', '날짜 계층'],
   ['그룹 · 피벗', '행 그룹', 'group-display', '표시 방식'],
   ['그룹 · 피벗', '행 그룹', 'total-rows', '합계 행'],
   ['그룹 · 피벗', '행 그룹', 'row-group-panel', '그룹 패널'],

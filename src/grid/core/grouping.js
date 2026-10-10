@@ -1,8 +1,39 @@
 // 행 그룹핑(rowGroup) / 트리데이터(treeData + getDataPath) / 집계(aggFunc) / 그룹 선택
 // GridCore.prototype 에 합쳐지는 mixin. (this = GridCore)
 import { RowNode } from './RowNode.js';
+import { Column } from './Column.js';
 import { getFieldValue, toText } from './utils.js';
 import { localeText } from './locale.js';
+
+// ── groupHierarchy (날짜 계층으로 묶기) ─────────────────────
+export const HIERARCHY_COL_ID = 'r2-Grid-HierarchyColumn';
+const HIERARCHY_LABELS = { year: '연', quarter: '분기', month: '월', formattedMonth: '월', day: '일', hour: '시', minute: '분', second: '초' };
+// Date | 'YYYY-MM-DD[ HH:mm:ss]' | 타임스탬프 → Date
+function toHierarchyDate(v) {
+  if (v == null || v === '') return null;
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
+  if (typeof v === 'number') return new Date(v);
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/.exec(String(v));
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0));
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+const HIERARCHY_PARTS = {
+  year: d => d.getFullYear(),
+  quarter: d => Math.floor(d.getMonth() / 3) + 1,
+  month: d => d.getMonth() + 1,
+  formattedMonth: (d, core) => {
+    try {
+      return new Intl.DateTimeFormat(localeText(core, 'groupHierarchyLocale', 'ko-KR'), { month: 'long' }).format(d);
+    } catch {
+      return String(d.getMonth() + 1);
+    }
+  },
+  day: d => d.getDate(),
+  hour: d => d.getHours(),
+  minute: d => d.getMinutes(),
+  second: d => d.getSeconds(),
+};
 
 export const AUTO_GROUP_COL_ID = 'r2-Grid-AutoColumn';
 
@@ -61,6 +92,8 @@ export const groupingMethods = {
   wantsAutoGroupColumn(leaves) {
     const g = this.gos;
     if (g.pivotSuppressAutoColumn && this.isPivotActive?.()) return false;
+    // 트리 데이터는 treeDataDisplayType: 'custom' 이면 자동 그룹 컬럼 없이 사용자 컬럼(cellRenderer: 'r2GroupCellRenderer')으로
+    if (g.treeData && g.treeDataDisplayType === 'custom') return false;
     if (g.groupDisplayType === 'custom' || g.groupDisplayType === 'groupRows') return false;
     if (g.treeData && (typeof g.getDataPath === 'function' || g.treeDataChildrenField || g.treeDataParentIdField || (g.rowModelType === 'serverSide' && typeof g.isServerSideGroup === 'function'))) return true;
     // 컬럼 상태 기준 (api/패널로 바뀐 그룹 반영)
@@ -183,6 +216,64 @@ export const groupingMethods = {
     return this.allColumns
       .filter(c => c.rowGroup)
       .sort((a, b) => (a.rowGroupIndex ?? 1e9) - (b.rowGroupIndex ?? 1e9) || order.get(a) - order.get(b));
+  },
+
+  // 실제로 묶는 단계 컬럼: colDef.groupHierarchy 가 있는 그룹 컬럼은 그 단계들(연·분기·월… 가상 컬럼)로 펼침
+  //  (클라이언트 그룹, 한 컬럼 표시(singleColumn)·groupRows 일 때)
+  groupingColumns() {
+    const cols = this.rowGroupColumns();
+    if (this.isSsrm?.() || this.isMultipleGroupColumns?.()) return cols;
+    const out = [];
+    for (const c of cols) {
+      const h = c.colDef.groupHierarchy;
+      if (Array.isArray(h) && h.length) out.push(...this.hierarchyColumns(c));
+      else out.push(c);
+    }
+    return out;
+  },
+
+  hierarchyColumns(src) {
+    const cache = (this.__hierCols ||= new Map());
+    const parts = src.colDef.groupHierarchy;
+    const hit = cache.get(src.colId);
+    if (hit && hit.parts === parts && hit.src === src) return hit.cols;
+    const srcName = this.getDisplayName(src) || src.colId;
+    const cols = parts
+      .map((part, i) => {
+        let def;
+        let name;
+        if (typeof part === 'string' && HIERARCHY_PARTS[part]) {
+          const pick = HIERARCHY_PARTS[part];
+          name = part;
+          def = {
+            headerName: `${srcName} (${localeText(this, `groupHierarchy_${part}`, HIERARCHY_LABELS[part])})`,
+            valueGetter: p => {
+              const d = toHierarchyDate(this.getCellValue(p.node, src));
+              return d ? pick(d, this) : null;
+            },
+          };
+        } else {
+          const custom = typeof part === 'string' ? this.gos.groupHierarchyConfig?.[part] : part;
+          if (!custom) return null;
+          name = typeof part === 'string' ? part : custom.colId ?? custom.field ?? `part${i}`;
+          def = { ...custom };
+        }
+        const colId = `${HIERARCHY_COL_ID}-${src.colId}-${name}`;
+        const col = new Column(this, { ...def, colId }, def, colId, []);
+        col.hierarchySource = src;
+        // 월 이름처럼 글자로 정렬하면 순서가 틀어지는 단계는 정렬용 값(월 번호)을 따로
+        if (part === 'formattedMonth') {
+          col.groupSortValueOf = leaf => {
+            const d = toHierarchyDate(this.getCellValue(leaf, src));
+            return d ? d.getMonth() : null;
+          };
+        }
+        col.visible = false;
+        return col;
+      })
+      .filter(Boolean);
+    cache.set(src.colId, { parts, src, cols });
+    return cols;
   },
 
   groupSelectsMode() {
@@ -348,7 +439,7 @@ export const groupingMethods = {
         });
       finalize(top);
     } else {
-      const cols = this.rowGroupColumns();
+      const cols = this.groupingColumns();
       const byId = new Map();
       for (const leaf of this.rootNodes) {
         let parentNode = null;
@@ -368,6 +459,7 @@ export const groupingMethods = {
           if (!g) {
             g = this.reuseGroupNode(cache, id, key, lvl, parentNode, col.colDef.field, col);
             g.groupValue = v;
+            if (col.groupSortValueOf) g.groupSortValue = col.groupSortValueOf(leaf);
             siblings.push(g);
             byId.set(id, g);
           }

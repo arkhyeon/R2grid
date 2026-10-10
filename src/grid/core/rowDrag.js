@@ -1,5 +1,7 @@
 // 행 드래그: rowDragManaged / rowDragEntireRow / rowDragMultiRow / colDef.rowDrag
 // 이벤트: rowDragEnter / rowDragMove / rowDragLeave / rowDragEnd / rowDragCancel
+import { getFieldValue, setFieldValue } from './utils.js';
+
 export const rowDragMethods = {
   isRowDragEnabled() {
     const g = this.gos;
@@ -19,10 +21,73 @@ export const rowDragMethods = {
   // managed 이동 가능 여부 (정렬/필터/그룹 중에는 managed 이동 안 함)
   isManagedMoveAllowed() {
     if (!this.gos.rowDragManaged) return false;
-    if (!this.isClientSide() || this.isGroupMode()) return false;
+    if (!this.isClientSide()) return false;
+    if (this.isGroupMode() && !this.isTreeDragManaged()) return false;
     if (this.allColumns.some(c => c.sort)) return false;
     if (this.isAnyFilterPresent()) return false;
     return true;
+  },
+
+  // 트리 데이터 managed 이동: 부모가 데이터에 있는 방식(treeDataParentIdField · treeDataChildrenField)만
+  //  (getDataPath 는 경로가 데이터에서 계산되므로 rowDragEnd 에서 직접 데이터를 바꿔야 함)
+  isTreeDragManaged() {
+    const g = this.gos;
+    return this.groupMode === 'tree' && typeof g.getDataPath !== 'function' && !!(g.treeDataParentIdField || g.treeDataChildrenField);
+  },
+
+  // 트리 놓을 자리: 위 1/4 = above, 아래 1/4 = below, 가운데 = inside(그 행의 자식으로)
+  treeDropPosition(overNode, y, pi) {
+    const top = this.rowTopAt(pi);
+    const h = this.rowHeightAt(pi);
+    if (y < top + h / 4) return 'above';
+    if (y > top + (h * 3) / 4) return 'below';
+    return 'inside';
+  },
+
+  // a 가 b 의 조상(또는 자신)인지
+  isTreeAncestor(a, b) {
+    for (let n = b; n; n = n.parent) if (n === a) return true;
+    return false;
+  },
+
+  // 끄는 행을 overNode 의 위/아래/안으로 옮김. 부모 링크(필드 또는 children 링크)와 형제 순서(rootNodes 순서)를 바꿈
+  moveTreeNodes(nodes, overNode, position) {
+    const g = this.gos;
+    // 함께 끄는 조상이 있으면 그 자손은 따로 옮기지 않음
+    const movers = nodes.filter(n => !nodes.some(o => o !== n && this.isTreeAncestor(o, n)));
+    if (movers.some(n => this.isTreeAncestor(n, overNode))) return null;
+    const newParent = position === 'inside' ? overNode : overNode.parent && overNode.parent.data ? overNode.parent : null;
+    // 부모 id 값 타입은 데이터에 이미 있는 부모 id 를 따름 (숫자 id 면 숫자로)
+    let pidValue = null;
+    if (newParent && g.treeDataParentIdField) {
+      const sample = this.rootNodes.map(n => getFieldValue(n.data, g.treeDataParentIdField)).find(v => v != null && v !== '');
+      pidValue = typeof sample === 'number' && /^-?\d+(\.\d+)?$/.test(newParent.id) ? Number(newParent.id) : newParent.id;
+    }
+    for (const n of movers) {
+      if (g.treeDataParentIdField) setFieldValue(n.data, g.treeDataParentIdField, pidValue);
+      else {
+        const map = (this.treeChildParent ||= new Map());
+        if (newParent) map.set(n.data, newParent.data);
+        else map.delete(n.data);
+      }
+    }
+    // 형제 순서: rootNodes 에서 옮길 행을 대상 앞/뒤(안쪽이면 맨 뒤 = 마지막 자식)로
+    const rest = this.rootNodes.filter(n => !movers.includes(n));
+    const moving = this.rootNodes.filter(n => movers.includes(n));
+    let at = rest.length;
+    if (position !== 'inside') {
+      const i = rest.indexOf(overNode);
+      at = i < 0 ? rest.length : position === 'above' ? i : i + 1;
+    }
+    rest.splice(at, 0, ...moving);
+    rest.forEach((n, i) => {
+      n.sourceRowIndex = i;
+    });
+    this.rootNodes = rest;
+    if (position === 'inside' && !overNode.expanded) overNode.expanded = true;
+    this.groupsDirty = true;
+    this.refreshModel({ keepRenderedRows: true });
+    return newParent;
   },
 
   rowDragText(node, nodes, column) {
@@ -63,6 +128,31 @@ export const rowDragMethods = {
     d.lastY = event.clientY;
     d.overIndex = overIndex;
     const overNode = this.displayedNodes[overIndex];
+    // 트리: 위/아래/안 자리를 표시해 두고 놓을 때 이동. 접힌 행 안쪽에 rowDragInsertDelay(기본 500ms) 머무르면 펼침
+    if (overNode && !overNode.detail && !overNode.footer && this.isManagedMoveAllowed() && this.isTreeDragManaged()) {
+      const pi = overIndex - this.pageFirstRow;
+      const position = this.treeDropPosition(overNode, y, pi);
+      const bad = d.nodes.some(n => this.isTreeAncestor(n, overNode)) || !this.rowDropAllowed(d.nodes, overNode, position, position === 'inside' ? overNode : overNode.parent?.data ? overNode.parent : null);
+      if (bad) {
+        d.pending = null;
+        this.setRowDropPositionIndicator(null);
+      } else {
+        d.pending = { overNode, position };
+        this.setRowDropPositionIndicator({ row: overNode, dropIndicatorPosition: position });
+      }
+      const hoverKey = position === 'inside' ? overNode : null;
+      if (d.hoverNode !== hoverKey) {
+        d.hoverNode = hoverKey;
+        clearTimeout(d.hoverTimer);
+        if (hoverKey && !bad && overNode.group && !overNode.expanded) {
+          d.hoverTimer = setTimeout(() => {
+            if (this.rowDragState === d && d.hoverNode === overNode) overNode.setExpanded(true);
+          }, this.gos.rowDragInsertDelay ?? 500);
+        }
+      }
+      this.dispatch('rowDragMove', this.dragEventParams('rowDragMove', overIndex, y, event, vDirection));
+      return;
+    }
     if (overNode && !overNode.detail && !d.nodes.includes(overNode) && this.isManagedMoveAllowed()) {
       // 놓을 위치: 행의 위쪽 절반이면 위, 아래쪽 절반이면 아래
       const pi = overIndex - this.pageFirstRow;
@@ -83,10 +173,10 @@ export const rowDragMethods = {
   },
 
   // isRowValidDropPosition: false 를 돌려주면 그 자리로는 이동하지 않음
-  rowDropAllowed(nodes, target, position) {
+  rowDropAllowed(nodes, target, position, newParent) {
     const fn = this.gos.isRowValidDropPosition;
     if (typeof fn !== 'function') return true;
-    return fn({ source: nodes[0], rows: nodes, target, position, newParent: target?.parent ?? null, api: this.api, context: this.gos.context }) !== false;
+    return fn({ source: nodes[0], rows: nodes, target, position, newParent: newParent !== undefined ? newParent : target?.parent ?? null, api: this.api, context: this.gos.context }) !== false;
   },
 
   // 드롭 위치 표시줄 (setRowDropPositionIndicator / getRowDropPositionIndicator)
@@ -206,7 +296,12 @@ export const rowDragMethods = {
   rowDragEnd(event, overIndex, y, cancelled = false) {
     const d = this.rowDragState;
     if (!d) return;
-    if (d.pending && !cancelled) this.moveNodesManagedTo(d.nodes, d.pending.overNode, d.pending.position);
+    clearTimeout(d.hoverTimer);
+    let treeMove = null;
+    if (d.pending && !cancelled) {
+      if (this.isTreeDragManaged()) treeMove = { newParent: this.moveTreeNodes(d.nodes, d.pending.overNode, d.pending.position), position: d.pending.position };
+      else this.moveNodesManagedTo(d.nodes, d.pending.overNode, d.pending.position);
+    }
     if (this.rowDropIndicator) this.setRowDropPositionIndicator(null);
     this.rowDragState = null;
     d.nodes.forEach(n => {
@@ -215,6 +310,8 @@ export const rowDragMethods = {
     this.notify();
     this.rowDragState = d;
     const params = this.dragEventParams(cancelled ? 'rowDragCancel' : 'rowDragEnd', overIndex ?? d.overIndex, y, event, null);
+    // 트리 이동 결과: 새 부모 행(최상위면 null)·놓은 자리
+    if (treeMove) Object.assign(params, { newParent: treeMove.newParent, dropPosition: treeMove.position });
     this.rowDragState = null;
     this.dispatch(cancelled ? 'rowDragCancel' : 'rowDragEnd', params);
   },

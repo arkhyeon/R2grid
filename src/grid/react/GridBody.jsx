@@ -1323,7 +1323,9 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     const pi = n.rowIndex - core.pageFirstRow;
     if (pi < 0 || pi >= rowCount) return null;
     const pos = ind.dropIndicatorPosition;
-    const t = core.rowTopAt(pi) - offset + (pos === 'below' ? core.rowHeightAt(pi) : pos === 'inside' ? core.rowHeightAt(pi) / 2 : 0);
+    // 안쪽(트리 자식으로): 행 전체 테두리
+    if (pos === 'inside') return <div className="r2-row-drop-indicator r2-row-drop-indicator-inside" style={{ top: core.rowTopAt(pi) - offset, height: core.rowHeightAt(pi), width }} aria-hidden="true" />;
+    const t = core.rowTopAt(pi) - offset + (pos === 'below' ? core.rowHeightAt(pi) : 0);
     return <div className={`r2-row-drop-indicator r2-row-drop-indicator-${pos}`} style={{ top: t - 1, width }} aria-hidden="true" />;
   };
 

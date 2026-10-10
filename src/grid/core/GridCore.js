@@ -378,6 +378,7 @@ export class GridCore {
       changed('selectionColumnDef') ||
       changed('autoGroupColumnDef') ||
       changed('treeData') ||
+      changed('treeDataDisplayType') ||
       changed('groupDisplayType')
     ) {
       rebuild = true;
@@ -1336,7 +1337,9 @@ export class GridCore {
   }
 
   isCellEditable(column, node) {
-    if (!node || !column || node.detail || column.isAuto) return false;
+    if (!node || !column || node.detail || column.isAuto || node.footer) return false;
+    // 그룹 행: enableGroupEdit 일 때만 (트리 데이터의 데이터 있는 부모 행은 그냥 편집 가능)
+    if (node.group && !this.gos.enableGroupEdit && !(node.data && (this.gos.treeData || node.__ssrmTree))) return false;
     const e = column.colDef.editable;
     if (typeof e === 'function') return !!e(this.makeValueParams(node, column));
     return !!e;
@@ -1359,7 +1362,8 @@ export class GridCore {
       }
     } else if (cd.field) {
       const eq = cd.equals ? cd.equals(oldValue, newValue) : oldValue === newValue;
-      if (eq) changed = false;
+      // 데이터 없는 그룹 행(enableGroupEdit)은 valueSetter 없이는 쓸 곳이 없음 → 이벤트(cellEditingStopped)로만 알림
+      if (eq || !node.data) changed = false;
       else {
         setFieldValue(node.data, cd.field, newValue, this.gos.suppressFieldDotNotation);
         changed = true;
@@ -1781,9 +1785,10 @@ export class GridCore {
       for (const c of sortCols) {
         const desc = c.sort === 'desc';
         // 행 그룹 컬럼 정렬: 그 컬럼으로 묶인 그룹 행끼리는 그룹 값(key) 으로
-        const grp = a.group && b.group && a.rowGroupColumn === c && b.rowGroupColumn === c;
-        const va = grp ? (a.groupValue ?? a.key) : this.getCellValue(a, c);
-        const vb = grp ? (b.groupValue ?? b.key) : this.getCellValue(b, c);
+        const own = n => n.rowGroupColumn === c || n.rowGroupColumn?.hierarchySource === c;
+        const grp = a.group && b.group && a.rowGroupColumn === b.rowGroupColumn && own(a);
+        const va = grp ? (a.groupSortValue ?? a.groupValue ?? a.key) : this.getCellValue(a, c);
+        const vb = grp ? (b.groupSortValue ?? b.groupValue ?? b.key) : this.getCellValue(b, c);
         const cmp = c.colDef.comparator;
         const r = cmp ? cmp(va, vb, a, b, desc) : defaultComparator(va, vb, accented);
         if (r !== 0) return desc ? -r : r;

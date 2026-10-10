@@ -2245,3 +2245,9 @@ body.r2-row-resizing * {
   cursor: pointer;
   opacity: 0.8;
 }
+
+/* 트리 행 끌기: 그 행의 자식으로 넣을 때 */
+.r2-row-drop-indicator.r2-row-drop-indicator-inside {
+  background-color: color-mix(in srgb, var(--r2-accent-color) 12%, transparent);
+  box-shadow: inset 0 0 0 2px var(--r2-accent-color);
+}

@@ -353,7 +353,7 @@ export function ColumnChooserList({ core, showSearch = true, toolPanel = false, 
   };
   // 끌기: 목록 안 순서 변경(suppressMovable·lockPosition 제외) 또는 드롭 영역으로 (컬럼 툴패널과 같음)
   const movable = c => !c.colDef.suppressMovable && !c.colDef.lockPosition;
-  const canDrag = c => toolPanel && (movable(c) || c.colDef.enableRowGroup || c.colDef.enableValue || c.colDef.enablePivot);
+  const canDrag = c => toolPanel && (movable(c) || (!core.gos.functionsReadOnly && (c.colDef.enableRowGroup || c.colDef.enableValue || c.colDef.enablePivot)));
   const s = search.trim().toLowerCase();
   const matches = c => !s || core.getDisplayName(c, true).toLowerCase().includes(s);
 
@@ -523,7 +523,7 @@ export function ColumnChooserList({ core, showSearch = true, toolPanel = false, 
               <Checkbox
                 className="r2-column-select-checkbox"
                 checked={isOn(c)}
-                disabled={!pivotUi && !!c.colDef.lockVisible}
+                disabled={pivotUi ? !!core.gos.functionsReadOnly : !!c.colDef.lockVisible}
                 onToggle={() => toggle(c)}
               />
               <span className="r2-column-select-column-label">{core.getDisplayName(c, true)}</span>

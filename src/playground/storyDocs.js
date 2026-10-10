@@ -203,12 +203,27 @@ const STORY_DOCS = {
     whenToUse: ['그룹마다 소계 행, 맨 아래 총합계 행이 필요할 때'],
     notes: ["합계 행이 화면 아래로 벗어나 있으면 본문 맨 아래에 붙어 보입니다. 끄려면 suppressStickyTotalRow: true (총합계만 'grand', 그룹 합계만 'group')."],
   },
+  'date-hierarchy': {
+    badge: 'NEW',
+    whenToUse: ['날짜 하나로 연·월별(또는 분기별) 소계를 보고 싶을 때 — 연·월 컬럼을 데이터에 따로 만들 필요 없음'],
+    notes: [
+      "값은 Date, 'YYYY-MM-DD[ HH:mm:ss]' 문자열, 타임스탬프 모두 됩니다. 비어 있으면 빈 그룹.",
+      '서버 사이드 그룹과 groupDisplayType: multipleColumns 에서는 계층 없이 원본 컬럼으로 묶습니다.',
+      "월 이름(formattedMonth)은 localeText.groupHierarchyLocale(기본 'ko-KR') 로 언어를 정합니다. 단계 이름은 groupHierarchy_year 등.",
+    ],
+  },
   'row-group-panel': {
     whenToUse: ['사용자가 직접 그룹 기준을 바꿔가며 볼 때'],
     notes: ['그룹 칩을 누르면 그 그룹 순서가 오름차순 → 내림차순 → 원래대로 바뀝니다 (Shift+클릭은 여러 기준). 끄려면 rowGroupPanelSuppressSort.'],
   },
   'tree-data': {
-    whenToUse: ['메뉴·조직도처럼 부모-자식 경로가 있는 데이터'],
+    badge: 'UPDATE',
+    whenToUse: ['메뉴·조직도처럼 부모-자식 경로가 있는 데이터', '사용자가 끌어서 트리 구조를 바꿀 때 — rowDragManaged'],
+    notes: [
+      '끌어 옮기기는 treeDataParentIdField(부모 id 필드를 그리드가 바꿈) 또는 treeDataChildrenField(그리드 안의 부모 연결만 바뀜, 원본 children 배열은 그대로) 방식에서 동작합니다.',
+      'getDataPath 트리는 경로가 데이터에서 계산되므로 onRowDragEnd 의 overNode·y 로 직접 데이터를 바꾼 뒤 rowData 를 다시 넣으세요.',
+      'onRowDragEnd 의 newParent(새 부모 행, 최상위면 null)·dropPosition(above·below·inside) 으로 서버에 저장합니다. 막을 자리는 isRowValidDropPosition.',
+    ],
   },
   pivot: {
     whenToUse: ['연도·분기 같은 값을 컬럼으로 펼쳐 교차 집계할 때'],
