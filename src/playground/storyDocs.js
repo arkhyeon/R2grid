@@ -261,6 +261,14 @@ const STORY_DOCS = {
       "groupSelects: 'descendants' 의 선택 상태는 행 목록이 아니라 그룹 트리입니다. 실제 대상 행은 서버가 이 트리와 같은 조건으로 계산해야 합니다 (getSelectedRows 는 불러온 행만).",
     ],
   },
+  'viewport-model': {
+    badge: 'NEW',
+    whenToUse: ['시세·장비 모니터링처럼 서버가 바뀐 행을 계속 보내는 화면', '행이 아주 많은데 보이는 행만 구독하고 싶을 때'],
+    notes: [
+      '보이는 범위를 벗어난 행은 비워 두고(빈 칸 표시) 다시 들어오면 데이터 소스가 채웁니다. 선택은 getRowId 기준으로 유지됩니다.',
+      '정렬·필터는 그리드가 하지 않습니다. onSortChanged / onFilterChanged 에서 데이터 소스가 다시 보내 주세요.',
+    ],
+  },
   infinite: {
     whenToUse: ['전체 건수를 모르는 목록을 스크롤로 계속 불러올 때'],
   },

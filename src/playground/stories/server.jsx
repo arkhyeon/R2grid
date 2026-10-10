@@ -218,6 +218,79 @@ function Infinite({ p, ctx }) {
   );
 }
 
+// viewport 행 모델 예: 종목 1,000개 중 보이는 범위만 받고, 1초마다 보이는 종목 시세를 밀어 넣음
+const TICKERS = Array.from({ length: 1000 }, (_, i) => ({ code: `A${String(100000 + i * 37).slice(0, 6)}`, name: `종목 ${i + 1}`, base: 1000 + ((i * 7919) % 90000) }));
+function makeTickerSource(ctx, intervalMs) {
+  let params = null;
+  let range = [0, -1];
+  let timer = null;
+  const quote = (i, prev) => {
+    const t = TICKERS[i];
+    const price = prev ? Math.max(1, Math.round(prev.price * (1 + (Math.random() - 0.5) * 0.01))) : t.base;
+    return { id: t.code, code: t.code, name: t.name, price, change: price - t.base, volume: (prev?.volume ?? 0) + Math.floor(Math.random() * 500) };
+  };
+  const last = new Map();
+  const push = all => {
+    const m = {};
+    for (let i = range[0]; i <= range[1]; i++) {
+      if (!all && Math.random() > 0.3) continue; // 매번 일부 종목만 바뀜
+      const q = quote(i, last.get(i));
+      last.set(i, q);
+      m[i] = q;
+    }
+    params?.setRowData(m);
+  };
+  return {
+    init(p) {
+      params = p;
+      p.setRowCount(TICKERS.length);
+      timer = setInterval(() => push(false), intervalMs);
+    },
+    setViewportRange(first, lastRow) {
+      range = [first, lastRow];
+      ctx.log(`setViewportRange(${first}, ${lastRow})`);
+      push(true);
+    },
+    destroy() {
+      clearInterval(timer);
+    },
+  };
+}
+
+function ViewportModel({ p, ctx }) {
+  const ds = useMemo(() => makeTickerSource(ctx, p.interval), [p.interval]);
+  const cols = useMemo(
+    () => [
+      { field: 'code', headerName: '종목코드', width: 110 },
+      { field: 'name', headerName: '종목명', flex: 1, minWidth: 120 },
+      { field: 'price', headerName: '현재가', width: 120, type: 'numericColumn', valueFormatter: x => x.value?.toLocaleString() ?? '' },
+      {
+        field: 'change',
+        headerName: '대비',
+        width: 110,
+        type: 'numericColumn',
+        valueFormatter: x => (x.value == null ? '' : `${x.value > 0 ? '+' : ''}${x.value.toLocaleString()}`),
+        cellStyle: x => ({ color: x.value > 0 ? '#e5484d' : x.value < 0 ? '#3e63dd' : undefined }),
+      },
+      { field: 'volume', headerName: '거래량', width: 120, type: 'numericColumn', valueFormatter: x => x.value?.toLocaleString() ?? '' },
+    ],
+    [],
+  );
+  return (
+    <Grid
+      key={p.interval}
+      height={420}
+      rowModelType="viewport"
+      viewportDatasource={ds}
+      viewportRowModelPageSize={p.pageSize}
+      viewportRowModelBufferSize={5}
+      getRowId={x => x.data.id}
+      columnDefs={cols}
+      defaultColDef={{ enableCellChangeFlash: true }}
+    />
+  );
+}
+
 export default [
   {
     id: 'pagination',
@@ -449,6 +522,56 @@ api.applyServerSideTransaction({ route: ['Oracle', '진행'], add: [newRow] });
 // 선택 상태 (안 불러온 하위 포함) — 서버에 그대로 보내 대상 행을 계산
 const sel = api.getServerSideSelectionState();
 // { selectAllChildren: false, toggledNodes: [{ nodeId: 'Oracle', selectAllChildren: true, toggledNodes: [...] }] }` : ''}`,
+  },
+  {
+    id: 'viewport-model',
+    category: CAT,
+    name: '실시간 보이는 범위 (Viewport)',
+    desc: "rowModelType: 'viewport'. 데이터 소스가 init 에서 행 수를 알리고(setRowCount), 그리드는 보이는 범위가 바뀔 때마다 setViewportRange(first, last) 로 알려 줍니다. 데이터 소스는 그 범위의 행을 setRowData({ 번호: 데이터 }) 로 언제든 밀어 넣습니다 — 시세·모니터링처럼 서버가 계속 갱신하는 화면용.",
+    keywords: ['rowModelType', 'viewport', 'viewportDatasource', 'setViewportRange', 'setRowCount', 'setRowData', 'viewportRowModelPageSize', 'viewportRowModelBufferSize', 'enableCellChangeFlash'],
+    controls: [
+      {
+        key: 'pageSize',
+        type: 'select',
+        default: 5,
+        label: 'viewportRowModelPageSize',
+        desc: '보이는 범위를 이 행 수 단위로 맞춰 알립니다. 크면 스크롤할 때 요청이 줄고, 작으면 꼭 필요한 행만 받습니다. 여유 행은 viewportRowModelBufferSize(기본 5).',
+        options: [
+          { value: 5, desc: '5행 단위 (기본)' },
+          { value: 20, desc: '20행 단위' },
+        ],
+      },
+      {
+        key: 'interval',
+        type: 'select',
+        default: 1000,
+        label: '갱신 주기 (예제용)',
+        desc: '예제 데이터 소스가 보이는 종목 시세를 밀어 넣는 간격. 바뀐 칸은 colDef.enableCellChangeFlash 로 깜빡입니다.',
+        options: [
+          { value: 1000, desc: '1초' },
+          { value: 300, desc: '0.3초' },
+        ],
+      },
+    ],
+    render: (p, ctx) => <ViewportModel p={p} ctx={ctx} />,
+    code: p => `const datasource = {
+  init({ setRowCount, setRowData, getRow }) {
+    setRowCount(1000);                       // 전체 행 수
+    socket.on('quote', q => setRowData({ [q.index]: q }));   // 바뀐 행만 밀어 넣기
+  },
+  setViewportRange(firstRow, lastRow) {       // 보이는 범위가 바뀌면
+    socket.emit('subscribe', { firstRow, lastRow });
+  },
+  destroy() { socket.close(); },
+};
+
+<R2Grid
+  rowModelType="viewport"
+  viewportDatasource={datasource}
+  viewportRowModelPageSize={${p.pageSize}}
+  getRowId={p => p.data.code}
+  defaultColDef={{ enableCellChangeFlash: true }}
+/>`,
   },
   {
     id: 'infinite',

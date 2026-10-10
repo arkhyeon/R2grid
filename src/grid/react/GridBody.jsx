@@ -1460,6 +1460,8 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
   // SSRM: 화면에 걸린 블록 요청
   useEffect(() => {
     if (core.isSsrm() && core.renderedRange.first >= 0) core.ssrmEnsureRows(core.renderedRange.first, core.renderedRange.last);
+    // viewport 행 모델: 보이는 범위를 데이터 소스에 알림
+    if (core.isViewportModel() && core.renderedRange.first >= 0) core.vpEnsureRange(core.renderedRange.first, core.renderedRange.last);
   });
 
   // 가로 위치를 새로 생긴 floating 컨테이너에도 적용

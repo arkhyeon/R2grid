@@ -33,6 +33,7 @@ import { advancedFilterMethods } from './advancedFilter.js';
 import { chartMethods } from './charts.js';
 import { headerNavMethods } from './headerNav.js';
 import { stateMethods } from './state.js';
+import { viewportMethods } from './viewport.js';
 
 export const DEFAULT_ROW_HEIGHT = 42;
 export const DEFAULT_HEADER_HEIGHT = 48;
@@ -326,6 +327,10 @@ export class GridCore {
         this.ssrmReset('init');
         return;
       }
+      if (this.isViewportModel()) {
+        this.vpInit();
+        return;
+      }
       this.setRowData(next.rowData, true);
       return;
     }
@@ -421,14 +426,19 @@ export class GridCore {
       groupRefresh = true;
     }
 
-    if (changed('rowModelType') || changed('serverSideDatasource') || changed('datasource')) {
+    if (changed('rowModelType') || changed('serverSideDatasource') || changed('datasource') || changed('viewportDatasource')) {
       if (this.isSsrm()) {
         this.ssrmReset('datasource');
         this.notify();
         return;
       }
+      if (this.isViewportModel()) {
+        this.vpInit();
+        return;
+      }
+      if (prev.rowModelType === 'viewport') this.vpDestroy();
     }
-    if (this.isSsrm()) {
+    if (this.isSsrm() || this.isViewportModel()) {
       this.notify();
       return;
     }
@@ -1396,7 +1406,7 @@ export class GridCore {
   }
 
   setRowData(rowData, initial) {
-    if (this.isSsrm()) return;
+    if (this.isSsrm() || this.isViewportModel()) return;
     // treeDataChildrenField: 중첩된 children 배열을 펼친 목록으로 (부모는 treeChildParent 에 기억, v33.1+)
     this.treeChildParent = null;
     if (rowData && this.gos.treeData && this.gos.treeDataChildrenField && typeof this.gos.getDataPath !== 'function') {
@@ -1671,6 +1681,10 @@ export class GridCore {
     silent = false,
   } = {}) {
     this.spanEpoch = (this.spanEpoch || 0) + 1;
+    if (this.isViewportModel()) {
+      this.vpRefreshView();
+      return;
+    }
     if (this.isSsrm()) {
       // 행 그룹·값 컬럼이 바뀌면 서버에 다시 요청 (setRowGroupColumns·드롭 영역 등 어느 경로든)
       if (this.ssrm && this.ssrmModelSig() !== this.ssrm.modelSig) this.ssrmReset('columns');
@@ -4000,6 +4014,8 @@ export class GridCore {
   // ── 생명주기 ─────────────────────────────────────────────
   onMounted() {
     this.destroyed = false;
+    // 언마운트 후 다시 붙은 경우(StrictMode 등) 끊었던 viewport 데이터 소스 다시 연결
+    if (this.isViewportModel() && this.vp?.destroyed) this.vpInit();
     this.dispatch('gridReady', {});
     const pending = this.pendingInitialEvents;
     this.pendingInitialEvents = [];
@@ -4046,6 +4062,7 @@ export class GridCore {
   destroy() {
     if (this.destroyed) return;
     this.dispatch('gridPreDestroyed', { state: {} });
+    if (this.isViewportModel()) this.vpDestroy();
     this.destroyed = true;
     this.timers.forEach(t => clearTimeout(t));
     this.timers.clear();
@@ -4055,4 +4072,4 @@ export class GridCore {
 }
 
 // 기능별 mixin 결합 (그룹핑 / SSRM / 행드래그 / undo / 고정행)
-Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods, statusBarMethods, findMethods, pivotMethods, advancedFilterMethods, chartMethods, stateMethods, headerNavMethods);
+Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, viewportMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods, statusBarMethods, findMethods, pivotMethods, advancedFilterMethods, chartMethods, stateMethods, headerNavMethods);
