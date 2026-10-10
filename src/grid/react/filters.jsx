@@ -25,8 +25,55 @@ export function useGridFilter(callbacks) {
   });
 }
 
+// 핸들러 방식 필터 화면: 모델·상태는 그리드가 들고 있고 컴포넌트는 그리기만
+function HandlerFilterInstance({ core, column }) {
+  const def = column.colDef.filter;
+  const comp = typeof def.component === 'string' ? core.gos.components?.[def.component] : def.component;
+  const fp = column.colDef.filterParams || {};
+  const buttons = Array.isArray(fp.buttons) ? fp.buttons : [];
+  const withApply = buttons.includes('apply');
+  const state = core.getHandlerFilterState(column);
+  const props = {
+    ...fp,
+    model: core.filterModels.get(column.colId) ?? null,
+    state,
+    // apply 버튼이 있으면 바로 적용하지 않고 화면 상태로만
+    onModelChange: m => (withApply ? core.setHandlerFilterState(column, { ...state, model: m }) : core.setHandlerFilterModel(column, m)),
+    onStateChange: st => core.setHandlerFilterState(column, st),
+    onAction: action => core.doFilterAction({ colId: column.colId, action }),
+    onUiChange: () => core.dispatch('filterUiChanged', { column }),
+    getHandler: () => core.getFilterHandler(column),
+    getValue: (node, c) => core.getFilterValue(node, c ?? column),
+    source: 'COLUMN_MENU',
+    colDef: column.colDef,
+    column,
+    api: core.api,
+    context: core.gos.context,
+  };
+  return (
+    <>
+      {comp ? stableElement(core, `filter:${column.colId}`, comp, props) : null}
+      {buttons.length > 0 && (
+        <FilterButtons
+          core={core}
+          buttons={buttons}
+          onApply={() => core.doFilterAction({ colId: column.colId, action: 'apply' })}
+          onClear={() => core.doFilterAction({ colId: column.colId, action: 'clear' })}
+          onReset={() => core.doFilterAction({ colId: column.colId, action: 'reset' })}
+          onCancel={() => core.doFilterAction({ colId: column.colId, action: 'cancel' })}
+        />
+      )}
+    </>
+  );
+}
+
 function CustomFilterInstance({ core, column }) {
   const colId = column.colId;
+  if (core.isHandlerFilter(column)) return <HandlerFilterInstance core={core} column={column} />;
+  return <LegacyCustomFilterInstance core={core} column={column} colId={colId} />;
+}
+
+function LegacyCustomFilterInstance({ core, column, colId }) {
   const impl = resolveCustomFilterImpl(column.colDef, core.gos.components);
   const register = useCallback(cbs => core.registerCustomFilterCallbacks(colId, cbs), [core, colId]);
   const setInst = useCallback(inst => core.attachCustomFilterInstance(colId, inst), [core, colId]);
@@ -738,7 +785,7 @@ export function FloatingFilterCell({ core, col, height }) {
       body = <ReadOnlyFloating text={text} />;
     } else if (kind === 'custom') {
       const e = core.customFilters?.get(col.colId);
-      const fn = e?.callbacks?.getModelAsString || e?.inst?.getModelAsString;
+      const fn = core.getFilterHandler(col)?.getModelAsString || e?.callbacks?.getModelAsString || e?.inst?.getModelAsString;
       body = <ReadOnlyFloating text={model == null ? '' : typeof fn === 'function' ? fn(model) : ''} />;
     } else {
       body = <ConditionFloatingInput core={core} column={col} kind={kind} />;

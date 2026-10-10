@@ -533,6 +533,10 @@ export function createApi(core) {
     getEditRowValues: node => core.getEditRowValues(node),
     validateEdit: () => core.validateEdit(),
 
+    // ── 필터 핸들러 ──
+    getColumnFilterHandler: key => core.getFilterHandler(core.getColumn(key)) ?? undefined,
+    doFilterAction: params => core.doFilterAction(params),
+
     // ── 컬럼 그룹 표시 ──
     getCenterDisplayedColumnGroups: () => core.displayedGroupsOf?.('center') ?? [],
     getLeftDisplayedColumnGroups: () => core.displayedGroupsOf?.('left') ?? [],

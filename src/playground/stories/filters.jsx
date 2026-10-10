@@ -117,8 +117,49 @@ function MinCountFilter({ model, onModelChange, getValue }) {
     </div>
   );
 }
-function CustomFilter({ ctx }) {
+// 핸들러 방식: 컴포넌트는 state.model 을 그리고 바꾸기만 — 거르기·모델 보관은 그리드
+function RangeFilterView({ state, onModelChange, onAction }) {
+  const m = state?.model || {};
+  const set = (k, v) => onModelChange({ ...m, [k]: v === '' ? undefined : Number(v) });
+  return (
+    <div style={{ display: 'grid', gap: 6, padding: 8, width: 200 }}>
+      <label>
+        이상 <input type="number" value={m.from ?? ''} onChange={e => set('from', e.target.value)} onKeyDown={e => e.key === 'Enter' && onAction('apply')} style={{ width: 120 }} />
+      </label>
+      <label>
+        이하 <input type="number" value={m.to ?? ''} onChange={e => set('to', e.target.value)} onKeyDown={e => e.key === 'Enter' && onAction('apply')} style={{ width: 120 }} />
+      </label>
+    </div>
+  );
+}
+const RANGE_HANDLER = () => ({
+  doesFilterPass: ({ model, data }) => (model.from == null || data.rowCnt >= model.from) && (model.to == null || data.rowCnt <= model.to),
+  getModelAsString: m => (m ? `${m.from?.toLocaleString() ?? ''} ~ ${m.to?.toLocaleString() ?? ''}` : ''),
+});
+
+function CustomFilter({ p, ctx }) {
   const ref = useRef(null);
+  if (p.handler) {
+    return (
+      <>
+        <div className="pg-toolbar">
+          <button onClick={() => ref.current.api.setFilterModel({ rowCnt: { from: 1_000_000, to: 2_000_000 } })}>setFilterModel(100만~200만)</button>
+          <button onClick={() => ref.current.api.doFilterAction({ action: 'reset' })}>doFilterAction(reset)</button>
+          <span className="pg-note">행 수 필터: 값 입력 → 적용 버튼 (Enter 도 적용)</span>
+        </div>
+        <Grid
+          key="handler"
+          gridRef={ref}
+          rowData={SAMPLE}
+          enableFilterHandlers
+          filterHandlers={{ range: RANGE_HANDLER }}
+          defaultColDef={{ floatingFilter: true }}
+          columnDefs={BASE_COLUMNS.map(c => (c.field === 'rowCnt' ? { ...c, filter: { component: RangeFilterView, handler: 'range' }, filterParams: { buttons: ['reset', 'apply'] } } : c))}
+          onFilterChanged={e => ctx.log(`filterChanged → ${e.api.getDisplayedRowCount()}행 · model=${JSON.stringify(e.api.getFilterModel())}`)}
+        />
+      </>
+    );
+  }
   return (
     <>
       <div className="pg-toolbar">
@@ -326,9 +367,19 @@ api.setFilterModel({
     category: CAT,
     name: '커스텀 필터 컴포넌트',
     desc: 'colDef.filter 에 컴포넌트를 넘깁니다. reactive 방식: props.model / onModelChange + useGridFilter({ doesFilterPass }). reactiveCustomComponents: false 면 ref 로 isFilterActive / doesFilterPass / getModel / setModel 을 노출하는 구형 방식.',
-    keywords: ['filter', 'useGridFilter', 'doesFilterPass', 'onModelChange', 'model', 'getValue', 'afterGuiAttached', 'isFilterActive', 'getModel', 'setModel', 'filterChangedCallback', 'reactiveCustomComponents', 'getColumnFilterInstance'],
-    controls: [],
-    render: (p, ctx) => <CustomFilter ctx={ctx} />,
+    keywords: ['filter', 'useGridFilter', 'doesFilterPass', 'onModelChange', 'model', 'getValue', 'afterGuiAttached', 'isFilterActive', 'getModel', 'setModel', 'filterChangedCallback', 'reactiveCustomComponents', 'getColumnFilterInstance', 'enableFilterHandlers', 'filterHandlers', 'handler', 'getColumnFilterHandler', 'doFilterAction', 'onAction', 'onStateChange'],
+    controls: [
+      {
+        key: 'handler',
+        type: 'boolean',
+        default: false,
+        label: 'filter: { component, handler }',
+        desc: "핸들러 방식. 거르기(doesFilterPass)와 화면(component)을 나눕니다. 모델은 그리드가 보관하고 component 는 state.model 을 그린 뒤 onModelChange / onAction('apply'|'clear'|'reset'|'cancel') 만 부릅니다. filterParams.buttons 에 'apply' 가 있으면 적용 버튼을 누를 때 반영. 거르기 로직은 handler(gridOptions.filterHandlers 의 키나 함수) 또는 filter.doesFilterPass.",
+        on: '행 수: 범위 입력 + 적용·초기화 버튼, 플로팅 필터에 getModelAsString',
+        off: 'useGridFilter 방식 (컴포넌트가 doesFilterPass 등록)',
+      },
+    ],
+    render: (p, ctx) => <CustomFilter p={p} ctx={ctx} />,
     code: () => `import { useGridFilter } from 'r2grid';
 
 function MinCountFilter({ model, onModelChange, getValue }) {

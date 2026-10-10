@@ -6,7 +6,93 @@
 import { createFilterPredicate, isModelActive, resolveFilterKind } from './filterService.js';
 import { getFieldValue } from './utils.js';
 
+// 핸들러 방식 필터: colDef.filter = { component, doesFilterPass? , handler? }
+//  - 모델은 그리드가 보관. component 는 model/state 를 받아 그리기만, 바꾸면 onModelChange / onStateChange / onAction
+//  - 거르기는 doesFilterPass({ model, node, data, ... }) 또는 handler(키 → gridOptions.filterHandlers, 또는 함수)가 만든 객체의 doesFilterPass
+export function isHandlerFilterDef(f) {
+  return !!f && typeof f === 'object' && !f.$$typeof && ('component' in f || 'handler' in f || 'doesFilterPass' in f);
+}
+
 export const customFilterMethods = {
+  isHandlerFilter(col) {
+    return !!col && isHandlerFilterDef(col.colDef.filter);
+  },
+
+  // 컬럼의 필터 핸들러 (한 번 만들고 재사용). doesFilterPass 만 있으면 그걸 감싼 객체
+  getFilterHandler(col) {
+    if (!this.isHandlerFilter(col)) return null;
+    const def = col.colDef.filter;
+    const cache = (this.filterHandlerCache ||= new Map());
+    const hit = cache.get(col.colId);
+    if (hit && hit.def === def) return hit.handler;
+    hit?.handler?.destroy?.();
+    let handler;
+    const h = def.handler;
+    const make = typeof h === 'string' ? this.gos.filterHandlers?.[h] : h;
+    if (!def.doesFilterPass && typeof make === 'function') {
+      handler = make({ colDef: col.colDef, column: col, api: this.api, context: this.gos.context }) || {};
+      handler.init?.(this.filterHandlerParams(col, 'init'));
+    } else handler = { doesFilterPass: def.doesFilterPass };
+    cache.set(col.colId, { def, handler });
+    return handler;
+  },
+
+  filterHandlerParams(col, source) {
+    return {
+      model: this.filterModels.get(col.colId) ?? null,
+      source,
+      column: col,
+      colDef: col.colDef,
+      filterParams: col.colDef.filterParams || {},
+      getValue: (node, c) => this.getFilterValue(node, c ?? col),
+      onModelChange: m => this.setHandlerFilterModel(col, m),
+      api: this.api,
+      context: this.gos.context,
+    };
+  },
+
+  // 핸들러 필터 모델 적용 (onModelChange · apply 버튼 · api)
+  setHandlerFilterModel(col, model, source = 'columnFilter') {
+    const h = this.getFilterHandler(col);
+    let m = model ?? null;
+    if (typeof h?.processModelToApply === 'function') m = h.processModelToApply(m) ?? null;
+    if (m == null) this.filterModels.delete(col.colId);
+    else this.filterModels.set(col.colId, m);
+    const e = this.customFilters?.get(col.colId);
+    if (e) e.pending = undefined;
+    h?.refresh?.({ ...this.filterHandlerParams(col, source), model: m });
+    this.onFilterChanged(source, [col]);
+  },
+
+  // 화면에서 아직 적용 안 한 값 (apply 버튼이 있을 때)
+  getHandlerFilterState(col) {
+    const e = this.customFilters?.get(col.colId);
+    return e && e.pending !== undefined ? e.pending : { model: this.filterModels.get(col.colId) ?? null };
+  },
+
+  setHandlerFilterState(col, state) {
+    const e = this.getCustomFilterEntry(col, true);
+    e.pending = state;
+    this.dispatch('filterModified', { column: col, filterInstance: null });
+    this.notify();
+  },
+
+  // 필터 버튼 동작: apply(적용) · clear(입력만 비움) · reset(비우고 해제) · cancel(적용된 값으로 되돌림)
+  doFilterAction({ colId, action } = {}) {
+    const cols = colId ? [this.getColumn(colId)].filter(Boolean) : this.allColumns.filter(c => this.isHandlerFilter(c));
+    for (const col of cols) {
+      if (!this.isHandlerFilter(col)) continue;
+      const e = this.customFilters?.get(col.colId);
+      if (action === 'apply') this.setHandlerFilterModel(col, e && e.pending !== undefined ? e.pending.model : this.filterModels.get(col.colId) ?? null);
+      else if (action === 'clear') this.setHandlerFilterState(col, { model: null });
+      else if (action === 'reset') this.setHandlerFilterModel(col, null);
+      else if (action === 'cancel' && e) {
+        e.pending = undefined;
+        this.notify();
+      }
+    }
+  },
+
   filterKindOf(col) {
     return resolveFilterKind(col.colDef, this.gos.components, this.gos, col);
   },
@@ -23,8 +109,8 @@ export const customFilterMethods = {
     if (!this.customFilters) this.customFilters = new Map();
     let e = this.customFilters.get(col.colId);
     if (!e && create) {
-      const el = document.createElement('div');
-      el.className = 'r2-filter-custom-host';
+      const el = typeof document !== 'undefined' ? document.createElement('div') : null;
+      if (el) el.className = 'r2-filter-custom-host';
       e = { colId: col.colId, el, callbacks: null, inst: null, pendingModel: undefined };
       this.customFilters.set(col.colId, e);
       this.notify();
@@ -34,6 +120,7 @@ export const customFilterMethods = {
 
   // 모델 활성 판정: 빌트인은 모델 내용, reactive 커스텀은 model != null, imperative 는 isFilterActive()
   isFilterModelActive(col, model) {
+    if (this.isHandlerFilter(col)) return model != null;
     if (!this.isCustomFilter(col)) return isModelActive(model);
     const e = this.customFilters?.get(col.colId);
     if (e?.inst && typeof e.inst.isFilterActive === 'function') return !!e.inst.isFilterActive();
@@ -41,6 +128,12 @@ export const customFilterMethods = {
   },
 
   makeColumnFilterPredicate(col, model) {
+    if (this.isHandlerFilter(col)) {
+      const h = this.getFilterHandler(col);
+      if (typeof h?.doesFilterPass !== 'function') return null;
+      const base = this.filterHandlerParams(col, 'filter');
+      return node => h.doesFilterPass({ ...base, model, node, data: node.data, handlerParams: base });
+    }
     if (!this.isCustomFilter(col)) return createFilterPredicate(this, col, model);
     const e = this.customFilters?.get(col.colId);
     if (e?.inst && typeof e.inst.doesFilterPass === 'function') {
@@ -93,6 +186,12 @@ export const customFilterMethods = {
 
   // api(setFilterModel 등) 로 커스텀 컬럼 모델 지정
   applyCustomFilterModel(col, model) {
+    if (this.isHandlerFilter(col)) {
+      const e = this.customFilters?.get(col.colId);
+      if (e) e.pending = undefined;
+      this.getFilterHandler(col)?.refresh?.({ ...this.filterHandlerParams(col, 'api'), model: model ?? null });
+      return;
+    }
     const e = this.getCustomFilterEntry(col, true);
     if (e.inst && typeof e.inst.setModel === 'function') e.inst.setModel(model);
     else if (!this.isReactiveFilters()) e.pendingModel = model;
@@ -134,6 +233,7 @@ export const customFilterMethods = {
   },
 
   getCustomFilterInstance(col) {
+    if (this.isHandlerFilter(col)) return null;
     const e = this.getCustomFilterEntry(col, true);
     if (e.inst) return e.inst;
     return {
