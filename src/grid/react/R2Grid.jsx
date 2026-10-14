@@ -66,6 +66,8 @@ function GridView({ core }) {
   return (
     <div
       ref={rootRef}
+      // id prop: 그리드 바깥 요소의 DOM id (화면 테스트·CSS 대상 지정용)
+      id={typeof core.gos.id === 'string' ? core.gos.id : undefined}
       className={cx(
         'r2-root-wrapper r2-theme-vars r2-theme-moon',
         core.isRtl() ? 'r2-rtl' : 'r2-ltr',

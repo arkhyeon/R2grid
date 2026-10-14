@@ -4,6 +4,7 @@ import { EventService } from './EventService.js';
 import { getGlobalGridOptions } from './globals.js';
 import { resolveTheme } from './theme.js';
 import { eventPropName } from './utils.js';
+import { checkGridOptionNames } from './optionCheck.js';
 import {
   DATA_SOURCE,
   MASTER_FLAGS,
@@ -299,6 +300,8 @@ export class GridCore {
   applyGos(next, initial) {
     const prev = this.gos;
     this.gos = next;
+    // 개발 모드: 모르는 옵션 이름 알림 (처음엔 전부, 이후엔 새로 생긴 키만)
+    checkGridOptionNames(next, initial ? Object.keys(next) : Object.keys(next).filter(k => !(k in prev)));
     if (initial) {
       this.theme = resolveTheme(next.theme);
       this.installTheme();

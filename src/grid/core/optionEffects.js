@@ -64,6 +64,8 @@ export const REFRESH_MODEL = [
   'excludeChildrenWhenTreeDataFiltering',
   'groupHideOpenParents',
   'groupHideParentOfSingleChild',
+  'groupRemoveSingleChildren',
+  'groupRemoveLowestSingleChildren',
   'groupMaintainOrder',
   'groupSuppressBlankHeader',
   'initialGroupOrderComparator',

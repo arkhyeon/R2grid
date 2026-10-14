@@ -2,6 +2,7 @@
 //  GridCore.prototype 에 합쳐짐 (this = GridCore)
 import { Column, ColumnGroup, ROW_NUMBERS_COL_ID, SELECTION_COL_ID, normalizePinned } from './Column.js';
 import { BUILTIN_COLUMN_TYPES, camelToHuman } from './gridConstants.js';
+import { checkColDefNames } from './optionCheck.js';
 import { AUTO_GROUP_COL_ID } from './grouping.js';
 import { localeText } from './locale.js';
 import { clamp, getFieldValue } from './utils.js';
@@ -20,6 +21,10 @@ export const columnMethods = {
     let autoSeq = 0;
     let groupSeq = 0;
     const prevSortSig = this.sortSignature();
+    // 개발 모드: 모르는 컬럼 옵션 이름 알림
+    checkColDefNames(g, g.defaultColDef);
+    checkColDefNames(g, g.defaultColGroupDef);
+    for (const t of Object.values(g.columnTypes || {})) checkColDefNames(g, t);
 
     const mergeDef = def => {
       let merged = { ...defaultColDef };
@@ -39,6 +44,7 @@ export const columnMethods = {
       const out = [];
       list.forEach(def => {
         if (!def) return;
+        checkColDefNames(g, def);
         if (Array.isArray(def.children)) {
           const groupId = def.groupId != null ? String(def.groupId) : `__group_${groupSeq++}`;
           const gdef = g.defaultColGroupDef ? { ...g.defaultColGroupDef, ...def } : def;

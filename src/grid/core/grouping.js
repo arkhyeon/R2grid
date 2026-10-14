@@ -866,7 +866,9 @@ export const groupingMethods = {
         // 피벗 모드: 리프(데이터) 행은 표시하지 않음
         if (pivot && !n.group) continue;
         // groupHideParentOfSingleChild: 자식이 하나뿐인 그룹은 그룹 행 대신 자식을 바로 (true | 'leafGroupsOnly')
-        const hps = this.gos.groupHideParentOfSingleChild;
+        const g0 = this.gos;
+        const hps =
+          g0.groupHideParentOfSingleChild ?? (g0.groupRemoveSingleChildren ? true : g0.groupRemoveLowestSingleChildren ? 'leafGroupsOnly' : undefined);
         if (hps && n.group && n.childrenAfterSort?.length === 1 && (hps === true || !n.childrenAfterSort[0].group) && !pivot) {
           flatten(n.childrenAfterSort);
           continue;
