@@ -112,7 +112,7 @@ export function buildClipboardText(core, blocks, includeHeaders, includeGroupHea
 function send(core, text) {
   const custom = core.gos.sendToClipboard;
   if (typeof custom === 'function') custom({ data: text, api: core.api, context: core.gos.context });
-  else copyTextToClipboard(text, !!core.gos.suppressClipboardApi);
+  else copyTextToClipboard(text, !!core.gos.suppressClipboardApi, core.getDocument());
 }
 
 function highlight(core, blocks) {
@@ -230,6 +230,10 @@ export function pasteTextIntoGrid(core, text) {
   if (core.gos.suppressClipboardPaste || core.editing || text == null) return;
   const delim = core.gos.clipboardDelimiter ?? '\t';
   let data = parseClipboardText(text, delim);
+  // suppressLastEmptyLineOnPaste: 끝에 붙은 빈 줄(엑셀이 덧붙이는 줄바꿈) 버림
+  if (core.gos.suppressLastEmptyLineOnPaste) {
+    while (data.length && data[data.length - 1].every(c => c === '')) data.pop();
+  }
   if (!data.length) return;
   const proc = core.gos.processDataFromClipboard;
   if (typeof proc === 'function') {

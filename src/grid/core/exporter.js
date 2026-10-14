@@ -83,5 +83,5 @@ export function exportDataAsCsv(core, params = {}) {
   let name = p.fileName || 'export.csv';
   if (typeof name === 'function') name = name({ api: core.api, context: core.gos.context });
   if (!/\.csv$/i.test(name)) name += '.csv';
-  downloadFile(name, csv, 'text/csv;charset=utf-8;');
+  downloadFile(name, csv, 'text/csv;charset=utf-8;', core.getDocument());
 }

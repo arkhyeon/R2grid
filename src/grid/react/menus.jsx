@@ -9,6 +9,7 @@ import { FilterUI } from './filters.jsx';
 import { AdvancedFilterBuilderPopup } from './advancedFilter.jsx';
 import { CHART_TYPES } from '../core/charts.js';
 import { DND_TYPE, dropIntoZone, removeFromZone, setDragColumn } from './columnDrop.jsx';
+import { docOf, winOf } from '../core/utils.js';
 
 // ── 메뉴 아이템 정규화 ─────────────────────────────────────
 function builtinItem(core, key, params) {
@@ -725,7 +726,7 @@ function usePostProcessPopup(core) {
       return;
     }
     last.current = p;
-    const layers = [...document.querySelectorAll('[data-r2-popup] > *')];
+    const layers = [...docOf(core).querySelectorAll('[data-r2-popup] > *')];
     const ePopup = layers[layers.length - 1] || null;
     const type = { contextMenu: 'contextMenu', columnMenu: 'columnMenu', filter: 'columnFilter', columnChooser: 'columnChooser', advancedFilterBuilder: 'advancedFilterBuilder' }[p.type] || p.type;
     fn({ type, ePopup, column: p.column ?? null, rowNode: p.params?.node ?? null, eventSource: p.anchorEl ?? null, mouseEvent: p.event ?? null, api: core.api, context: core.gos.context });

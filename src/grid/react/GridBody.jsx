@@ -10,6 +10,7 @@ import { SafeBoundary, stableElement } from './renderComponent.js';
 import { DragImage, PopupLayer } from './popup.jsx';
 import { localeText } from '../core/locale.js';
 import { SparklineCell } from './sparkline.jsx';
+import { docOf, winOf } from '../core/utils.js';
 
 const MAX_DIV_HEIGHT = 10_000_000;
 const GROUP_INDENT = 28;
@@ -404,6 +405,8 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
       title={g.enableBrowserTooltips ? tooltip : undefined}
       data-r2-tooltip={g.enableBrowserTooltips ? undefined : tooltip}
       onPointerDown={e => handlers.cellPointerDown(node, col, e)}
+      onMouseDown={g.suppressMiddleClickScrolls ? e => e.button === 1 && e.preventDefault() : undefined}
+      onAuxClick={g.suppressMiddleClickScrolls ? e => handlers.cellMiddleClick(node, col, e) : undefined}
       onClick={e => handlers.cellClick(node, col, e)}
       onDoubleClick={e => handlers.cellDblClick(node, col, e)}
       onContextMenu={e => handlers.cellContextMenu(node, col, e)}
@@ -860,7 +863,8 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       if (!hs) return;
       const before = hs.scrollLeft;
       hs.scrollLeft += dx;
-      if (hs.scrollLeft !== before) ev.preventDefault();
+      // suppressPreventDefaultOnMouseWheel: 휠을 브라우저에도 넘김 (페이지도 같이 스크롤)
+      if (hs.scrollLeft !== before && !core.gos.suppressPreventDefaultOnMouseWheel) ev.preventDefault();
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
@@ -900,7 +904,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     const r = vp.getBoundingClientRect();
     const cxp = Math.min(Math.max(x, r.left + 1), r.left + vp.clientWidth - 2);
     const cyp = Math.min(Math.max(y, r.top + 1), r.top + vp.clientHeight - 2);
-    const el = document.elementFromPoint(cxp, cyp);
+    const el = docOf(core).elementFromPoint(cxp, cyp);
     const cell = el?.closest?.('.r2-cell[col-id]');
     if (!cell || cell.closest('.r2-root') !== focusSinkRef.current) return null;
     const row = cell.closest('[row-index]');
@@ -959,15 +963,15 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       }
     }, 50);
     const onUp = () => {
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      document.removeEventListener('pointercancel', onUp);
+      docOf(core).removeEventListener('pointermove', onMove);
+      docOf(core).removeEventListener('pointerup', onUp);
+      docOf(core).removeEventListener('pointercancel', onUp);
       clearInterval(timer);
       core.rangeEnd();
     };
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
-    document.addEventListener('pointercancel', onUp);
+    docOf(core).addEventListener('pointermove', onMove);
+    docOf(core).addEventListener('pointerup', onUp);
+    docOf(core).addEventListener('pointercancel', onUp);
   };
 
   // ── 행 드래그 ──
@@ -994,7 +998,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       if (!dragging) {
         if (Math.abs(ev.clientX - startX) < 4 && Math.abs(ev.clientY - startY) < 4) return;
         dragging = true;
-        document.body.classList.add('r2-dnd-dragging');
+        docOf(core).body.classList.add('r2-dnd-dragging');
         const text = core.rowDragStart(node, ev, col);
         setDragGhost({ text, x: ev.clientX, y: ev.clientY });
       }
@@ -1019,12 +1023,12 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       }
     }, 50);
     const finish = ev => {
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', finish);
-      document.removeEventListener('pointercancel', finish);
+      docOf(core).removeEventListener('pointermove', onMove);
+      docOf(core).removeEventListener('pointerup', finish);
+      docOf(core).removeEventListener('pointercancel', finish);
       clearInterval(timer);
       if (!dragging) return;
-      document.body.classList.remove('r2-dnd-dragging');
+      docOf(core).body.classList.remove('r2-dnd-dragging');
       setDragGhost(null);
       core.updateRowDropZones(ev, ev.type === 'pointercancel' ? 'cancel' : 'end');
       const o = overIndexAt(ev.clientY);
@@ -1034,15 +1038,15 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
         core.__suppressRowClick = false;
       }, 0);
     };
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', finish);
-    document.addEventListener('pointercancel', finish);
+    docOf(core).addEventListener('pointermove', onMove);
+    docOf(core).addEventListener('pointerup', finish);
+    docOf(core).addEventListener('pointercancel', finish);
   };
 
   const focusSink = target => {
     if (isEditableEl(target)) return;
     const sink = focusSinkRef.current;
-    if (sink && document.activeElement !== sink) sink.focus({ preventScroll: true });
+    if (sink && docOf(core).activeElement !== sink) sink.focus({ preventScroll: true });
   };
 
   // 채우기/범위 핸들 드래그
@@ -1067,18 +1071,18 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       if (ev.key === 'Escape') finish(ev, true);
     };
     const finish = (ev, cancelled = false) => {
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      document.removeEventListener('pointercancel', onUp);
-      document.removeEventListener('keydown', onKey, true);
+      docOf(core).removeEventListener('pointermove', onMove);
+      docOf(core).removeEventListener('pointerup', onUp);
+      docOf(core).removeEventListener('pointercancel', onUp);
+      docOf(core).removeEventListener('keydown', onKey, true);
       clearInterval(timer);
       core.fillEnd(ev, cancelled);
     };
     const onUp = ev => finish(ev, ev.type === 'pointercancel');
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
-    document.addEventListener('pointercancel', onUp);
-    document.addEventListener('keydown', onKey, true);
+    docOf(core).addEventListener('pointermove', onMove);
+    docOf(core).addEventListener('pointerup', onUp);
+    docOf(core).addEventListener('pointercancel', onUp);
+    docOf(core).addEventListener('keydown', onKey, true);
   };
 
   const handlers = {
@@ -1113,16 +1117,16 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
         node.setRowHeight(h);
       };
       const up = ev => {
-        window.removeEventListener('pointermove', move);
-        window.removeEventListener('pointerup', up);
-        document.body.classList.remove('r2-row-resizing');
+        winOf(core).removeEventListener('pointermove', move);
+        winOf(core).removeEventListener('pointerup', up);
+        docOf(core).body.classList.remove('r2-row-resizing');
         core.__skipCellClick = true; // 드래그 끝의 click 은 무시 (행 범위 선택 안 함)
         setTimeout(() => (core.__skipCellClick = false), 0);
         core.dispatch('rowResizeEnded', { node, event: ev, rowHeight: h });
       };
-      document.body.classList.add('r2-row-resizing');
-      window.addEventListener('pointermove', move);
-      window.addEventListener('pointerup', up);
+      docOf(core).body.classList.add('r2-row-resizing');
+      winOf(core).addEventListener('pointermove', move);
+      winOf(core).addEventListener('pointerup', up);
     },
     cellPointerDown(node, col, e) {
       if (e.button !== 0) return;
@@ -1167,6 +1171,13 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       if (single && !g.suppressClickEdit && !core.getEditingCell(node, col) && core.isCellEditable(col, node)) {
         core.startEdit(node, col, null);
       }
+    },
+    // suppressMiddleClickScrolls: 가운데 클릭도 셀·행 클릭 이벤트로 (자동 스크롤 대신)
+    cellMiddleClick(node, col, e) {
+      if (e.button !== 1 || node.stub) return;
+      e.preventDefault();
+      core.dispatch('cellClicked', { ...core.cellEventParams(node, col, e) });
+      core.dispatch('rowClicked', { node, data: node.data, rowIndex: node.rowIndex, rowPinned: node.rowPinned, event: e });
     },
     cellDblClick(node, col, e) {
       if (node.stub) return;
@@ -1531,7 +1542,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
           <PopupLayer core={core}>
             <DragImage core={core} x={dragGhost.x} y={dragGhost.y} label={dragGhost.text} icon="move" dragSource={{ type: 'row' }} defaultIcon={<Icon name="grip" />} />
           </PopupLayer>,
-          document.body,
+          docOf(core).body,
         )}
     </>
   );

@@ -174,6 +174,7 @@ function RangeClipboard({ p, ctx }) {
         defaultColDef={{ editable: true }}
         cellSelection={p.multi ? true : { suppressMultiRanges: true }}
         copyHeadersToClipboard={p.headers}
+        suppressLastEmptyLineOnPaste={p.lastEmpty}
         rowNumbers
         onCellSelectionChanged={e => e.finished && ctx.log(`cellSelectionChanged: ${e.api.getCellRanges().map(r => `${r.startRow.rowIndex}~${r.endRow.rowIndex} × ${r.columns.length}열`).join(' | ')}`)}
         onPasteEnd={() => ctx.log('pasteEnd')}
@@ -473,6 +474,15 @@ api.validateEdit(); // 편집 중인 칸의 오류 [{ rowIndex, column, messages
         desc: 'Ctrl+C 로 복사할 때 첫 줄에 컬럼 헤더 이름을 넣을지. 붙여넣기(Ctrl+V)는 헤더 없이 값만 기대합니다.',
         on: '복사 결과 첫 줄 = 헤더 이름',
         off: '값만 복사',
+      },
+      {
+        key: 'lastEmpty',
+        type: 'boolean',
+        default: false,
+        label: 'suppressLastEmptyLineOnPaste',
+        desc: '붙여넣을 글 끝에 빈 줄이 더 붙어 있으면(일부 엑셀 버전·메모장 복사) 그 줄을 버립니다. 끄면 빈 줄도 한 행으로 붙여 아래 행 값이 지워집니다. 줄 끝 줄바꿈 하나는 항상 무시.',
+        on: "'값\\n\\n' 붙여넣기 → 한 행만",
+        off: "'값\\n\\n' 붙여넣기 → 다음 행을 빈 값으로",
       },
     ],
     render: (p, ctx) => <RangeClipboard p={p} ctx={ctx} />,

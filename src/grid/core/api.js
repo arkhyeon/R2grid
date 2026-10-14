@@ -175,7 +175,7 @@ export function createApi(core) {
         ? core.getColumnsFromKeys(params.columnKeys)
         : core.displayedColumns.filter(c => c.autoType !== 'selection');
       const text = buildClipboardText(core, [{ nodes, columns }], params.includeHeaders ?? !!core.gos.copyHeadersToClipboard);
-      copyTextToClipboard(text);
+      copyTextToClipboard(text, false, core.getDocument());
     },
     copySelectedRangeDown: () => {},
     cutToClipboard: () => cutSelectionToClipboard(core),

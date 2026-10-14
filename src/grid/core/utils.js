@@ -67,21 +67,29 @@ export function defaultComparator(a, b, accentedCompare) {
   }
 }
 
-export function copyTextToClipboard(text, noApi = false) {
+// 그리드가 그려진 문서·창 (gridOptions.getDocument → 그리드 루트의 문서 → 전역 document). iframe·새 창 지원
+export function docOf(core) {
+  return core?.getDocument?.() || (typeof document !== 'undefined' ? document : null);
+}
+export function winOf(core) {
+  return docOf(core)?.defaultView || (typeof window !== 'undefined' ? window : null);
+}
+
+export function copyTextToClipboard(text, noApi = false, doc = typeof document !== 'undefined' ? document : null) {
   const fallback = () => {
-    const ta = document.createElement('textarea');
+    const ta = doc.createElement('textarea');
     ta.value = text;
     ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;';
-    document.body.appendChild(ta);
-    const active = document.activeElement;
+    doc.body.appendChild(ta);
+    const active = doc.activeElement;
     ta.focus();
     ta.select();
     try {
-      document.execCommand('copy');
+      doc.execCommand('copy');
     } catch {
       /* noop */
     }
-    document.body.removeChild(ta);
+    doc.body.removeChild(ta);
     active?.focus?.({ preventScroll: true });
   };
   if (!noApi && navigator.clipboard?.writeText) {
@@ -91,15 +99,15 @@ export function copyTextToClipboard(text, noApi = false) {
   }
 }
 
-export function downloadFile(fileName, content, mimeType) {
+export function downloadFile(fileName, content, mimeType, doc = typeof document !== 'undefined' ? document : null) {
   const blob = content instanceof Blob ? content : new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = doc.createElement('a');
   a.href = url;
   a.download = fileName;
-  document.body.appendChild(a);
+  doc.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
+  doc.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 

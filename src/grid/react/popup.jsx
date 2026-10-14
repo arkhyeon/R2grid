@@ -2,6 +2,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { cx } from '../core/utils.js';
 import { stableElement } from './renderComponent.js';
+import { docOf, winOf } from '../core/utils.js';
 
 // 팝업도 그리드와 같은 CSS 변수(테마/다크)를 받도록 같은 클래스로 감싼다.
 // 레이어는 팝업 부모(기본: 그리드 루트 래퍼) 안의 0x0 원점 — 팝업은 이 원점 기준 absolute 좌표로 놓여
@@ -35,8 +36,10 @@ export function usePopupPosition(ref, getAnchor, deps = [], core, { track = fals
     }
     const parent = core?.getPopupParent?.();
     // 경계 = 팝업 부모의 전체 박스 (뷰포트와 교차시키지 않음 — 페이지 스크롤로 크기·위치가 변하면 안 됨)
-    let b = { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
-    if (parent && parent !== document.body && parent !== document.documentElement) {
+    const doc = docOf(core);
+    const win = winOf(core);
+    let b = { left: 0, top: 0, right: win.innerWidth, bottom: win.innerHeight };
+    if (parent && parent !== doc.body && parent !== doc.documentElement) {
       const pr = parent.getBoundingClientRect();
       b = { left: pr.left, top: pr.top, right: pr.right, bottom: pr.bottom };
     }
@@ -70,13 +73,15 @@ export function usePopupPosition(ref, getAnchor, deps = [], core, { track = fals
         compute();
       });
     };
-    window.addEventListener('resize', schedule);
+    const doc = docOf(core);
+    const win = winOf(core);
+    win.addEventListener('resize', schedule);
     // capture: 그리드 바디/가로 스크롤/페이지 스크롤 모두 감지
-    if (track) document.addEventListener('scroll', schedule, true);
+    if (track) doc.addEventListener('scroll', schedule, true);
     return () => {
       if (raf) cancelAnimationFrame(raf);
-      window.removeEventListener('resize', schedule);
-      if (track) document.removeEventListener('scroll', schedule, true);
+      win.removeEventListener('resize', schedule);
+      if (track) doc.removeEventListener('scroll', schedule, true);
     };
   }, deps);
   const style = {
@@ -120,8 +125,9 @@ export function useClickOutside(ref, onClose, { ignore } = {}) {
       if (ignore && ignore(t)) return;
       cb.current();
     };
-    document.addEventListener('mousedown', handler, true);
-    return () => document.removeEventListener('mousedown', handler, true);
+    const doc = ref.current?.ownerDocument || document;
+    doc.addEventListener('mousedown', handler, true);
+    return () => doc.removeEventListener('mousedown', handler, true);
   }, []);
 }
 

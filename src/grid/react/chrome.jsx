@@ -9,6 +9,7 @@ import { ColumnChooserList } from './menus.jsx';
 import { FiltersToolPanel } from './filters.jsx';
 import { PopupLayer } from './popup.jsx';
 import { ColumnDropZone, PivotModeToggle } from './columnDrop.jsx';
+import { docOf, winOf } from '../core/utils.js';
 
 // ── 사이드바 ───────────────────────────────────────────────
 function ToolPanelContent({ core, tp }) {
@@ -107,14 +108,14 @@ function ToolPanelWrapper({ hidden, tp, core, children }) {
       core.dispatch('toolPanelSizeChanged', { started: false, ended: false, width: w });
     };
     const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-      document.body.classList.remove('r2-col-resizing');
+      winOf(core).removeEventListener('pointermove', move);
+      winOf(core).removeEventListener('pointerup', up);
+      docOf(core).body.classList.remove('r2-col-resizing');
       core.dispatch('toolPanelSizeChanged', { started: false, ended: true, width: w });
     };
-    document.body.classList.add('r2-col-resizing');
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
+    docOf(core).body.classList.add('r2-col-resizing');
+    winOf(core).addEventListener('pointermove', move);
+    winOf(core).addEventListener('pointerup', up);
   };
   return (
     <div
@@ -487,7 +488,7 @@ export function useTooltip(core) {
             {tip.comp ? React.createElement(tip.comp, tip.params) : tip.text}
           </div>
         </PopupLayer>,
-        document.body,
+        docOf(core).body,
       )
     : null;
   return { onOver, onOut, onMove, node };

@@ -703,7 +703,7 @@ export function exportDataAsExcel(core, params = {}) {
   const p = { ...(core.gos.defaultExcelExportParams || {}), ...params };
   const files = buildFiles([getSheetDataForExcel(core, p)]);
   const name = fileNameOf(core, p);
-  zipAsync(files).then(blob => downloadFile(name, blob));
+  zipAsync(files).then(blob => downloadFile(name, blob, undefined, core.getDocument()));
 }
 
 export function getMultipleSheetsAsExcel(core, params = {}) {
@@ -715,5 +715,5 @@ export function getMultipleSheetsAsExcel(core, params = {}) {
 export function exportMultipleSheetsAsExcel(core, params = {}) {
   const sheets = (params.data || []).filter(s => s && s.__clmSheet);
   if (!sheets.length) return;
-  zipAsync(buildFiles(sheets)).then(blob => downloadFile(fileNameOf(core, params), blob));
+  zipAsync(buildFiles(sheets)).then(blob => downloadFile(fileNameOf(core, params), blob, undefined, core.getDocument()));
 }

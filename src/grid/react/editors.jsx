@@ -13,6 +13,7 @@ import { cx, isPrintableKey } from '../core/utils.js';
 import { stableElement } from './renderComponent.js';
 import { Checkbox, Icon } from './common.jsx';
 import { bodyClipOf } from './popup.jsx';
+import { docOf, winOf } from '../core/utils.js';
 
 // useGridCellEditor — reactive 커스텀 에디터가 콜백 등록
 const CellEditorContext = createContext(null);
@@ -513,7 +514,7 @@ function CustomEditor({ core, ed, params, getCellEl }) {
       // 에디터가 스스로 포커스를 잡지 않으면 첫 입력요소에 포커스
       const el = getCellEl?.();
       const host = ed.editor.popup ? el?.querySelector('.r2-popup-editor-host') : el;
-      if (host && !host.contains(document.activeElement)) {
+      if (host && !host.contains(docOf(core).activeElement)) {
         const f = host.querySelector('input,textarea,select,[tabindex]');
         f?.focus({ preventScroll: true });
       }

@@ -375,7 +375,7 @@ overlayNoRowsTemplate={NO_ROWS_TEMPLATE}`,
     category: CAT,
     name: '팝업 위치 (popupParent)',
     desc: '메뉴·필터·팝업 에디터는 기본적으로 그리드 안에 붙어 페이지/그리드 스크롤을 따라가고 그리드 밖으로 나가지 않습니다. 작은 모달 안 그리드처럼 잘리는 경우 popupParent 로 붙일 요소를 바꿉니다.',
-    keywords: ['popupParent', 'document.body', 'cellEditorPopup', 'clip'],
+    keywords: ['popupParent', 'document.body', 'cellEditorPopup', 'clip', 'getDocument', 'iframe', 'suppressMiddleClickScrolls', 'suppressPreventDefaultOnMouseWheel'],
     controls: [{
         key: 'body',
         type: 'boolean',

@@ -317,7 +317,7 @@ export class GridCore {
     this.gos = next;
     if (initial) {
       this.theme = resolveTheme(next.theme);
-      this.theme.install();
+      this.theme.install(this.getDocument());
       this.rsOpts = this.normalizeRowSelection();
       this.buildColumns(true);
       this.buildPinnedRows();
@@ -362,7 +362,7 @@ export class GridCore {
     if (!renderRelevant) return;
     if (changed('theme')) {
       this.theme = resolveTheme(next.theme);
-      this.theme.install();
+      this.theme.install(this.getDocument());
     }
     let rebuild = false;
     if (
@@ -1383,8 +1383,8 @@ export class GridCore {
     this.recordUndo(node, column, oldValue, newValue, source);
     node.__version++;
     node.__quickFilterText = null;
-    // 집계 먼저 (cellValueChanged 에서 그룹·루트 aggData 가 새 값이게)
-    this.markAggDirty(node);
+    // 집계 먼저 (cellValueChanged 에서 그룹·루트 aggData 가 새 값이게). suppressChangeDetection 이면 다시 집계 안 함
+    if (!this.gos.suppressChangeDetection) this.markAggDirty(node);
     this.dispatch('cellValueChanged', {
       ...this.cellEventParams(node, column),
       value: newValue,
@@ -1591,7 +1591,16 @@ export class GridCore {
     this.updateSelectableAll();
     if (!this.columnsTypedOnce && this.rootNodes.length) this.inferDataTypes();
     this.quickFilterVersion++;
-    this.refreshModel({ keepRenderedRows: true });
+    // suppressModelUpdateAfterUpdateTransaction: 수정만 있는 트랜잭션은 정렬·필터·그룹을 다시 하지 않음 (값·집계만 갱신)
+    if (this.gos.suppressModelUpdateAfterUpdateTransaction && result.update.length && !result.add.length && !result.remove.length) {
+      this.spanEpoch = (this.spanEpoch || 0) + 1;
+      if (this.isClientSide() && (this.groupMode || this.isPivotActive() || this.gos.alwaysAggregateAtRootLevel)) {
+        this.aggDirty ||= new Set();
+        result.update.forEach(n => this.aggDirty.add(n));
+        this.flushAggDirty();
+      }
+      this.notify();
+    } else this.refreshModel({ keepRenderedRows: true });
     this.dispatch('rowDataUpdated', {});
     if (selectionChanged) {
       this.dispatch('selectionChanged', { source: 'rowDataChanged', selectedNodes: this.getSelectedNodes() });
@@ -3210,11 +3219,18 @@ export class GridCore {
     }, 0);
   }
 
+  // getDocument: 그리드가 다른 문서(iframe·새 창)에 그려질 때 그 문서. 없으면 그리드 루트의 문서
+  getDocument() {
+    const fn = this.gos.getDocument;
+    return (typeof fn === 'function' && fn()) || this.eRoot?.ownerDocument || (typeof document !== 'undefined' ? document : null);
+  }
+
   focusGrid() {
     const el = this.eFocusSink;
-    if (el && document.activeElement !== el) {
+    const doc = this.getDocument();
+    if (el && doc.activeElement !== el) {
       // 그리드 밖으로 포커스가 나간 경우엔 뺏지 않는다
-      if (!this.eRoot || !document.activeElement || this.eRoot.contains(document.activeElement) || document.activeElement === document.body) {
+      if (!this.eRoot || !doc.activeElement || this.eRoot.contains(doc.activeElement) || doc.activeElement === doc.body) {
         el.focus({ preventScroll: true });
       }
     }
@@ -3749,7 +3765,7 @@ export class GridCore {
   getPopupParent() {
     const p = this.gos.popupParent;
     if (p && typeof p.appendChild === 'function') return p;
-    return this.eRoot || document.body;
+    return this.eRoot || this.getDocument().body;
   }
 
   openPopup(popup) {
@@ -3914,7 +3930,7 @@ export class GridCore {
     if (!root) return;
     const cols = keys ? this.getColumnsFromKeys(keys) : this.displayedColumns.filter(c => !c.isAuto);
     const skip = skipHeader ?? !!this.gos.skipHeaderOnAutoSize;
-    const range = document.createRange();
+    const range = this.getDocument().createRange();
     const measure = el => {
       range.selectNodeContents(el);
       const w = range.getBoundingClientRect().width;
@@ -4039,6 +4055,8 @@ export class GridCore {
   // ── 생명주기 ─────────────────────────────────────────────
   onMounted() {
     this.destroyed = false;
+    // 그리드가 다른 문서(iframe·새 창)에 붙었으면 그 문서에도 테마 스타일
+    this.theme?.install(this.getDocument());
     // 언마운트 후 다시 붙은 경우(StrictMode 등) 끊었던 viewport 데이터 소스 다시 연결
     if (this.isViewportModel() && this.vp?.destroyed) this.vpInit();
     this.dispatch('gridReady', {});

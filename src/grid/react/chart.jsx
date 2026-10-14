@@ -5,6 +5,7 @@ import { CHART_PALETTES, CHART_TYPES, CROSS_FILTER_TYPES } from '../core/charts.
 import { downloadFile } from '../core/utils.js';
 import { Icon } from './common.jsx';
 import { PopupLayer, usePopupPosition } from './popup.jsx';
+import { docOf, winOf } from '../core/utils.js';
 
 
 function niceScale(min, max, ticks = 5) {
@@ -285,7 +286,7 @@ export function svgToPng(svgEl, background = '#fff') {
     const w = svgEl.width.baseVal.value;
     const h = svgEl.height.baseVal.value;
     img.onload = () => {
-      const c = document.createElement('canvas');
+      const c = (svgEl.ownerDocument || document).createElement('canvas');
       c.width = w * 2;
       c.height = h * 2;
       const ctx = c.getContext('2d');
@@ -436,7 +437,7 @@ function ChartPanel({ core, model, width, height, floating, onHeaderDown }) {
     const bin = atob(url.split(',')[1]);
     const arr = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-    downloadFile(`${model.title || 'chart'}.png`, new Blob([arr], { type: 'image/png' }));
+    downloadFile(`${model.title || 'chart'}.png`, new Blob([arr], { type: 'image/png' }), undefined, core.getDocument());
   };
   return (
     <div className={floating ? 'r2-chart-window r2-popup-child' : 'r2-chart-wrapper'} style={{ width }}>
@@ -508,11 +509,11 @@ function ChartWindow({ core, model, index }) {
     const sy = e.clientY - drag.dy;
     const move = ev => setDrag({ dx: ev.clientX - sx, dy: ev.clientY - sy });
     const up = () => {
-      document.removeEventListener('pointermove', move);
-      document.removeEventListener('pointerup', up);
+      docOf(core).removeEventListener('pointermove', move);
+      docOf(core).removeEventListener('pointerup', up);
     };
-    document.addEventListener('pointermove', move);
-    document.addEventListener('pointerup', up);
+    docOf(core).addEventListener('pointermove', move);
+    docOf(core).addEventListener('pointerup', up);
   };
   return createPortal(
     <PopupLayer core={core}>

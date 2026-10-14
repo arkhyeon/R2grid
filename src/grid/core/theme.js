@@ -65,7 +65,7 @@ class Theme {
     this.name = name;
     this.id = ++themeSeq;
     this.params = params || { all: {}, light: {}, dark: {} };
-    this.__installed = false;
+    this.__installedDocs = null;
   }
 
   withParams(params, mode) {
@@ -84,9 +84,12 @@ class Theme {
     return `r2-theme-p${this.id}`;
   }
 
-  install() {
-    if (this.__installed || typeof document === 'undefined') return;
-    this.__installed = true;
+  // 테마 변수 스타일을 문서(head)에 한 번 넣음. iframe·새 창이면 그 문서에도
+  install(doc = typeof document !== 'undefined' ? document : null) {
+    if (!doc) return;
+    this.__installedDocs ||= new WeakSet();
+    if (this.__installedDocs.has(doc)) return;
+    this.__installedDocs.add(doc);
     const cls = this.className;
     const { all, light, dark } = this.params;
     const base = declarations({ ...all, ...light });
@@ -102,10 +105,10 @@ class Theme {
       css += `:where([data-r2-theme-mode^="dark"]) .r2-theme-vars.${cls}.${cls},.r2-theme-vars.${cls}.${cls}[data-r2-theme-mode^="dark"]{${darkDecl}}`;
     }
     if (!css) return;
-    const style = document.createElement('style');
+    const style = doc.createElement('style');
     style.setAttribute('data-r2-theme', cls);
     style.textContent = css;
-    document.head.appendChild(style);
+    doc.head.appendChild(style);
   }
 }
 

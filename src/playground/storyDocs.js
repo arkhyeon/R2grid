@@ -242,7 +242,7 @@ const STORY_DOCS = {
   },
   transactions: {
     whenToUse: ['몇 행만 추가·수정·삭제됐을 때 전체를 다시 그리지 않고 반영', '스크롤·선택·펼침 상태를 유지한 채 갱신'],
-    notes: ['update·remove 는 getRowId 로 행을 찾습니다. 없으면 같은 객체 참조여야 합니다.', 'getRowId 가 있으면 rowData 를 통째로 바꿔도 같은 id 행은 그대로 유지(선택·펼침 보존)되고, 순서는 새 rowData 를 따릅니다. 기존 순서를 지키려면 suppressMaintainUnsortedOrder.'],
+    notes: ['update·remove 는 getRowId 로 행을 찾습니다. 없으면 같은 객체 참조여야 합니다.', '편집·setDataValue 뒤에는 그룹·합계 집계를 바로 다시 계산합니다. 값을 대량으로 바꾸는 화면에서 이게 필요 없으면 suppressChangeDetection.', 'getRowId 가 있으면 rowData 를 통째로 바꿔도 같은 id 행은 그대로 유지(선택·펼침 보존)되고, 순서는 새 rowData 를 따릅니다. 기존 순서를 지키려면 suppressMaintainUnsortedOrder.'],
   },
   'server-side': {
     badge: 'UPDATE',
@@ -310,6 +310,11 @@ const STORY_DOCS = {
   },
   'popup-parent': {
     whenToUse: ['작은 모달 안 그리드에서 메뉴·필터가 잘릴 때 — popupParent={document.body}'],
+    notes: [
+      'iframe·새 창 안에 그리드를 그리면 팝업·드래그·포커스·테마 스타일이 그 문서 기준으로 동작합니다. 문서를 직접 지정하려면 getDocument={() => iframeDoc}. 기본 CSS(r2grid.css)는 그 문서에도 넣어야 합니다.',
+      '가운데 클릭은 기본이 브라우저 자동 스크롤입니다. suppressMiddleClickScrolls 면 셀·행 클릭 이벤트(cellClicked·rowClicked, event.button === 1)로 받습니다.',
+      '가로 휠(Shift+휠)은 그리드가 받아 페이지로 넘기지 않습니다. 페이지도 같이 움직이게 하려면 suppressPreventDefaultOnMouseWheel.',
+    ],
   },
   rtl: {
     whenToUse: ['아랍어·히브리어처럼 오른쪽에서 왼쪽으로 읽는 화면'],

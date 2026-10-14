@@ -75,6 +75,7 @@ function Transactions({ p, ctx }) {
         gridRef={ref}
         rowData={rowData}
         suppressMaintainUnsortedOrder={p.keepOrder}
+        suppressModelUpdateAfterUpdateTransaction={p.noResort}
         columnDefs={BASE_COLUMNS.map(c => (c.field === 'rowCnt' || c.field === 'status' ? { ...c, enableCellChangeFlash: true } : c))}
         getRowId={p => String(p.data.id)}
         rowSelection={{ mode: 'multiRow' }}
@@ -178,6 +179,15 @@ const rowData = useMemo(() => makeRows(${p.rows}), []);
         desc: 'getRowId 가 있을 때 rowData 를 통째로 바꾸면(정렬 없음) 기본은 새 rowData 순서대로 다시 놓습니다. 켜면 있던 행은 제자리, 새 행은 끝에 붙습니다. applyTransaction 에는 영향 없음.',
         on: "'rowData 교체' 후에도 순서 그대로, 새 행은 맨 끝",
         off: "'rowData 교체' 하면 역순 + 새 행 맨 앞",
+      },
+      {
+        key: 'noResort',
+        type: 'boolean',
+        default: false,
+        label: 'suppressModelUpdateAfterUpdateTransaction',
+        desc: '수정(update)만 있는 트랜잭션 뒤에 정렬·필터·그룹을 다시 하지 않습니다. 값과 집계만 바뀌고 행은 제자리라, 실시간으로 값이 자주 바뀌는 목록에서 행이 튀지 않습니다. add·remove 가 섞이면 평소대로.',
+        on: "행 수로 정렬한 뒤 '선택 행 수정' → 행이 제자리에서 값만 바뀜",
+        off: '수정하면 정렬 순서대로 자리를 옮김',
       },
     ],
     render: (p, ctx) => <Transactions p={p} ctx={ctx} />,

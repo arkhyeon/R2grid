@@ -21,6 +21,7 @@ import { CustomFilterHost } from './filters.jsx';
 import { AdvancedFilterBar } from './advancedFilter.jsx';
 import { ChartsHost } from './chart.jsx';
 import '../styles/r2grid.css';
+import { docOf, winOf } from '../core/utils.js';
 
 function isEditableEl(t) {
   return t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
@@ -143,7 +144,7 @@ function GridView({ core }) {
             // 팝업 에디터로 포커스 이동 중일 수 있어 한 틱 뒤 재확인
             setTimeout(() => {
               if (!core.editing) return;
-              const a = document.activeElement;
+              const a = docOf(core).activeElement;
               if (a instanceof Element && (gridRootRef.current?.contains(a) || a.closest('[data-r2-popup]'))) return;
               core.stopEditing(false);
             }, 0);

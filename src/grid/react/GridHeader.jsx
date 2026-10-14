@@ -7,6 +7,7 @@ import { stableElement } from './renderComponent.js';
 import { DragImage, PopupLayer } from './popup.jsx';
 import { FloatingFilterCell } from './filters.jsx';
 import { DND_TYPE, canDropInZone, dropIntoZone, readDrag } from './columnDrop.jsx';
+import { docOf, winOf } from '../core/utils.js';
 
 // 그룹이 없는(패딩) 레벨을 컬럼 헤더가 위로 덮는지 — 기본, colDef.suppressSpanHeaderHeight 로 끔
 const spansHeaderHeight = col => !col.colDef.suppressSpanHeaderHeight;
@@ -412,13 +413,13 @@ function useColumnDrag(core) {
         dragging = true;
         core.dispatch('dragStarted', { target: e.target });
         state.current.ghost = { name: core.getDisplayName(col), x: ev.clientX, y: ev.clientY, hidden: false };
-        document.body.classList.add('r2-dnd-dragging');
+        docOf(core).body.classList.add('r2-dnd-dragging');
       }
       const rootRect = core.eRoot?.getBoundingClientRect();
       const outside =
         rootRect && (ev.clientY < rootRect.top - 30 || ev.clientY > rootRect.bottom + 30 || ev.clientX < rootRect.left - 30 || ev.clientX > rootRect.right + 30);
       // 드롭 영역(행 그룹/값/열 레이블) 위 — 해당 역할 허용 컬럼만 (enableRowGroup/enableValue/enablePivot)
-      const hit = document.elementFromPoint(ev.clientX, ev.clientY);
+      const hit = docOf(core).elementFromPoint(ev.clientX, ev.clientY);
       const zoneEl = !outside && hit?.closest?.('.r2-column-drop[data-kind]');
       const zone = zoneEl && core.eRoot.contains(zoneEl) && canDropInZone(col, zoneEl.dataset.kind) ? zoneEl.dataset.kind : null;
       state.current.ghost = { ...state.current.ghost, x: ev.clientX, y: ev.clientY, hidden: outside, zone, zoneEl: zone ? zoneEl : null };
@@ -428,7 +429,7 @@ function useColumnDrag(core) {
       // 보이는(높이 있는) 컬럼 헤더 행의 아래쪽 — 빈 고정 영역 행(높이 0)이나 위로 늘린 셀 영향 없음
       const headerRow = [...(core.eRoot?.querySelectorAll('.r2-header-row-column') || [])].find(r => r.offsetHeight > 0 && r.closest('.r2-root') === core.eRoot.querySelector('.r2-root'));
       const y = headerRow ? headerRow.getBoundingClientRect().bottom - 5 : ev.clientY;
-      const under = document.elementFromPoint(ev.clientX, y)?.closest?.('.r2-header-cell[col-id]');
+      const under = docOf(core).elementFromPoint(ev.clientX, y)?.closest?.('.r2-header-cell[col-id]');
       if (!under || !core.eRoot.contains(under)) return;
       const targetId = under.getAttribute('col-id');
       if (targetId === col.colId) return;
@@ -450,9 +451,9 @@ function useColumnDrag(core) {
       core.moveColumns([col], idx, 'uiColumnMoved');
     };
     const onUp = ev => {
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      document.body.classList.remove('r2-dnd-dragging');
+      docOf(core).removeEventListener('pointermove', onMove);
+      docOf(core).removeEventListener('pointerup', onUp);
+      docOf(core).body.classList.remove('r2-dnd-dragging');
       if (!dragging) return;
       state.current.suppressClick = true;
       setTimeout(() => {
@@ -479,8 +480,8 @@ function useColumnDrag(core) {
       }
       core.dispatch('dragStopped', { target: ev.target });
     };
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
+    docOf(core).addEventListener('pointermove', onMove);
+    docOf(core).addEventListener('pointerup', onUp);
   };
   const g = state.current.ghost;
   const ghost = g
@@ -500,7 +501,7 @@ function useColumnDrag(core) {
           </div>
           {g.insertX != null && !g.zone && !g.hidden && <div className="r2-column-move-indicator" style={{ position: 'fixed', left: g.insertX - 1, top: g.insertTop, height: g.insertH }} />}
         </PopupLayer>,
-        document.body,
+        docOf(core).body,
       )
     : null;
   return [state, ghost];
