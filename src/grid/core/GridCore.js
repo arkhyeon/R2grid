@@ -4,6 +4,16 @@ import { EventService } from './EventService.js';
 import { getGlobalGridOptions } from './globals.js';
 import { resolveTheme } from './theme.js';
 import { eventPropName } from './utils.js';
+import {
+  DATA_SOURCE,
+  MASTER_FLAGS,
+  PINNED_ROWS,
+  PIVOT_RESULT_COLUMNS,
+  REBUILD_COLUMNS,
+  REBUILD_GROUPS,
+  REFRESH_MODEL,
+  ROW_SELECTION,
+} from './optionEffects.js';
 import { createApi } from './api.js';
 import { groupingMethods } from './grouping.js';
 import { ssrmMethods } from './ssrm.js';
@@ -309,6 +319,7 @@ export class GridCore {
       return;
     }
     const changed = k => prev[k] !== next[k];
+    const anyChanged = keys => keys.some(changed);
     // componentStateChanged: 바뀐 옵션 { key: { previousValue, currentValue } }
     {
       const diff = {};
@@ -339,24 +350,12 @@ export class GridCore {
       this.installTheme();
     }
     let rebuild = false;
-    if (changed('rowSelection') || changed('suppressRowClickSelection') || changed('rowMultiSelectWithClick') || changed('isRowSelectable')) {
+    if (anyChanged(ROW_SELECTION)) {
       this.rsOpts = this.normalizeRowSelection();
       if (changed('rowSelection')) rebuild = true;
       this.updateSelectableAll();
     }
-    if (
-      changed('columnDefs') ||
-      changed('defaultColDef') ||
-      changed('columnTypes') ||
-      changed('rowNumbers') ||
-      changed('selectionColumnDef') ||
-      changed('autoGroupColumnDef') ||
-      changed('treeData') ||
-      changed('treeDataDisplayType') ||
-      changed('groupDisplayType')
-    ) {
-      rebuild = true;
-    }
+    if (anyChanged(REBUILD_COLUMNS)) rebuild = true;
     if (rebuild) this.buildColumns(false);
     else if (changed('hidePaddedHeaderRows')) this.layoutColumns();
     if (changed('sideBar')) this.normalizeSideBar(false);
@@ -371,26 +370,14 @@ export class GridCore {
       this.dispatchFindChanged();
     }
     // 피벗 결과 컬럼 모양을 바꾸는 옵션
-    if (
-      [
-        'pivotRowTotals',
-        'pivotColumnGroupTotals',
-        'removePivotHeaderRowWhenSingleValueColumn',
-        'suppressExpandablePivotGroups',
-        'pivotDefaultExpanded',
-        'pivotMaxGeneratedColumns',
-        'processPivotResultColDef',
-        'processPivotResultColGroupDef',
-      ].some(changed) &&
-      this.isPivotActive?.()
-    ) {
+    if (anyChanged(PIVOT_RESULT_COLUMNS) && this.isPivotActive?.()) {
       this.applyPivotResultColumns(true);
       this.columnsVersion++;
       this.layoutColumns();
       this.refreshModel({ skipFilter: true });
       this.dispatch('displayedColumnsChanged', { source: 'gridOptionsChanged' });
     }
-    if (changed('pinnedTopRowData') || changed('pinnedBottomRowData')) {
+    if (anyChanged(PINNED_ROWS)) {
       this.buildPinnedRows();
       this.dispatch('pinnedRowDataChanged', {});
     }
@@ -402,12 +389,12 @@ export class GridCore {
     const prevGroupMode = this.groupMode;
     this.groupMode = this.computeGroupMode();
     let groupRefresh = false;
-    if (prevGroupMode !== this.groupMode || changed('getDataPath') || changed('treeData')) {
+    if (prevGroupMode !== this.groupMode || anyChanged(REBUILD_GROUPS)) {
       this.groupsDirty = true;
       groupRefresh = true;
     }
 
-    if (changed('rowModelType') || changed('serverSideDatasource') || changed('datasource') || changed('viewportDatasource')) {
+    if (anyChanged(DATA_SOURCE)) {
       if (this.isSsrm()) {
         this.ssrmReset('datasource');
         this.notify();
@@ -430,35 +417,9 @@ export class GridCore {
       const bothEmpty = Array.isArray(a) && Array.isArray(b) && !a.length && !b.length && !this.rootNodes.length;
       if (!bothEmpty) this.setRowData(b, false);
     } else {
-      let refresh = false;
-      if (changed('quickFilterText') || changed('alwaysAggregateAtRootLevel') || changed('applyQuickFilterBeforePivotOrAgg')) refresh = true;
-      if (
-        changed('pagination') ||
-        changed('paginationPageSize') ||
-        changed('paginationAutoPageSize') ||
-        changed('rowHeight') ||
-        changed('getRowHeight') ||
-        changed('detailRowHeight')
-      ) {
-        refresh = true;
-      }
-      if (changed('masterDetail') || changed('isRowMaster')) {
-        this.updateMasterFlags(this.rootNodes);
-        refresh = true;
-      }
+      if (anyChanged(MASTER_FLAGS)) this.updateMasterFlags(this.rootNodes);
       if (changed('paginationPageSize')) this.pageSizeOverride = null;
-      if (
-        groupRefresh ||
-        changed('groupSelectsChildren') ||
-        changed('groupTotalRow') ||
-        changed('grandTotalRow') ||
-        changed('groupIncludeFooter') ||
-        changed('groupIncludeTotalFooter') ||
-        changed('paginateChildRows')
-      ) {
-        refresh = true;
-      }
-      if (refresh) {
+      if (groupRefresh || anyChanged(REFRESH_MODEL)) {
         this.refreshModel({ newPageSize: changed('paginationPageSize'), byFilter: changed('quickFilterText') });
         if (changed('quickFilterText')) this.dispatch('filterChanged', { source: 'quickFilter', columns: [] });
       }
