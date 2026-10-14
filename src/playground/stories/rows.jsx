@@ -134,15 +134,22 @@ function RowHeight({ p }) {
   );
 }
 
-function FullWidth() {
+function FullWidth({ p }) {
   const rows = useMemo(() => SAMPLE.slice(0, 30).flatMap((r, i) => (i % 8 === 7 ? [r, { banner: `── ${Math.floor(i / 8) + 1}구간 소계: ${(i + 1) * 100}건 ──` }] : [r])), []);
+  // embedFullWidthRows 면 영역마다 불림 — pinned: 'left' | null(가운데) | 'right'
+  const banner = x => (
+    <div style={{ padding: '0 14px', lineHeight: '42px', fontWeight: 600, whiteSpace: 'nowrap', background: 'color-mix(in srgb, transparent, var(--r2-accent-color) 10%)' }}>
+      {x.pinned === 'left' ? '📌 소계' : x.data.banner}
+    </div>
+  );
+  const cols = useMemo(() => [...BASE_COLUMNS.map(c => (c.field === 'id' ? { ...c, pinned: 'left' } : c)), { field: 'memo', headerName: '비고', width: 600 }], []);
   return (
-    <Grid
-      rowData={rows}
-      columnDefs={BASE_COLUMNS}
-      isFullWidthRow={x => !!x.rowNode.data?.banner}
-      fullWidthCellRenderer={x => <div style={{ padding: '0 14px', lineHeight: '42px', fontWeight: 600, background: 'color-mix(in srgb, transparent, var(--r2-accent-color) 10%)' }}>{x.data.banner}</div>}
-    />
+    <>
+      <div className="pg-toolbar">
+        <span className="pg-note">가로로 스크롤해 보세요 — {p.embed ? '배너가 컬럼과 같이 움직이고 고정 영역에도 따로 그려짐' : '배너는 제자리 (화면 폭 고정)'}</span>
+      </div>
+      <Grid rowData={rows} columnDefs={cols} isFullWidthRow={x => !!x.rowNode.data?.banner} fullWidthCellRenderer={banner} embedFullWidthRows={p.embed} />
+    </>
   );
 }
 
@@ -525,11 +532,21 @@ rowDragManaged`,
     name: '전체 폭 행',
     desc: 'isFullWidthRow 가 true 인 행은 컬럼을 무시하고 fullWidthCellRenderer 로 행 전체를 그립니다 (배너, 소계 등).',
     keywords: ['isFullWidthRow', 'fullWidthCellRenderer', 'fullWidthCellRendererParams', 'embedFullWidthRows'],
-    controls: [],
-    render: () => <FullWidth />,
-    code: () => `<R2Grid
+    controls: [
+      {
+        key: 'embed',
+        type: 'boolean',
+        default: false,
+        label: 'embedFullWidthRows',
+        desc: '전체 폭 행(사용자 전체 폭 행·그룹 행(groupRows)·상세 행·로딩 행)을 고정 영역과 가운데 영역에 나눠 그립니다. 가운데 부분은 가로 스크롤을 따라 움직입니다. 렌더러는 영역마다 불리고 params.pinned 로 구분합니다(기본 그룹 행 내용은 첫 영역에만).',
+        on: '왼쪽 고정 영역에 📌 소계, 가운데는 컬럼과 함께 스크롤',
+        off: '배너 한 장이 화면 폭에 고정',
+      },
+    ],
+    render: p => <FullWidth p={p} />,
+    code: p => `<R2Grid
   isFullWidthRow={p => !!p.rowNode.data?.banner}
-  fullWidthCellRenderer={p => <div className="banner">{p.data.banner}</div>}
+  fullWidthCellRenderer={p => <div className="banner">{p.pinned === 'left' ? '소계' : p.data.banner}</div>}${p.embed ? '\n  embedFullWidthRows   // 영역마다 그림, 가로 스크롤 따라감' : ''}
 />`,
   },
   {

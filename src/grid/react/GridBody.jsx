@@ -558,7 +558,8 @@ function Row({ core, node, cols, sectionCols, top, height, rp, handlers }) {
 
 // groupDisplayType 'groupRows': 그룹 행을 전체 폭으로 (펼침 + 키 + 자식 수), groupRowRenderer 지원
 const GROUP_ROW_COLUMN = { autoType: 'group', colId: '__groupRow', groupIndex: null, colDef: {} };
-function GroupFullRow({ core, node, top, height, rp, handlers }) {
+// embedFullWidthRows: 영역(왼쪽 고정·가운데·오른쪽 고정)마다 한 번씩 — pinned 는 그 영역, primary 는 내용을 그릴 첫 영역
+function GroupFullRow({ core, node, top, height, rp, handlers, pinned = null, primary = true }) {
   const g = core.gos;
   const transform = !g.suppressRowTransform;
   const rgc = node.rowGroupColumn;
@@ -567,7 +568,7 @@ function GroupFullRow({ core, node, top, height, rp, handlers }) {
   else if (typeof rgc?.colDef.valueFormatter === 'function') {
     value = rgc.colDef.valueFormatter({ ...core.makeValueParams(node, rgc), value: node.groupValue ?? node.key });
   }
-  const params = { value: node.key, valueFormatted: value, node, data: node.data, api: core.api, context: g.context, ...(g.groupRowRendererParams || {}) };
+  const params = { value: node.key, valueFormatted: value, node, data: node.data, pinned, api: core.api, context: g.context, ...(g.groupRowRendererParams || {}) };
   const custom = typeof g.groupRowRenderer === 'string' ? g.components?.[g.groupRowRenderer] : g.groupRowRenderer;
   return (
     <div
@@ -584,9 +585,9 @@ function GroupFullRow({ core, node, top, height, rp, handlers }) {
       <div className="r2-cell r2-full-width-group-cell" style={{ width: '100%', paddingLeft: 8 }}>
         {custom ? (
           stableElement(core, 'groupRow', custom, params)
-        ) : (
+        ) : primary ? (
           <GroupCellRenderer core={core} node={node} column={GROUP_ROW_COLUMN} params={params} extra={g.groupRowRendererParams} />
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -594,7 +595,7 @@ function GroupFullRow({ core, node, top, height, rp, handlers }) {
 
 // isFullWidthRow + fullWidthCellRenderer: 컬럼을 무시하고 행 전체 폭으로 렌더
 // SSRM 로딩 행: 기본은 전체 폭 '로딩 중...' (suppressServerSideFullWidthLoadingRow 면 셀마다 스켈레톤)
-function LoadingFullRow({ core, node, top, height, rp }) {
+function LoadingFullRow({ core, node, top, height, rp, primary = true }) {
   const transform = !core.gos.suppressRowTransform;
   return (
     <div
@@ -604,17 +605,19 @@ function LoadingFullRow({ core, node, top, height, rp }) {
       row-id={node.id}
       style={{ ...(transform ? { transform: `translateY(${top}px)` } : { top }), height, ...rp.style }}
     >
-      <div className="r2-loading" style={{ paddingInlineStart: 12 + (node.level || 0) * 28 }}>
-        <span className="r2-loading-icon">
-          <Icon name="loading" />
-        </span>
-        <span className="r2-loading-text">{localeText(core, 'loadingOoo')}</span>
-      </div>
+      {primary && (
+        <div className="r2-loading" style={{ paddingInlineStart: 12 + (node.level || 0) * 28 }}>
+          <span className="r2-loading-icon">
+            <Icon name="loading" />
+          </span>
+          <span className="r2-loading-text">{localeText(core, 'loadingOoo')}</span>
+        </div>
+      )}
     </div>
   );
 }
 
-function FullWidthRow({ core, node, top, height, rp, handlers }) {
+function FullWidthRow({ core, node, top, height, rp, handlers, pinned = null }) {
   const g = core.gos;
   const comp = g.fullWidthCellRenderer;
   const impl = typeof comp === 'string' ? g.components?.[comp] : comp;
@@ -638,7 +641,7 @@ function FullWidthRow({ core, node, top, height, rp, handlers }) {
             data: node.data,
             value: undefined,
             rowIndex: node.rowIndex,
-            pinned: null,
+            pinned,
             api: core.api,
             context: g.context,
             eGridCell: undefined,
@@ -1345,28 +1348,42 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
   const rightRows = [];
   const fullRows = [];
   const total = core.displayedNodes.length;
+  // embedFullWidthRows: 전체 폭 행을 맨 위 층 대신 영역마다 넣어 가운데 부분이 가로 스크롤을 따라감
+  const embed = !!g.embedFullWidthRows;
+  const pushFull = (Comp, key, common) => {
+    if (!embed) {
+      fullRows.push(<Comp key={key} {...common} />);
+      return;
+    }
+    const secs = [core.displayedLeft.length ? 'left' : null, 'center', core.displayedRight.length ? 'right' : null].filter(Boolean);
+    secs.forEach((sec, si) => {
+      const el = <Comp key={`${key}:${sec}`} {...common} pinned={sec === 'center' ? null : sec} primary={si === 0} />;
+      (sec === 'left' ? leftRows : sec === 'right' ? rightRows : centerRows).push(el);
+    });
+  };
   const pushRow = i => {
     const node = core.getPageNode(i);
     if (!node) return;
     const top = core.rowTopAt(i) - offset;
     const h = core.rowHeightAt(i);
     if (node.detail) {
-      fullRows.push(<DetailRow key={node.id} core={core} node={node} top={top} height={h} />);
+      // 상세 그리드: embedFullWidthRows 면 가운데 영역에 (가로 스크롤 따라감)
+      (embed ? centerRows : fullRows).push(<DetailRow key={node.id} core={core} node={node} top={top} height={h} />);
       return;
     }
     const rp = rowProps(core, node, total);
     const key = node.__redraw ? `${node.id}:${node.__redraw}` : node.id;
     const common = { core, node, top, height: h, rp, handlers };
     if (node.group && !node.footer && core.isGroupRowsDisplay()) {
-      fullRows.push(<GroupFullRow key={key} {...common} />);
+      pushFull(GroupFullRow, key, common);
       return;
     }
     if (node.stub && g.rowModelType === 'serverSide' && !g.suppressServerSideFullWidthLoadingRow) {
-      fullRows.push(<LoadingFullRow key={key} {...common} />);
+      pushFull(LoadingFullRow, key, common);
       return;
     }
     if (!node.group && !node.stub && typeof g.isFullWidthRow === 'function' && g.isFullWidthRow({ rowNode: node, api: core.api, context: g.context })) {
-      fullRows.push(<FullWidthRow key={key} {...common} />);
+      pushFull(FullWidthRow, key, common);
       return;
     }
     if (core.displayedLeft.length) leftRows.push(<Row key={key} cols={core.displayedLeft} sectionCols={core.displayedLeft} {...common} />);
@@ -1386,7 +1403,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     const common = { core, node, top: st.top - offset, height: st.height, rp: sp, handlers };
     const key = `sticky:${node.id}`;
     if (core.isGroupRowsDisplay()) {
-      fullRows.push(<GroupFullRow key={key} {...common} />);
+      pushFull(GroupFullRow, key, common);
       return;
     }
     if (core.displayedLeft.length) leftRows.push(<Row key={key} cols={core.displayedLeft} sectionCols={core.displayedLeft} {...common} />);
@@ -1409,6 +1426,29 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
   if (edNode && edNode.rowIndex != null && !edNode.rowPinned) {
     const ei = edNode.rowIndex - core.pageFirstRow;
     if (ei >= 0 && ei < rowCount && (ei < first || ei > last)) pushRow(ei);
+  }
+  // 행 DOM 순서 고정: 정렬·필터로 자리가 바뀌어도 이미 있던 행 요소는 옮기지 않음 (DOM 을 옮기면 이동 애니메이션이 끊김).
+  //  새 행은 끝에. ensureDomOrder 면 화면 순서 그대로 (화면 읽기 프로그램용, 대신 애니메이션 없음)
+  if (core.isRowAnimationOn() && !g.ensureDomOrder) {
+    const prev = core.__domSeq || new Map();
+    const next = new Map();
+    let n = core.__domSeqNext || 0;
+    const seqOf = k => {
+      let v = next.get(k);
+      if (v === undefined) {
+        v = prev.get(k);
+        if (v === undefined) v = n++;
+        next.set(k, v);
+      }
+      return v;
+    };
+    for (const list of [leftRows, centerRows, rightRows, fullRows]) {
+      const keyed = list.map(el => [seqOf(el.key), el]);
+      keyed.sort((a, b) => a[0] - b[0]);
+      keyed.forEach(([, el], i) => (list[i] = el));
+    }
+    core.__domSeq = next;
+    core.__domSeqNext = n;
   }
 
   // 고정 행
@@ -1490,7 +1530,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       <div className={cx('r2-body', autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal')} role="presentation">
         <div
           ref={bodyVpRef}
-          className={cx('r2-body-viewport', autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal', 'r2-row-no-animation')}
+          className={cx('r2-body-viewport', autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal', core.isRowAnimationOn() && !stretched ? 'r2-row-animation' : 'r2-row-no-animation')}
           style={g.alwaysShowVerticalScroll && !autoLayout ? { overflowY: 'scroll' } : undefined}
           role="presentation"
           onScroll={onBodyScroll}

@@ -164,6 +164,10 @@ const STORY_DOCS = {
   // ─── 필터 · 정렬 ─────────────────────────────
   sorting: {
     whenToUse: ['여러 기준으로 정렬할 때 — Shift+클릭', '코드값을 정해진 순서로 정렬할 때 — comparator'],
+    notes: [
+      'animateRows(기본 켜짐) 동안 행 요소의 DOM 순서는 화면 순서와 다를 수 있습니다. 화면 읽기 프로그램이나 enableCellTextSelection 으로 여러 행을 드래그 복사하는 화면이면 ensureDomOrder 를 켜세요 (대신 애니메이션 없음).',
+      '행이 아주 많아(약 40만 행 이상) 스크롤 높이를 줄여 그리는 경우엔 애니메이션을 자동으로 끕니다.',
+    ],
   },
   'column-filters': {
     whenToUse: ['컬럼 값으로 행을 거를 때', '코드값처럼 종류가 정해진 컬럼 — r2SetColumnFilter (체크 목록)'],

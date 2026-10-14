@@ -29,6 +29,7 @@ function Sorting({ p, ctx }) {
       multiSortKey={p.multiKey === 'ctrl' ? 'ctrl' : undefined}
       sortingOrder={p.order === 'desc-first' ? ['desc', 'asc', null] : undefined}
       accentedSort={p.accented}
+      animateRows={p.animate}
       onSortChanged={e => ctx.log(`sortChanged: ${e.api.getColumnState().filter(s => s.sort).sort((a, b) => a.sortIndex - b.sortIndex).map(s => `${s.colId} ${s.sort}`).join(', ') || '(없음)'}`)}
     />
   );
@@ -243,7 +244,7 @@ export default [
     category: CAT,
     name: '정렬',
     desc: '헤더 클릭 정렬, Shift(또는 Ctrl)+클릭 다중 정렬, comparator 로 커스텀 순서, sortingOrder 로 순환 순서 지정.',
-    keywords: ['sort', 'sortable', 'sortIndex', 'multiSortKey', 'sortingOrder', 'comparator', 'accentedSort', 'postSortRows', 'onSortChanged', 'applyColumnState', 'suppressMultiSort'],
+    keywords: ['sort', 'sortable', 'sortIndex', 'multiSortKey', 'sortingOrder', 'comparator', 'accentedSort', 'postSortRows', 'onSortChanged', 'applyColumnState', 'suppressMultiSort', 'animateRows', 'suppressColumnMoveAnimation', 'ensureDomOrder'],
     controls: [
       {
         key: 'multiKey',
@@ -275,6 +276,15 @@ export default [
         desc: '문자열 비교를 localeCompare 로 할지. 악센트·한글 자모를 언어 규칙대로 비교하지만 대량 데이터에선 느립니다.',
         on: '언어 규칙 비교 (느림)',
         off: '코드값 비교 (빠름, 대부분 충분)',
+      },
+      {
+        key: 'animate',
+        type: 'boolean',
+        default: true,
+        label: 'animateRows',
+        desc: '정렬·필터·그룹 펼침으로 자리가 바뀐 행을 미끄러지듯 옮깁니다 (기본 켜짐). 화면에 새로 들어오는 행과 스크롤은 영향 없습니다. 컬럼을 옮길 때도 잠깐 부드럽게 움직입니다 (suppressColumnMoveAnimation 로 끔).',
+        on: '헤더 클릭 시 행이 새 자리로 미끄러짐',
+        off: '바로 바뀜',
       },
     ],
     render: (p, ctx) => <Sorting p={p} ctx={ctx} />,

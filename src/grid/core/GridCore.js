@@ -1047,6 +1047,7 @@ export class GridCore {
     // marryChildren 그룹은 자식이 연속해야 함 → 깨지는 이동은 무시
     if (!this.isMarriedOrderValid(next)) return;
     this.allColumns = next;
+    this.startColumnMoveAnimation();
     this.afterColumnLayoutChange();
     this.dispatch('columnMoved', {
       columns: cols,
@@ -1055,6 +1056,29 @@ export class GridCore {
       finished: true,
       source,
     });
+  }
+
+  // 행 이동 애니메이션 (animateRows, 기본 켜짐): 정렬·필터·펼침으로 자리가 바뀐 행이 미끄러지듯 이동
+  isRowAnimationOn() {
+    return this.gos.animateRows !== false;
+  }
+
+  // 컬럼 이동 애니메이션: 옮긴 직후 잠깐 셀·헤더의 가로 위치 변화를 부드럽게 (suppressColumnMoveAnimation 로 끔).
+  //  너비 조절 때는 켜지 않음 (드래그를 늦게 따라가 보이므로)
+  startColumnMoveAnimation() {
+    if (this.gos.suppressColumnMoveAnimation || typeof window === 'undefined') return;
+    const first = !this.columnAnimating;
+    this.columnAnimating = true;
+    if (this.__colAnimTimer) {
+      clearTimeout(this.__colAnimTimer);
+      this.timers.delete(this.__colAnimTimer);
+    }
+    this.__colAnimTimer = this.setTimer(() => {
+      this.columnAnimating = false;
+      this.__colAnimTimer = null;
+      this.notify();
+    }, 300);
+    if (first) this.notify();
   }
 
   isMarriedOrderValid(order) {

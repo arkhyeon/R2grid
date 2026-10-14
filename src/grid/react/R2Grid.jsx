@@ -80,6 +80,7 @@ function GridView({ core }) {
         core.isRtl() ? 'r2-rtl' : 'r2-ltr',
         core.theme?.className,
         autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal',
+        core.columnAnimating && 'r2-column-moving',
       )}
       role="presentation"
       grid-id={core.gridId}
