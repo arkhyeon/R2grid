@@ -513,7 +513,10 @@ export const ssrmMethods = {
       const id = this.ssrmRowId(data, idx, st);
       const prev = this.nodeById.get(id);
       const node = prev || new RowNode(this, data, id);
-      if (prev && prev.data !== data) prev.__version++;
+      if (prev && prev.data !== data) {
+        prev.__version++;
+        this.bumpValueCache();
+      }
       node.data = data;
       node.displayed = true;
       this.ssrmSetupNode(node, data, st);
@@ -767,6 +770,7 @@ export const ssrmMethods = {
       const before = this.flashCandidates(n);
       n.data = d;
       n.__version++;
+      this.bumpValueCache();
       n.__quickFilterText = null;
       this.updateSelectable(n);
       if (this.ssrmApplySelection(n)) selChanged = true;

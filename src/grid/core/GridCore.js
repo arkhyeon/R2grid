@@ -535,6 +535,7 @@ export class GridCore {
 
   // ── 컬럼 구성 ─────────────────────────────────────────────
   buildColumns(initial) {
+    this.bumpValueCache(true);
     const g = this.gos;
     const defs = g.columnDefs || [];
     const defaultColDef = g.defaultColDef || {};
@@ -1288,6 +1289,50 @@ export class GridCore {
       const pending = this.getBatchValue(node, column);
       if (pending) return pending.value;
     }
+    // valueCache: valueGetter 결과를 데이터가 바뀔 때까지 재사용 (정렬·필터·집계에서 같은 값을 반복 계산하지 않음)
+    const vg = column.colDef.valueGetter;
+    if (vg && this.gos.valueCache && !(node.group && node.aggData && column.colId in node.aggData) && !node.footer) {
+      let c = node.__vc;
+      if (!c || node.__vcVer !== this.valueCacheVersion) {
+        c = node.__vc = new Map();
+        node.__vcVer = this.valueCacheVersion;
+      }
+      if (c.has(column.colId)) return c.get(column.colId);
+      const v = this.computeCellValue(node, column);
+      c.set(column.colId, v);
+      return v;
+    }
+    return this.computeCellValue(node, column);
+  }
+
+  getBestCostNodeSelection() {
+    if (!this.groupMode || !this.groupTop) return this.getSelectedNodes();
+    const out = [];
+    const leavesOf = n => (n.childrenAll || []).flatMap(c => (c.group && c.childrenAll ? [...(c.data !== undefined ? [c] : []), ...leavesOf(c)] : [c]));
+    const walk = list => {
+      for (const n of list) {
+        if (n.group && n.childrenAll) {
+          const leaves = leavesOf(n);
+          if (leaves.length && leaves.every(l => l.selected) && (n.data === undefined || n.selected)) out.push(n);
+          else {
+            if (n.data !== undefined && n.selected) out.push(n);
+            walk(n.childrenAll);
+          }
+        } else if (n.selected) out.push(n);
+      }
+    };
+    walk(this.groupTop);
+    return out;
+  }
+
+  // 값 캐시 만료: 데이터가 바뀌면 전체 (다른 행 값을 쓰는 valueGetter 가 있을 수 있어서).
+  //  valueCacheNeverExpires 면 api.expireValueCache · refreshCells({ force }) 로만
+  bumpValueCache(force = false) {
+    if (!force && this.gos.valueCacheNeverExpires) return;
+    this.valueCacheVersion = (this.valueCacheVersion || 0) + 1;
+  }
+
+  computeCellValue(node, column) {
     // 그룹 노드: 집계값 우선 (트리데이터의 데이터 보유 부모도 동일)
     if (node.group && node.aggData && column.colId in node.aggData) {
       // 합계 행이 아래에 따로 보이면 펼친 그룹 행은 집계값을 비움
@@ -1408,6 +1453,7 @@ export class GridCore {
     if (!changed) return false;
     this.recordUndo(node, column, oldValue, newValue, source);
     node.__version++;
+    this.bumpValueCache();
     node.__quickFilterText = null;
     // 집계 먼저 (cellValueChanged 에서 그룹·루트 aggData 가 새 값이게). suppressChangeDetection 이면 다시 집계 안 함
     if (!this.gos.suppressChangeDetection) this.markAggDirty(node);
@@ -1435,6 +1481,7 @@ export class GridCore {
 
   setRowData(rowData, initial) {
     if (this.isSsrm() || this.isViewportModel()) return;
+    this.bumpValueCache();
     // treeDataChildrenField: 중첩된 children 배열을 펼친 목록으로 (부모는 treeChildParent 에 기억, v33.1+)
     this.treeChildParent = null;
     if (rowData && this.gos.treeData && this.gos.treeDataChildrenField && typeof this.gos.getDataPath !== 'function') {
@@ -1486,6 +1533,7 @@ export class GridCore {
             if (node.data !== data) {
               node.data = data;
               node.__version++;
+              this.bumpValueCache();
               node.__quickFilterText = null;
             }
           } else {
@@ -1589,6 +1637,7 @@ export class GridCore {
         const before = this.flashCandidates(node);
         node.data = d;
         node.__version++;
+        this.bumpValueCache();
         node.__quickFilterText = null;
         this.flashChangedCells(node, before);
         result.update.push(node);
@@ -1652,6 +1701,7 @@ export class GridCore {
     const before = isUpdate ? this.flashCandidates(node) : null;
     node.data = data;
     node.__version++;
+    this.bumpValueCache();
     node.__quickFilterText = null;
     this.updateSelectable(node);
     if (before) this.flashChangedCells(node, before);

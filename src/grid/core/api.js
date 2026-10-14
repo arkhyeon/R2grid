@@ -95,7 +95,10 @@ export function createApi(core) {
     },
 
     // ── 렌더 ──
-    refreshCells: () => core.notify(),
+    refreshCells: (params = {}) => {
+      if (params.force) core.bumpValueCache(true);
+      core.notify();
+    },
     redrawRows: (params = {}) => {
       const nodes = params.rowNodes?.length ? params.rowNodes : core.getRenderedNodes();
       nodes.forEach(n => {
@@ -117,6 +120,8 @@ export function createApi(core) {
 
     // ── 선택 ──
     getSelectedNodes: () => core.getSelectedNodes(),
+    // 선택 노드를 가장 적은 수로: 하위가 모두 선택된 그룹은 그룹 하나로 (없어질 예정인 API, 호환용)
+    getBestCostNodeSelection: () => core.getBestCostNodeSelection(),
     getSelectedRows: () => core.getSelectedRows(),
     selectAll: (a, b) => {
       const mode = a === 'filtered' || a === 'currentPage' || a === 'all' ? a : 'all';
@@ -562,7 +567,10 @@ export function createApi(core) {
       core.eFocusSink?.focus?.({ preventScroll: true });
     },
     getFocusedHeader: () => core.headerPosition(core.headerFocus),
-    expireValueCache: () => core.notify(),
+    expireValueCache: () => {
+      core.bumpValueCache(true);
+      core.notify();
+    },
     onGroupExpandedOrCollapsed: () => core.refreshModel({ skipFilter: true, keepRenderedRows: true }),
     isModuleRegistered: () => true,
     flushAllAnimationFrames: () => {},

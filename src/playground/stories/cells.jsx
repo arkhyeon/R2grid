@@ -249,7 +249,7 @@ export default [
     category: CAT,
     name: '셀 렌더링 · 스타일',
     desc: 'valueGetter / valueFormatter / cellRenderer(함수·컴포넌트·components 등록명) / cellClassRules / cellStyle.',
-    keywords: ['cellRenderer', 'cellRendererParams', 'cellRendererSelector', 'components', 'valueGetter', 'valueFormatter', 'cellClass', 'cellClassRules', 'cellStyle', 'refreshCells', 'redrawRows'],
+    keywords: ['cellRenderer', 'cellRendererParams', 'cellRendererSelector', 'components', 'valueGetter', 'valueFormatter', 'cellClass', 'cellClassRules', 'cellStyle', 'refreshCells', 'redrawRows', 'valueCache', 'valueCacheNeverExpires', 'expireValueCache'],
     controls: [
       {
         key: 'renderers',

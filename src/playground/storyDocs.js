@@ -107,7 +107,10 @@ const STORY_DOCS = {
   // ─── 셀 ─────────────────────────────
   'cell-rendering': {
     whenToUse: ['값을 표시용으로 바꿀 때 — valueFormatter (정렬·필터는 원래 값 기준)', '셀에 버튼·배지·링크를 넣을 때 — cellRenderer', '조건에 따라 색을 칠할 때 — cellClassRules'],
-    notes: ['valueFormatter 결과가 CSV·엑셀에도 그대로 나갑니다.'],
+    notes: [
+      'valueFormatter 결과가 CSV·엑셀에도 그대로 나갑니다.',
+      'valueGetter 계산이 무겁고 행이 많으면 valueCache 를 켜세요. 정렬·필터·집계에서 같은 값을 다시 계산하지 않고, 데이터가 바뀌면(편집·트랜잭션·rowData) 전체가 만료됩니다. valueCacheNeverExpires 면 api.expireValueCache() 나 refreshCells({ force: true }) 를 부를 때만 만료.',
+    ],
   },
   tooltips: {
     whenToUse: ['잘린 긴 값을 마우스를 올려 볼 때', '헤더 이름만으로 뜻이 부족할 때 — headerTooltip'],

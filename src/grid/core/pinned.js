@@ -125,6 +125,7 @@ export const pinnedMethods = {
       if (c.data !== src.data) {
         c.data = src.data;
         c.__version++;
+        this.bumpValueCache();
       }
       c.pinnedSibling = src;
       c.rowPinned = pos;
