@@ -451,7 +451,7 @@ export class GridCore {
       if (!bothEmpty) this.setRowData(b, false);
     } else {
       let refresh = false;
-      if (changed('quickFilterText')) refresh = true;
+      if (changed('quickFilterText') || changed('alwaysAggregateAtRootLevel') || changed('applyQuickFilterBeforePivotOrAgg')) refresh = true;
       if (
         changed('pagination') ||
         changed('paginationPageSize') ||
@@ -479,7 +479,7 @@ export class GridCore {
         refresh = true;
       }
       if (refresh) {
-        this.refreshModel({ newPageSize: changed('paginationPageSize') });
+        this.refreshModel({ newPageSize: changed('paginationPageSize'), byFilter: changed('quickFilterText') });
         if (changed('quickFilterText')) this.dispatch('filterChanged', { source: 'quickFilter', columns: [] });
       }
     }
@@ -1383,6 +1383,8 @@ export class GridCore {
     this.recordUndo(node, column, oldValue, newValue, source);
     node.__version++;
     node.__quickFilterText = null;
+    // 집계 먼저 (cellValueChanged 에서 그룹·루트 aggData 가 새 값이게)
+    this.markAggDirty(node);
     this.dispatch('cellValueChanged', {
       ...this.cellEventParams(node, column),
       value: newValue,
@@ -1475,7 +1477,14 @@ export class GridCore {
             selectionChanged = true;
           }
         }
-        this.rootNodes = nodes;
+        // suppressMaintainUnsortedOrder: 새 rowData 순서를 따르지 않고 기존 행 순서 유지, 새 행은 끝에
+        if (this.gos.suppressMaintainUnsortedOrder) {
+          const kept = this.rootNodes.filter(n => newById.get(n.id) === n);
+          const fresh = new Set(freshNodes);
+          const ordered = [...kept, ...nodes.filter(n => fresh.has(n))];
+          ordered.forEach((n, i) => (n.sourceRowIndex = i));
+          this.rootNodes = ordered;
+        } else this.rootNodes = nodes;
         this.nodeById = newById;
       } else {
         if (this.selected.size) selectionChanged = true;
@@ -1679,8 +1688,11 @@ export class GridCore {
     newPageSize = false,
     resetPage = false,
     silent = false,
+    byFilter = false,
   } = {}) {
     this.spanEpoch = (this.spanEpoch || 0) + 1;
+    // 필터 때문에 바뀐 집계값은 깜빡이지 않음 (allowShowChangeAfterFilter 면 깜빡임)
+    this.aggChangeByFilter = byFilter;
     if (this.isViewportModel()) {
       this.vpRefreshView();
       return;
@@ -1714,6 +1726,8 @@ export class GridCore {
         this.mergePinnedRows();
       }
     }
+    // 루트 노드 집계 (alwaysAggregateAtRootLevel · 총합계 행 · 피벗)
+    this.aggregateRoot();
     // 수동 고정 행: 원본이 지워졌으면 빠지고, data 가 바뀌었으면 복제도 따라감
     if (this.manualPins && (this.manualPins.top.length || this.manualPins.bottom.length || this.manualCloneCache?.size)) this.mergePinnedRows();
     if (resetPage) this.currentPage = 0;
@@ -1740,6 +1754,7 @@ export class GridCore {
 
   applyFilters() {
     let preds = [];
+    this.postPivotQuick = null;
     // 고급 필터가 켜지면 컬럼 필터 대신 고급 필터 모델만 적용
     const advanced = this.isAdvancedFilterEnabled();
     if (advanced && this.advancedFilterModel) {
@@ -1759,10 +1774,13 @@ export class GridCore {
       const parts = parser
         ? parser(String(qt))
         : String(qt).trim().toLowerCase().split(/\s+/);
-      preds.push(node => {
-        const text = this.getQuickFilterText(node);
-        return matcher ? matcher(parts, text) : parts.every(p => text.includes(p));
-      });
+      // 피벗: 기본은 집계가 끝난 그룹 행(피벗 결과)에 적용. applyQuickFilterBeforePivotOrAgg 면 원본 행에 먼저
+      if (this.isPivotActive() && !this.gos.applyQuickFilterBeforePivotOrAgg) this.postPivotQuick = { parts, matcher };
+      else
+        preds.push(node => {
+          const text = this.getQuickFilterText(node);
+          return matcher ? matcher(parts, text) : parts.every(p => text.includes(p));
+        });
     }
     const extPresent = this.gos.isExternalFilterPresent;
     if (typeof extPresent === 'function' && extPresent({ api: this.api, context: this.gos.context })) {
@@ -1812,10 +1830,16 @@ export class GridCore {
   }
 
   getQuickFilterText(node) {
-    if (node.__quickFilterText != null && node.__qfVer === this.quickFilterVersion) {
+    // 피벗 모드에서 원본 행에 먼저 적용할 때(applyQuickFilterBeforePivotOrAgg)는 화면 컬럼이 피벗 결과라 원본 컬럼 기준
+    const pivot = this.isPivotActive();
+    if (node.__quickFilterText != null && node.__qfVer === this.quickFilterVersion && node.__qfPivot === pivot) {
       return node.__quickFilterText;
     }
-    const cols = this.gos.includeHiddenColumnsInQuickFilter ? this.allColumns : this.displayedColumns;
+    const cols = pivot
+      ? this.allColumns.filter(c => !c.isPivotResult && !c.autoType)
+      : this.gos.includeHiddenColumnsInQuickFilter
+        ? this.allColumns
+        : this.displayedColumns;
     const parts = [];
     for (const c of cols) {
       if (c.isAuto) continue;
@@ -1826,6 +1850,7 @@ export class GridCore {
     }
     node.__quickFilterText = parts.join('\n');
     node.__qfVer = this.quickFilterVersion;
+    node.__qfPivot = pivot;
     return node.__quickFilterText;
   }
 
@@ -2171,7 +2196,7 @@ export class GridCore {
     if (this.isSsrm()) {
       this.updateFilterActiveFlags();
       this.ssrmOnFilterChanged();
-    } else this.refreshModel({ resetPage: true });
+    } else this.refreshModel({ resetPage: true, byFilter: true });
     this.dispatch('filterChanged', {
       source,
       columns: columns ?? [],

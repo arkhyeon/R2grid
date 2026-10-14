@@ -515,6 +515,122 @@ export const groupingMethods = {
     return f;
   },
 
+  // 루트 노드: 최상위 행들의 보이지 않는 부모 (api.getRootNode). 최상위 행의 parent 는 그대로 null
+  getRootNode() {
+    if (!this.rootNode) {
+      const r = new RowNode(this, undefined, 'ROOT_NODE_ID');
+      r.group = true;
+      r.level = -1;
+      r.key = null;
+      r.selectable = false;
+      r.expanded = true;
+      this.rootNode = r;
+    }
+    return this.rootNode;
+  },
+
+  // alwaysAggregateAtRootLevel: 묶지 않아도 (필터 후) 전체 집계를 루트 노드 aggData 에. 총합계 행·피벗이면 항상
+  aggregateRoot() {
+    const root = this.getRootNode();
+    const grouped = !!this.groupMode;
+    root.childrenAll = grouped ? this.groupTop || [] : this.rootNodes;
+    root.childrenAfterFilter = grouped ? this.groupSortedTop || [] : this.filteredNodes || [];
+    root.childrenAfterSort = grouped ? this.groupSortedTop || [] : this.sortedNodes || [];
+    root.allChildrenCount = root.childrenAfterFilter.reduce((s, n) => s + (n.group ? n.allChildrenCount || 0 : 1), 0);
+    const want = !!this.gos.alwaysAggregateAtRootLevel || !!this.grandTotalPosition() || this.isPivotActive();
+    if (!want) {
+      root.aggData = null;
+      return;
+    }
+    this.aggregateNode(root, this.allColumns.filter(c => c.colDef.aggFunc), false);
+  },
+
+  // 값 편집 후 집계 다시 (필터·정렬은 그대로). 붙여넣기·채우기처럼 묶음 편집이면 끝날 때 한 번
+  markAggDirty(node) {
+    if (!this.isClientSide() || (!this.groupMode && !this.isPivotActive() && !this.gos.alwaysAggregateAtRootLevel)) return;
+    (this.aggDirty ||= new Set()).add(node);
+    if (!(this.undoBatchDepth > 0)) this.flushAggDirty();
+  },
+
+  flushAggDirty() {
+    const dirty = this.aggDirty;
+    if (!dirty?.size) return;
+    this.aggDirty = null;
+    const aggCols = this.allColumns.filter(c => c.colDef.aggFunc);
+    if (!aggCols.length && typeof this.gos.getGroupRowAgg !== 'function') return;
+    // 바뀐 행의 조상 그룹을 깊은 단계부터 (부모는 자식 그룹의 aggData 로 계산)
+    const groups = new Set();
+    for (const n of dirty) for (let a = n.parent; a; a = a.parent) groups.add(a);
+    const list = [...groups].sort((a, b) => b.level - a.level);
+    const flash = [];
+    for (const g of list) {
+      if (!g.childrenAfterFilter) continue;
+      this.aggregateNode(g, aggCols, false);
+      flash.push(g);
+      const f = this.footerCache?.get(`rowGroupFooter_${g.id}`);
+      if (f) f.aggData = g.aggData;
+    }
+    const grand = this.footerCache?.get('rowGroupFooter_ROOT_NODE_ID');
+    if (grand?.childrenAfterFilter && this.grandTotalPosition()) {
+      this.aggregateNode(grand, aggCols, false);
+      flash.push(grand);
+    }
+    if (!this.groupMode && this.pivotRootNode && this.isPivotActive()) {
+      this.aggregateNode(this.pivotRootNode, aggCols, false);
+      flash.push(this.pivotRootNode);
+    }
+    this.aggChangeByFilter = false;
+    this.flashAggChanges(flash);
+    this.aggregateRoot();
+    this.notify();
+  },
+
+  // 그룹·합계 행 집계값이 바뀐 칸 깜빡임 (enableCellChangeFlash 컬럼).
+  //  처음 계산·필터 때문에 바뀐 값은 제외 (allowShowChangeAfterFilter 면 필터도 깜빡임)
+  flashAggChanges(nodes) {
+    const cols = this.displayedColumns.filter(c => c.colDef.enableCellChangeFlash);
+    if (!cols.length) return;
+    const quiet = this.aggChangeByFilter && !this.gos.allowShowChangeAfterFilter;
+    for (const n of nodes) {
+      const prev = n.__prevAgg;
+      const cur = n.aggData;
+      n.__prevAgg = cur ? { ...cur } : null;
+      if (quiet || !prev || !cur) continue;
+      const changed = cols.filter(c => c.colId in cur && prev[c.colId] !== cur[c.colId]);
+      if (!changed.length) continue;
+      const rows = [n];
+      const f = n.footer ? null : this.footerCache?.get(`rowGroupFooter_${n.id}`);
+      if (f?.displayed) rows.push(f);
+      this.flashCells({ rowNodes: rows, columns: changed });
+    }
+  },
+
+  // 피벗 빠른 검색(집계 후): 그룹 키 + 화면 컬럼 값(피벗 결과·집계)
+  pivotQuickPass(n) {
+    const q = this.postPivotQuick;
+    const parts = n.key != null && n.key !== '' ? [String(n.key).toLowerCase()] : [];
+    for (const c of this.displayedColumns) {
+      if (c.isAuto) continue;
+      const v = this.getCellValue(n, c);
+      if (v != null && v !== '') parts.push(String(v).toLowerCase());
+    }
+    const text = parts.join('\n');
+    return q.matcher ? q.matcher(q.parts, text) : q.parts.every(p => text.includes(p));
+  },
+
+  // 맞는 그룹은 하위 전부, 아니면 맞는 하위 그룹이 있을 때만 남김
+  pivotQuickFilterGroups(list) {
+    const keep = n => {
+      if (!n.group) return false;
+      if (this.pivotQuickPass(n)) return true;
+      const kids = (n.childrenAfterFilter || []).filter(keep);
+      if (!kids.length) return false;
+      n.childrenAfterFilter = kids;
+      return true;
+    };
+    return list.filter(keep);
+  },
+
   aggregateNode(n, aggCols, recurse = true) {
     if (!n.group || !n.childrenAfterFilter) return;
     // suppressAggFilteredOnly: 필터와 무관하게 전체 자식으로 집계
@@ -639,7 +755,7 @@ export const groupingMethods = {
       this.groupTop.forEach(prep);
       this.groupTop.forEach(n => this.aggregateNode(n, aggColsPre));
     }
-    const top = this.groupTop.filter(filterNode);
+    let top = this.groupTop.filter(filterNode);
     const countLeaves = n => {
       if (!n.group || !n.childrenAfterFilter) return 1;
       let c = 0;
@@ -650,6 +766,11 @@ export const groupingMethods = {
     top.forEach(countLeaves);
     const aggCols = this.allColumns.filter(c => c.colDef.aggFunc);
     top.forEach(n => this.aggregateNode(n, aggCols));
+    // 피벗 빠른 검색은 집계가 끝난 그룹 행 기준 (applyQuickFilterBeforePivotOrAgg 가 아니면)
+    if (this.postPivotQuick && this.isPivotActive()) {
+      top = this.pivotQuickFilterGroups(top);
+      top.forEach(countLeaves);
+    }
     // groupMaintainOrder: 그룹 컬럼이 아닌 컬럼으로 정렬하면 그룹 순서는 그대로
     const sortsGroups = this.allColumns.some(c => c.sort && (c.autoType === 'group' || c.rowGroup));
     const keepGroupOrder = !!this.gos.groupMaintainOrder && !sortsGroups;
@@ -739,6 +860,20 @@ export const groupingMethods = {
       out[i].rowIndex = i;
       out[i].displayed = true;
       out[i].uiLevel = Math.max(0, out[i].level);
+    }
+    // 집계값 깜빡임 (enableCellChangeFlash)
+    if (this.allColumns.some(c => c.colDef.enableCellChangeFlash)) {
+      const groups = [];
+      const walk = list => {
+        for (const n of list) {
+          if (!n.group || !n.childrenAfterFilter) continue;
+          groups.push(n);
+          walk(n.childrenAfterFilter);
+        }
+      };
+      walk(top);
+      if (grandPos) groups.push(this.getFooterNode(null));
+      this.flashAggChanges(groups);
     }
     this.mergePinnedRows?.();
     this.groupSortedTop = sortedTop;

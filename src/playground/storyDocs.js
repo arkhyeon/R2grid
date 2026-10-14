@@ -65,7 +65,7 @@ const STORY_DOCS = {
   },
   'pinned-rows': {
     whenToUse: ['합계 행을 항상 아래에 보여줄 때', '편집용 기본값 행을 맨 위에 고정할 때'],
-    notes: ['고정 행 값은 그리드가 계산하지 않습니다. 자동 합계는 grandTotalRow 를 쓰세요.', '렌더마다 행 객체를 새로 만들면([{ ... }]) 편집한 값이 사라집니다. useState 등으로 같은 객체를 유지하세요.'],
+    notes: ['고정 행 값은 그리드가 계산하지 않습니다. 자동 합계는 grandTotalRow, 묶지 않는 화면은 alwaysAggregateAtRootLevel + getRootNode().aggData 를 쓰세요.', '렌더마다 행 객체를 새로 만들면([{ ... }]) 편집한 값이 사라집니다. useState 등으로 같은 객체를 유지하세요.'],
   },
   'row-pinning': {
     badge: 'NEW',
@@ -109,6 +109,7 @@ const STORY_DOCS = {
   },
   'cell-flash': {
     whenToUse: ['실시간 갱신 화면에서 바뀐 값을 눈에 띄게 할 때'],
+    notes: ['그룹·합계 행의 집계 칸도 값이 바뀌면 깜빡입니다. 필터 때문에 바뀐 합계는 allowShowChangeAfterFilter 를 켜야 깜빡입니다.'],
   },
   sparklines: {
     whenToUse: ['행마다 추이(최근 n회 값)를 작은 그래프로 보여줄 때'],
@@ -227,6 +228,7 @@ const STORY_DOCS = {
   },
   pivot: {
     whenToUse: ['연도·분기 같은 값을 컬럼으로 펼쳐 교차 집계할 때'],
+    notes: ['피벗 결과 컬럼은 늘 피벗 키 순서(pivotComparator)대로 다시 만듭니다. 데이터가 바뀌어 새 키가 생기면 순서에 맞는 자리에 들어갑니다.', '값을 편집하면 그룹·합계 행·결과 컬럼 집계가 바로 다시 계산됩니다 (정렬·필터는 그대로).'],
   },
   'columns-tool-panel': {
     badge: 'NEW',
@@ -240,7 +242,7 @@ const STORY_DOCS = {
   },
   transactions: {
     whenToUse: ['몇 행만 추가·수정·삭제됐을 때 전체를 다시 그리지 않고 반영', '스크롤·선택·펼침 상태를 유지한 채 갱신'],
-    notes: ['update·remove 는 getRowId 로 행을 찾습니다. 없으면 같은 객체 참조여야 합니다.'],
+    notes: ['update·remove 는 getRowId 로 행을 찾습니다. 없으면 같은 객체 참조여야 합니다.', 'getRowId 가 있으면 rowData 를 통째로 바꿔도 같은 id 행은 그대로 유지(선택·펼침 보존)되고, 순서는 새 rowData 를 따릅니다. 기존 순서를 지키려면 suppressMaintainUnsortedOrder.'],
   },
   'server-side': {
     badge: 'UPDATE',

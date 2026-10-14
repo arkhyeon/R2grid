@@ -131,6 +131,7 @@ export const pivotMethods = {
       headerName: label,
       aggFunc: vc.colDef.aggFunc,
       valueFormatter: vc.colDef.valueFormatter,
+      enableCellChangeFlash: vc.colDef.enableCellChangeFlash,
       cellClass: vc.colDef.cellClass,
       cellStyle: vc.colDef.cellStyle,
       type: vc.colDef.type,
@@ -174,6 +175,7 @@ export const pivotMethods = {
           headerName: dropLastRow || suppressAgg || typeof af !== 'string' ? name : `${af}(${name})`,
           aggFunc: af,
           valueFormatter: vc.colDef.valueFormatter,
+          enableCellChangeFlash: vc.colDef.enableCellChangeFlash,
           cellClass: vc.colDef.cellClass,
           cellStyle: vc.colDef.cellStyle,
           type: vc.colDef.type,
@@ -280,15 +282,18 @@ export const pivotMethods = {
     root.allChildrenCount = leaves.length;
     root.selectable = false;
     this.aggregateNode(root, this.allColumns.filter(c => c.colDef.aggFunc), false);
+    this.flashAggChanges([root]);
     for (const n of this.rootNodes) {
       n.rowIndex = null;
       n.displayed = false;
     }
-    root.rowIndex = 0;
-    root.displayed = true;
+    // 빠른 검색(집계 후): 합계 행이 맞지 않으면 비움
+    const shown = this.postPivotQuick && !this.pivotQuickPass(root) ? [] : [root];
+    root.rowIndex = shown.length ? 0 : null;
+    root.displayed = shown.length > 0;
     root.uiLevel = 0;
     this.filteredNodes = leaves;
-    this.sortedNodes = [root];
-    this.displayedNodes = [root];
+    this.sortedNodes = shown;
+    this.displayedNodes = shown;
   },
 };

@@ -35,7 +35,7 @@ function BigData({ p, ctx }) {
   );
 }
 
-function Transactions({ ctx }) {
+function Transactions({ p, ctx }) {
   const ref = useRef(null);
   const [rowData] = useState(() => makeRows(20));
   const next = useRef(1000);
@@ -57,11 +57,24 @@ function Transactions({ ctx }) {
           선택 행 수정
         </button>
         <button onClick={() => run({ remove: api().getSelectedRows() })}>선택 행 삭제</button>
+        <button
+          onClick={() => {
+            const cur = [];
+            api().forEachNode(n => cur.push(n.data));
+            const next2 = [...makeRows(1, next.current++), ...cur.reverse()];
+            api().setGridOption('rowData', next2);
+            ctx.log(`rowData 교체 (역순 + 새 행 맨 앞) → 첫 행 id ${api().getDisplayedRowAtIndex(0).data.id}`);
+          }}
+        >
+          rowData 교체 (역순 + 새 행)
+        </button>
         <span className="pg-note">getRowId 로 행 id 를 지정하면 update/remove 가 id 로 매칭됩니다</span>
       </div>
       <Grid
+        key={String(p.keepOrder)}
         gridRef={ref}
         rowData={rowData}
+        suppressMaintainUnsortedOrder={p.keepOrder}
         columnDefs={BASE_COLUMNS.map(c => (c.field === 'rowCnt' || c.field === 'status' ? { ...c, enableCellChangeFlash: true } : c))}
         getRowId={p => String(p.data.id)}
         rowSelection={{ mode: 'multiRow' }}
@@ -93,11 +106,19 @@ function Flash({ p, ctx }) {
           flashCells (0~1행)
         </button>
       </div>
+      {p.grouped && (
+        <div className="pg-toolbar">
+          <span className="pg-note">DBMS 별 행 수 합계 — 값을 바꾸면 그룹 합계도 깜빡임. 플로팅 필터로 거르면 {p.afterFilter ? '바뀐 합계가 깜빡임' : '합계는 바뀌어도 깜빡이지 않음'}</span>
+        </div>
+      )}
       <Grid
+        key={String(p.grouped)}
         gridRef={ref}
         rowData={rowData}
-        columnDefs={BASE_COLUMNS}
-        defaultColDef={{ enableCellChangeFlash: p.flash }}
+        columnDefs={p.grouped ? BASE_COLUMNS.map(c => (c.field === 'dbms' ? { ...c, rowGroup: true, hide: true } : c.field === 'rowCnt' ? { ...c, aggFunc: 'sum' } : c)) : BASE_COLUMNS}
+        groupDefaultExpanded={p.grouped ? -1 : undefined}
+        allowShowChangeAfterFilter={p.afterFilter}
+        defaultColDef={{ enableCellChangeFlash: p.flash, floatingFilter: !!p.grouped }}
         cellFlashDuration={p.duration}
         cellFadeDuration={p.fade}
       />
@@ -147,14 +168,24 @@ const rowData = useMemo(() => makeRows(${p.rows}), []);
     category: CAT,
     name: '트랜잭션 (add/update/remove)',
     desc: 'applyTransaction 으로 전체 rowData 교체 없이 부분 갱신합니다. getRowId 로 안정적인 행 id 를 지정하세요.',
-    keywords: ['applyTransaction', 'applyTransactionAsync', 'getRowId', 'add', 'update', 'remove', 'addIndex', 'onRowDataUpdated', 'getSelectedRows'],
-    controls: [],
-    render: (p, ctx) => <Transactions ctx={ctx} />,
-    code: () => `<R2Grid
+    keywords: ['applyTransaction', 'applyTransactionAsync', 'getRowId', 'add', 'update', 'remove', 'addIndex', 'onRowDataUpdated', 'getSelectedRows', 'suppressMaintainUnsortedOrder'],
+    controls: [
+      {
+        key: 'keepOrder',
+        type: 'boolean',
+        default: false,
+        label: 'suppressMaintainUnsortedOrder',
+        desc: 'getRowId 가 있을 때 rowData 를 통째로 바꾸면(정렬 없음) 기본은 새 rowData 순서대로 다시 놓습니다. 켜면 있던 행은 제자리, 새 행은 끝에 붙습니다. applyTransaction 에는 영향 없음.',
+        on: "'rowData 교체' 후에도 순서 그대로, 새 행은 맨 끝",
+        off: "'rowData 교체' 하면 역순 + 새 행 맨 앞",
+      },
+    ],
+    render: (p, ctx) => <Transactions p={p} ctx={ctx} />,
+    code: p => `<R2Grid
   ref={gridRef}
   rowData={rowData}
   columnDefs={columnDefs}
-  getRowId={p => String(p.data.id)}
+  getRowId={p => String(p.data.id)}${p.keepOrder ? '\n  suppressMaintainUnsortedOrder   // rowData 교체 때 기존 순서 유지' : ''}
 />
 
 gridRef.current.api.applyTransaction({ add: [newRow], addIndex: 0 });
@@ -187,6 +218,24 @@ gridRef.current.api.applyTransaction({ remove: gridRef.current.api.getSelectedRo
       },
       { key: 'duration', type: 'number', default: 500, label: 'cellFlashDuration', desc: '강조색이 유지되는 시간(ms). 이 시간이 지나면 사라지기 시작합니다.' },
       { key: 'fade', type: 'number', default: 1000, label: 'cellFadeDuration', desc: '강조색이 사라지는 데 걸리는 시간(ms). 0 이면 바로 꺼집니다.' },
+      {
+        key: 'grouped',
+        type: 'boolean',
+        default: false,
+        label: '그룹 집계 (예제용)',
+        desc: 'DBMS 로 묶고 행 수에 aggFunc: sum. 값이 바뀌면 그룹 행·합계 행의 집계 칸도 깜빡입니다 (처음 계산할 때는 깜빡이지 않음).',
+        on: 'DBMS 별 합계 + 플로팅 필터',
+        off: '평면 목록',
+      },
+      {
+        key: 'afterFilter',
+        type: 'boolean',
+        default: false,
+        label: 'allowShowChangeAfterFilter',
+        desc: '필터(빠른 검색 포함) 때문에 그룹 집계가 바뀔 때도 깜빡일지. 기본은 값이 실제로 바뀐 경우만 깜빡이고, 거른 결과로 합계가 달라진 건 깜빡이지 않습니다.',
+        on: '필터로 바뀐 그룹 합계도 깜빡임',
+        off: '필터로 바뀐 합계는 조용히',
+      },
     ],
     render: (p, ctx) => <Flash p={p} ctx={ctx} />,
     code: p => `<R2Grid

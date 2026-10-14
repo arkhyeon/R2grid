@@ -27,6 +27,7 @@ export const undoMethods = {
     if (this.undoBatchDepth > 0) return;
     const b = this.undoBatch;
     this.undoBatch = null;
+    this.flushAggDirty?.();
     if (b.length) this.pushUndo(b);
   },
 

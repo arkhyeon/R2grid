@@ -55,13 +55,31 @@ function RowDrag({ p, ctx }) {
 function PinnedRows({ p, ctx }) {
   const [top] = useState(() => [{ id: '★', taskName: '기본 조건 (편집 가능)', dbms: 'ALL', owner: '-', rowCnt: 0, status: '고정' }]);
   const bottom = useMemo(() => [{ id: '합계', taskName: '', dbms: '', owner: '', rowCnt: SAMPLE.reduce((s, r) => s + r.rowCnt, 0), status: '' }], []);
+  // 루트 합계: 필터·편집을 따라가는 합계 행 (alwaysAggregateAtRootLevel + getRootNode().aggData)
+  const [rootTotals, setRootTotals] = useState(null);
+  const cols = useMemo(() => (p.rootAgg ? BASE_COLUMNS.map(c => (c.field === 'rowCnt' ? { ...c, aggFunc: 'sum' } : c)) : BASE_COLUMNS), [p.rootAgg]);
+  const syncTotals = e => {
+    if (!p.rootAgg) return;
+    const root = e.api.getRootNode();
+    const sum = root.aggData?.rowCnt ?? 0;
+    const label = `필터 후 ${root.allChildrenCount}건`;
+    setRootTotals(prev => (prev && prev[0].rowCnt === sum && prev[0].taskName === label ? prev : [{ id: '합계', taskName: label, dbms: '', owner: '', rowCnt: sum, status: '' }]));
+  };
   return (
     <Grid
+      key={String(p.rootAgg)}
       rowData={SAMPLE}
-      columnDefs={BASE_COLUMNS}
-      defaultColDef={{ editable: true }}
+      columnDefs={cols}
+      defaultColDef={{ editable: true, floatingFilter: !!p.rootAgg }}
+      alwaysAggregateAtRootLevel={!!p.rootAgg}
+      onGridReady={syncTotals}
+      onModelUpdated={syncTotals}
+      onCellValueChanged={e => {
+        syncTotals(e);
+        ctx.log(`cellValueChanged ${e.colDef.field}=${e.newValue}${p.rootAgg ? ` → 루트 합계 ${e.api.getRootNode().aggData?.rowCnt?.toLocaleString()}` : ''}`);
+      }}
       pinnedTopRowData={p.top ? top : undefined}
-      pinnedBottomRowData={p.bottom ? bottom : undefined}
+      pinnedBottomRowData={p.bottom ? (p.rootAgg ? (rootTotals ?? undefined) : bottom) : undefined}
       getRowStyle={x => (x.node.rowPinned ? { fontWeight: 'bold', fontStyle: x.node.rowPinned === 'top' ? 'italic' : 'normal' } : undefined)}
       singleClickEdit
       onCellEditingStopped={e => ctx.log(`cellEditingStopped rowPinned=${e.rowPinned} ${e.colDef.field}=${e.value}`)}
@@ -372,11 +390,20 @@ export default [
         on: '하단 합계 행 고정',
         off: '하단 고정 없음',
       },
+      {
+        key: 'rootAgg',
+        type: 'boolean',
+        default: false,
+        label: 'alwaysAggregateAtRootLevel',
+        desc: '행을 묶지 않아도 aggFunc 컬럼을 전체(필터 후) 기준으로 집계해 api.getRootNode().aggData 에 둡니다. onModelUpdated·onCellValueChanged 에서 읽어 하단 고정 행에 넣으면 필터·편집을 따라가는 합계 행이 됩니다. 행을 묶는 화면이면 grandTotalRow 가 더 간단합니다.',
+        on: '행 수 aggFunc: sum — 필터·편집하면 하단 합계가 따라 바뀜',
+        off: '고정된 합계 값 (직접 계산)',
+      },
     ],
     render: (p, ctx) => <PinnedRows p={p} ctx={ctx} />,
     code: p => `const [top] = useState(() => [defaultCondition]); // 같은 참조 유지 (편집 보존)
 
-<R2Grid${p.top ? '\n  pinnedTopRowData={top}' : ''}${p.bottom ? '\n  pinnedBottomRowData={[totals]}' : ''}
+<R2Grid${p.top ? '\n  pinnedTopRowData={top}' : ''}${p.bottom ? '\n  pinnedBottomRowData={[totals]}' : ''}${p.rootAgg ? "\n  alwaysAggregateAtRootLevel   // columnDefs 의 rowCnt 에 aggFunc: 'sum'\n  onModelUpdated={e => setTotals({ rowCnt: e.api.getRootNode().aggData.rowCnt })}" : ''}
   getRowStyle={p => (p.node.rowPinned ? { fontWeight: 'bold' } : undefined)}
   onCellEditingStopped={e => console.log(e.rowPinned, e.value)}
 />`,

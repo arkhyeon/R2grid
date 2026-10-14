@@ -145,17 +145,26 @@ function Pivot({ p, ctx }) {
       })),
     [p.byProduct, p.pivotYear, p.pivotQuarter],
   );
+  const [qf, setQf] = useState('');
   return (
-    <Grid
-      key={`${p.byProduct}${p.pivotYear}${p.pivotQuarter}`}
-      gridRef={ref}
-      rowData={SALES}
-      columnDefs={cols}
-      pivotMode={p.pivotMode}
-      autoGroupColumnDef={{ minWidth: 180 }}
-      onColumnPivotModeChanged={() => ctx.log('columnPivotModeChanged')}
-      onGridReady={e => ctx.log(`결과 컬럼: ${(e.api.getPivotResultColumns() || []).map(c => c.getColId()).join(', ') || '(없음)'}`)}
-    />
+    <>
+      <div className="pg-toolbar">
+        <input placeholder="빠른 검색 (예: 노트북, 서울)" value={qf} onChange={e => setQf(e.target.value)} style={{ width: 200 }} />
+        <span className="pg-note">{p.qfBefore ? '원본 행에 먼저 검색 → 맞는 행만 집계' : '집계가 끝난 행(지역 이름·결과 값)에서 검색'}</span>
+      </div>
+      <Grid
+        key={`${p.byProduct}${p.pivotYear}${p.pivotQuarter}`}
+        gridRef={ref}
+        rowData={SALES}
+        columnDefs={cols}
+        quickFilterText={qf}
+        applyQuickFilterBeforePivotOrAgg={p.qfBefore}
+        pivotMode={p.pivotMode}
+        autoGroupColumnDef={{ minWidth: 180 }}
+        onColumnPivotModeChanged={() => ctx.log('columnPivotModeChanged')}
+        onGridReady={e => ctx.log(`결과 컬럼: ${(e.api.getPivotResultColumns() || []).map(c => c.getColId()).join(', ') || '(없음)'}`)}
+      />
+    </>
   );
 }
 
@@ -455,6 +464,15 @@ suppressAggFuncInHeader`,
         on: '지역 아래 제품별 합계',
         off: '지역별 합계만',
       },
+      {
+        key: 'qfBefore',
+        type: 'boolean',
+        default: false,
+        label: 'applyQuickFilterBeforePivotOrAgg',
+        desc: '피벗 모드에서 빠른 검색을 어디에 적용할지. 기본(끔)은 집계가 끝난 행(지역 이름·결과 컬럼 값)에서 찾고, 맞은 그룹은 하위 전부 남깁니다. 켜면 원본 행(제품·분기 등)에 먼저 적용하고 남은 행만 집계합니다.',
+        on: "'노트북' 검색 → 노트북 행만으로 다시 집계",
+        off: "'노트북' 검색 → 결과 없음 (집계된 행엔 제품 이름이 없음)",
+      },
     ],
     render: (p, ctx) => <Pivot p={p} ctx={ctx} />,
     code: p => `<R2Grid
@@ -466,6 +484,7 @@ suppressAggFuncInHeader`,
     { field: 'qty', aggFunc: 'sum' },
     { field: 'sales', aggFunc: 'sum' },
   ]}
+  quickFilterText={text}${p.qfBefore ? '\n  applyQuickFilterBeforePivotOrAgg   // 원본 행에 먼저 검색' : '                 // 기본: 집계된 행에서 검색'}
 />
 
 api.setPivotColumns(['year']);

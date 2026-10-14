@@ -32,6 +32,8 @@ export function createApi(core) {
 
     // ── 행 ──
     getRowNode: id => (id == null ? undefined : core.nodeById.get(String(id))),
+    // 최상위 행들의 보이지 않는 부모. alwaysAggregateAtRootLevel 이면 aggData 에 전체 집계
+    getRootNode: () => core.getRootNode(),
     forEachNode: callback => core.forEachNodeAll(callback),
     forEachLeafNode: callback => core.rootNodes.forEach((n, i) => callback(n, i)),
     forEachNodeAfterFilter: callback => core.filteredNodes.forEach((n, i) => callback(n, i)),
