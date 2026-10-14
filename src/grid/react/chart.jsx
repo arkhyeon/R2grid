@@ -5,7 +5,7 @@ import { CHART_PALETTES, CHART_TYPES, CROSS_FILTER_TYPES } from '../core/charts.
 import { downloadFile } from '../core/utils.js';
 import { Icon } from './common.jsx';
 import { PopupLayer, usePopupPosition } from './popup.jsx';
-import { docOf, winOf } from '../core/utils.js';
+import { docOf } from '../core/utils.js';
 
 
 function niceScale(min, max, ticks = 5) {

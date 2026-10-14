@@ -21,7 +21,7 @@ import { CustomFilterHost } from './filters.jsx';
 import { AdvancedFilterBar } from './advancedFilter.jsx';
 import { ChartsHost } from './chart.jsx';
 import '../styles/r2grid.css';
-import { docOf, winOf } from '../core/utils.js';
+import { docOf } from '../core/utils.js';
 
 function isEditableEl(t) {
   return t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));

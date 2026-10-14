@@ -12,7 +12,6 @@ const ds = {
   },
   destroy() { ranges.push('destroy'); },
 };
-const flashes = [];
 const g = new GridCore({ rowModelType: 'viewport', viewportDatasource: ds, getRowId: p => String(p.data.id), columnDefs: [{ field: 'id' }, { field: 'price' }], rowSelection: { mode: 'multiRow' } });
 g.setViewportSize(800, 400);
 check('행 수·빈 칸', [g.displayedNodes.length, g.displayedNodes.every(n => n.stub)], [100, true]);

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { BASE_COLUMNS, makeRows, SAMPLE } from '../data.js';
 import { Grid } from './_shared.jsx';
 

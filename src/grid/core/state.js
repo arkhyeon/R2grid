@@ -5,26 +5,6 @@
 //  - setState: 빠진 항목은 기본값으로 되돌림, propertiesToIgnore 로 제외. initialState 는 준 항목만 적용
 import { GRID_VERSION } from './globals.js';
 
-const STATE_KEYS = [
-  'aggregation',
-  'columnGroup',
-  'columnOrder',
-  'columnPinning',
-  'columnSizing',
-  'columnVisibility',
-  'filter',
-  'focusedCell',
-  'pagination',
-  'pivot',
-  'cellSelection',
-  'rowGroup',
-  'rowGroupExpansion',
-  'rowPinning',
-  'rowSelection',
-  'scroll',
-  'sideBar',
-  'sort',
-];
 const COLUMN_KEYS = new Set(['aggregation', 'columnOrder', 'columnPinning', 'columnSizing', 'columnVisibility', 'pivot', 'rowGroup', 'sort']);
 
 // 이벤트 → 상태 항목 (stateUpdated.sources)

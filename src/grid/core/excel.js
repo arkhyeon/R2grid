@@ -9,6 +9,7 @@ import { zipAsync, zipSync } from './zip.js';
 
 const xmlEsc = s =>
   String(s)
+// eslint-disable-next-line no-control-regex -- XML 에 넣을 수 없는 제어 문자를 지우는 정규식
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, '')
     .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 

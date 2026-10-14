@@ -89,7 +89,7 @@ check('클라이언트 정렬: 요청 없음', reqs.length, 0);
 check('클라이언트 정렬 결과', show(g).slice(0, 4), ['G:KR', '  G:A', '    KR-A-4', '    KR-A-3']);
 g.api.applyColumnState({ state: [{ colId: 'amt', sort: 'desc' }], defaultState: { sort: null } });
 await load(g);
-check('클라이언트 정렬: 그룹도 집계값으로', show(g).filter(x => x.startsWith('G:')), ['G:JP', 'G:US', 'G:KR', '  G:B', '  G:A'].filter(x => true).slice(0, 3).concat([]), );
+check('클라이언트 정렬: 그룹도 집계값으로', show(g).filter(x => x.startsWith('G:')), ['G:JP', 'G:US', 'G:KR', '  G:B', '  G:A'].slice(0, 3).concat([]), );
 g.api.applyColumnState({ defaultState: { sort: null } });
 await load(g);
 check('정렬 해제 → 서버 순서', show(g).slice(0, 3), ['G:KR', '  G:A', '    KR-A-0']);

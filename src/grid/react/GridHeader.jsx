@@ -7,7 +7,7 @@ import { stableElement } from './renderComponent.js';
 import { DragImage, PopupLayer } from './popup.jsx';
 import { FloatingFilterCell } from './filters.jsx';
 import { DND_TYPE, canDropInZone, dropIntoZone, readDrag } from './columnDrop.jsx';
-import { docOf, winOf } from '../core/utils.js';
+import { docOf } from '../core/utils.js';
 
 // 그룹이 없는(패딩) 레벨을 컬럼 헤더가 위로 덮는지 — 기본, colDef.suppressSpanHeaderHeight 로 끔
 const spansHeaderHeight = col => !col.colDef.suppressSpanHeaderHeight;

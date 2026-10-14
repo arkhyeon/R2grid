@@ -3,7 +3,6 @@ const { GridCore } = await import('../../src/grid/core/GridCore.js');
 const tick = ms => new Promise(r => setTimeout(r, ms));
 const ev = { clientX: 0, clientY: 0 };
 const show = g => g.displayedNodes.map(n => `${'  '.repeat(n.level)}${n.data.name}`);
-const H = 42; // 기본 행 높이 가정 → 실제 값 사용
 const drag = async (g, from, to, where) => {
   const a = g.displayedNodes.find(n => n.data.name === from);
   const b = g.displayedNodes.find(n => n.data.name === to);

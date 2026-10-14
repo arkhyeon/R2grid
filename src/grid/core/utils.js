@@ -150,7 +150,6 @@ export function evaluateExpression(expr, params) {
   if (!fn) {
     const body = expr.includes('return') ? expr : `return ${expr};`;
     try {
-      // eslint-disable-next-line no-new-func
       fn = new Function('x', 'value', 'data', 'node', 'colDef', 'column', 'api', 'context', 'rowIndex', 'ctx', body);
     } catch {
       fn = () => false;

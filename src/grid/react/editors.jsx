@@ -13,7 +13,7 @@ import { cx, isPrintableKey } from '../core/utils.js';
 import { stableElement } from './renderComponent.js';
 import { Checkbox, Icon } from './common.jsx';
 import { bodyClipOf } from './popup.jsx';
-import { docOf, winOf } from '../core/utils.js';
+import { docOf } from '../core/utils.js';
 
 // useGridCellEditor — reactive 커스텀 에디터가 콜백 등록
 const CellEditorContext = createContext(null);

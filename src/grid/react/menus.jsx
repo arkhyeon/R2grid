@@ -9,7 +9,7 @@ import { FilterUI } from './filters.jsx';
 import { AdvancedFilterBuilderPopup } from './advancedFilter.jsx';
 import { CHART_TYPES } from '../core/charts.js';
 import { DND_TYPE, dropIntoZone, removeFromZone, setDragColumn } from './columnDrop.jsx';
-import { docOf, winOf } from '../core/utils.js';
+import { docOf } from '../core/utils.js';
 
 // ── 메뉴 아이템 정규화 ─────────────────────────────────────
 function builtinItem(core, key, params) {

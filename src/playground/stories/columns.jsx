@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { BASE_COLUMNS, SAMPLE } from '../data.js';
-import { Grid, IMPORT_LINE } from './_shared.jsx';
+import { Grid } from './_shared.jsx';
 
 const CAT = '컬럼';
 

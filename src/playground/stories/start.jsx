@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { moonTheme } from '../../grid/index.js';
 import { BASE_COLUMNS, makeRows, SAMPLE } from '../data.js';
 import { Grid, IMPORT_LINE, jsxProps } from './_shared.jsx';

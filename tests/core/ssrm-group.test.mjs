@@ -79,7 +79,7 @@ c.api.applyColumnState({ state: [{ colId: 'amt', sort: 'desc' }] });
 await load(c);
 check('정렬 후 펼침 유지', show(c).slice(0, 4), ['G:JP', 'G:US', 'G:KR', '  G:A']);
 // route 트랜잭션
-r: {
+{
   const res = c.api.applyServerSideTransaction({ route: ['KR', 'A'], add: [{ id: 'KR-A-new', country: 'KR', dept: 'A', amt: 1 }], addIndex: 0 });
   check('route 트랜잭션', [res.status, show(c).includes('    KR-A-new')], ['Applied', true]);
   const miss = c.api.applyServerSideTransaction({ route: ['JP', 'A'], add: [{ id: 'x' }] });

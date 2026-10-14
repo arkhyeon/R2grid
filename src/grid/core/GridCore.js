@@ -758,13 +758,13 @@ export class GridCore {
       }
       // dataTypeDefinitions: 사용자 정의 타입 (baseDataType 으로 필터·편집 기본값 결정)
       const defs = this.gos.dataTypeDefinitions || {};
-      const useDef = name => {
+      const applyDef = name => {
         const d = defs[name];
         col.dataTypeDef = d || null;
         col.dataType = d ? d.baseDataType || defs[d.extendsDataType]?.baseDataType || d.extendsDataType || name : name;
       };
       if (typeof cdt === 'string') {
-        useDef(cdt);
+        applyDef(cdt);
         continue;
       }
       if (col.dataTypeInferred || col.colDef.valueGetter || !col.colDef.field || !first) continue;
@@ -772,7 +772,7 @@ export class GridCore {
       if (v == null) continue;
       const matched = Object.keys(defs).find(k => typeof defs[k].dataTypeMatcher === 'function' && defs[k].dataTypeMatcher(v));
       if (matched) {
-        useDef(matched);
+        applyDef(matched);
         col.dataTypeInferred = true;
         continue;
       }

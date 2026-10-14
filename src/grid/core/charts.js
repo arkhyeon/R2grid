@@ -312,7 +312,7 @@ export const chartMethods = {
     const pick = model.categoryColId;
     let catCol = pick === '__rowIndex' ? null : pick ? columns.find(c => c.colId === pick) || textCols[0] || null : textCols[0] || null;
     if (catCol && numCols.includes(catCol)) numCols.splice(numCols.indexOf(catCol), 1);
-    const categories = sample.map((n, i) => (catCol ? this.getCellText(n, catCol) : String(n.rowIndex + 1 ?? i + 1)));
+    const categories = sample.map((n, i) => (catCol ? this.getCellText(n, catCol) : String((n.rowIndex ?? i) + 1)));
     const series = numCols.map(c => ({
       name: this.getDisplayName(c),
       colId: c.colId,

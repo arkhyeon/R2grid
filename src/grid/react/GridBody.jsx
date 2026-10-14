@@ -517,7 +517,6 @@ function Row({ core, node, cols, sectionCols, top, height, rp, handlers }) {
     const key = rowKey(node);
     const sib = sel => root?.querySelector(`${sel} .r2-row[row-index="${key}"]`) || null;
     fn({ eRow: rowRef.current, ePinnedLeftRow: sib('.r2-pinned-left-cols-container'), ePinnedRightRow: sib('.r2-pinned-right-cols-container'), node, rowIndex: node.rowIndex, addRenderedRowListener: () => {}, api: core.api, context: core.gos.context });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const businessKey = typeof core.gos.getBusinessKeyForNode === 'function' && !node.stub ? core.gos.getBusinessKeyForNode(node) : undefined;
   const cells = spanCells(core, node, cols, sectionCols)
