@@ -1,0 +1,15 @@
+import { check } from '../check.mjs';
+const { GridCore } = await import('../../src/grid/core/GridCore.js');
+const core = new GridCore({ columnDefs: [{ field: 'a', editable: true, filter: 'r2TextColumnFilter' }], rowData: [{ a: 'x' }, { a: 'y' }] });
+core.setViewportSize(800, 400);
+const stopped = [];
+core.api.addEventListener('cellEditingStopped', e => stopped.push(e.valueChanged));
+const n0 = core.displayedNodes[0];
+core.startEdit(n0, core.getColumn('a'), null);
+core.setEditorValue('changed');
+core.api.setFilterModel({ a: { filterType: 'text', type: 'equals', filter: 'y' } });
+check('필터로 사라지면 편집 취소', [!!core.editing, n0.data.a, stopped], [false, 'x', [false]]);
+const n1 = core.displayedNodes[0];
+core.startEdit(n1, core.getColumn('a'), null);
+core.api.setFilterModel({ a: { filterType: 'text', type: 'contains', filter: 'y' } });
+check('행이 남아 있으면 편집 유지', !!core.editing, true);
