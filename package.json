@@ -13,7 +13,8 @@
     "test": "node tests/run.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "bench": "node --max-old-space-size=4096 tests/bench.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",

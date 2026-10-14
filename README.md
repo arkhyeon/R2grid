@@ -9,3 +9,10 @@ npm test -- ssrm pivot # 파일 이름에 그 글자가 들어간 것만
 ```
 
 새 테스트는 `tests/core/<기능>.test.mjs` 에 두고 `check(이름, 실제값, 기대값)` 으로 비교합니다 (`tests/check.mjs`).
+
+## 성능 측정
+
+```bash
+npm run bench                # 10만·50만 행: 생성·정렬·필터·빠른 검색·그룹·피벗·트랜잭션 시간
+npm run bench -- 200000      # 행 수 지정
+```

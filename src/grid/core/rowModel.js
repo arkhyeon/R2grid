@@ -15,6 +15,8 @@ export const rowModelMethods = {
     resetPage = false,
     silent = false,
     byFilter = false,
+    // 펼침·정렬만 바뀐 경우: 데이터·필터·집계 설정이 그대로면 그룹 필터·집계 결과를 다시 계산하지 않음
+    reuseAgg = false,
   } = {}) {
     this.spanEpoch = (this.spanEpoch || 0) + 1;
     // 필터 때문에 바뀐 집계값은 깜빡이지 않음 (allowShowChangeAfterFilter 면 깜빡임)
@@ -37,7 +39,7 @@ export const rowModelMethods = {
     }
     if (this.groupMode) {
       if (!skipFilter || !this.filterPreds) this.applyFilters();
-      this.runGroupPipeline(this.filterPreds, this.makeSortComparator());
+      this.runGroupPipeline(this.filterPreds, this.makeSortComparator(), { reuseAgg });
       // setState/initialState 의 그룹 펼침 (그룹 노드가 생긴 뒤에만 가능)
       if (this.pendingExpansion && this.applyExpansionIds()) this.runGroupPipeline(this.filterPreds, this.makeSortComparator());
     } else if (this.isPivotActive()) {
@@ -135,7 +137,7 @@ export const rowModelMethods = {
     const sortCols = this.allColumns.filter(c => c.sort).sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0));
     if (!sortCols.length) return null;
     const accented = !!this.gos.accentedSort;
-    return (a, b) => {
+    const comparator = (a, b) => {
       for (const c of sortCols) {
         const desc = c.sort === 'desc';
         // 행 그룹 컬럼 정렬: 그 컬럼으로 묶인 그룹 행끼리는 그룹 값(key) 으로
@@ -149,6 +151,31 @@ export const rowModelMethods = {
       }
       return 0;
     };
+    // 형제 목록 정렬: 정렬 값을 행마다 한 번만 읽어 두고 비교 (비교할 때마다 값을 다시 읽지 않음)
+    //  한 목록의 그룹 행은 같은 단계라 rowGroupColumn 이 같음 → 그룹 값 사용 여부를 행마다 정해도 결과가 같음
+    comparator.sortList = list => {
+      const n = list.length;
+      if (n < 2) return list.slice();
+      const keys = sortCols.map(c => {
+        const own = x => x.group && (x.rowGroupColumn === c || x.rowGroupColumn?.hierarchySource === c);
+        return list.map(x => (own(x) ? (x.groupSortValue ?? x.groupValue ?? x.key) : this.getCellValue(x, c)));
+      });
+      const idx = Array.from({ length: n }, (_, i) => i);
+      idx.sort((i, j) => {
+        for (let k = 0; k < sortCols.length; k++) {
+          const c = sortCols[k];
+          const desc = c.sort === 'desc';
+          const cmp = c.colDef.comparator;
+          const va = keys[k][i];
+          const vb = keys[k][j];
+          const r = cmp ? cmp(va, vb, list[i], list[j], desc) : defaultComparator(va, vb, accented);
+          if (r !== 0) return desc ? -r : r;
+        }
+        return i - j;
+      });
+      return idx.map(i => list[i]);
+    };
+    return comparator;
   },
 
   getQuickFilterText(node) {
@@ -612,7 +639,7 @@ export const rowModelMethods = {
     });
     if (!column.sort) column.sortIndex = null;
     if (this.isSsrm()) this.ssrmOnSortChanged();
-    else this.refreshModel({ skipFilter: true });
+    else this.refreshModel({ skipFilter: true, reuseAgg: true });
     this.dispatch('sortChanged', { source, columns: [column] });
   },
 };

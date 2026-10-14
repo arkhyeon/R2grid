@@ -72,6 +72,7 @@ export const valueMethods = {
   // 값 캐시 만료: 데이터가 바뀌면 전체 (다른 행 값을 쓰는 valueGetter 가 있을 수 있어서).
   //  valueCacheNeverExpires 면 api.expireValueCache · refreshCells({ force }) 로만
   bumpValueCache(force = false) {
+    this.dataEpoch = (this.dataEpoch || 0) + 1;
     if (!force && this.gos.valueCacheNeverExpires) return;
     this.valueCacheVersion = (this.valueCacheVersion || 0) + 1;
   },

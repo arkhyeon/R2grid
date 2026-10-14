@@ -74,7 +74,7 @@ export function createApi(core) {
       core.groupNodeCache?.forEach(n => {
         n.expanded = true;
       });
-      core.refreshModel({ skipFilter: true, keepRenderedRows: true });
+      core.refreshModel({ skipFilter: true, keepRenderedRows: true, reuseAgg: true });
     },
     collapseAll: () => {
       core.dispatch('expandOrCollapseAll', { source: 'collapseAll' });
@@ -85,7 +85,7 @@ export function createApi(core) {
       core.groupNodeCache?.forEach(n => {
         n.expanded = false;
       });
-      core.refreshModel({ skipFilter: true, keepRenderedRows: true });
+      core.refreshModel({ skipFilter: true, keepRenderedRows: true, reuseAgg: true });
     },
 
     // ── 렌더 ──
@@ -568,7 +568,7 @@ export function createApi(core) {
       core.bumpValueCache(true);
       core.notify();
     },
-    onGroupExpandedOrCollapsed: () => core.refreshModel({ skipFilter: true, keepRenderedRows: true }),
+    onGroupExpandedOrCollapsed: () => core.refreshModel({ skipFilter: true, keepRenderedRows: true, reuseAgg: true }),
     isModuleRegistered: () => true,
     flushAllAnimationFrames: () => {},
     isAnimationFrameQueueEmpty: () => true,

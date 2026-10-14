@@ -670,6 +670,23 @@ export const groupingMethods = {
       return;
     }
     const agg = {};
+    const all = n.childrenAfterFilter;
+    // 피벗: 리프를 피벗 키별로 한 번만 나눠 둠 (결과 컬럼마다 전체를 다시 훑지 않게). 묶음 안 순서는 원래 순서
+    let buckets = null;
+    const bucketOf = pk => {
+      if (!buckets) {
+        buckets = new Map();
+        for (const ch of all) {
+          if (ch.group) continue;
+          const k = this.pivotKeyOf(ch);
+          let b = buckets.get(k);
+          if (!b) buckets.set(k, (b = []));
+          b.push(ch);
+        }
+      }
+      return buckets.get(pk) || [];
+    };
+    const hasGroupKids = all.some(ch => ch.group);
     for (const col of aggCols) {
       const af = col.colDef.aggFunc;
       // 피벗 결과 컬럼: 피벗 키가 일치하는 리프만 대상 (값은 원본 값 컬럼에서)
@@ -684,7 +701,10 @@ export const groupingMethods = {
           }
         : ch => pk == null || this.pivotKeyOf(ch) === pk;
       const valueCol = col.pivotValueColumn || col;
-      const kids = n.childrenAfterFilter.filter(ch => ch.group || leafOk(ch));
+      let kids;
+      if (!prefix && pk == null) kids = all;
+      else if (!prefix && !hasGroupKids) kids = bucketOf(pk);
+      else kids = all.filter(ch => ch.group || leafOk(ch));
       // 자식 그룹은 표시값(합계행 때문에 비울 수 있음)이 아닌 aggData 를 직접 사용
       const values = kids
         .map(ch =>
@@ -720,9 +740,30 @@ export const groupingMethods = {
   },
 
   // 그룹 모드 파이프라인: 필터(조상 유지) → 집계 → 형제 정렬 → 펼침 상태로 평탄화
-  runGroupPipeline(preds, sortCmp) {
+  runGroupPipeline(preds, sortCmp, { reuseAgg = false } = {}) {
     if (this.groupsDirty || !this.groupTop) this.buildGroups();
     const tree = this.groupMode === 'tree';
+    const aggCols = this.allColumns.filter(c => c.colDef.aggFunc);
+    // 필터·집계 결과 재사용 판단: 그룹 트리·필터·데이터·집계 설정이 직전과 모두 같을 때만
+    const g = this.gos;
+    const sig = [
+      this.groupTop,
+      preds,
+      this.dataEpoch,
+      this.batch,
+      this.postPivotQuick,
+      this.isPivotActive(),
+      g.aggFuncs,
+      g.getGroupRowAgg,
+      g.suppressAggFilteredOnly,
+      g.groupAggFiltering,
+      g.excludeChildrenWhenTreeDataFiltering,
+      ...aggCols.flatMap(c => [c, c.colDef.aggFunc]),
+    ];
+    const prevAgg = this.__aggCache;
+    if (reuseAgg && prevAgg && prevAgg.sig.length === sig.length && sig.every((v, i) => v === prevAgg.sig[i])) {
+      return this.finishGroupPipeline(prevAgg.top, prevAgg.passed, sortCmp, aggCols, prevAgg);
+    }
     const pass = preds.length ? n => preds.every(p => p(n)) : null;
     const passed = [];
     const includeAll = n => {
@@ -782,27 +823,41 @@ export const groupingMethods = {
       return c;
     };
     top.forEach(countLeaves);
-    const aggCols = this.allColumns.filter(c => c.colDef.aggFunc);
     top.forEach(n => this.aggregateNode(n, aggCols));
     // 피벗 빠른 검색은 집계가 끝난 그룹 행 기준 (applyQuickFilterBeforePivotOrAgg 가 아니면)
     if (this.postPivotQuick && this.isPivotActive()) {
       top = this.pivotQuickFilterGroups(top);
       top.forEach(countLeaves);
     }
+    this.__aggCache = { sig, top, passed };
+    return this.finishGroupPipeline(top, passed, sortCmp, aggCols);
+  },
+
+  // 그룹 파이프라인 뒷부분: 형제 정렬 → 펼침 상태로 평탄화 → 합계 행 → 행 번호
+  //  reused: 필터·집계를 재사용한 경우의 캐시 — 정렬 조건도 같으면 정렬 결과(childrenAfterSort)까지 재사용 (펼침만 바뀐 경우)
+  finishGroupPipeline(top, passed, sortCmp, aggCols, reused = null) {
     // groupMaintainOrder: 그룹 컬럼이 아닌 컬럼으로 정렬하면 그룹 순서는 그대로
     const sortsGroups = this.allColumns.some(c => c.sort && (c.autoType === 'group' || c.rowGroup));
     const keepGroupOrder = !!this.gos.groupMaintainOrder && !sortsGroups;
     const initCmp = this.gos.initialGroupOrderComparator;
+    const sortCols = this.allColumns.filter(c => c.sort);
+    const sortSig = [keepGroupOrder, initCmp, this.gos.accentedSort, ...sortCols.flatMap(c => [c, c.sort, c.sortIndex, c.colDef.comparator])];
+    const sameSort = reused?.sortSig && reused.sortSig.length === sortSig.length && sortSig.every((v, i) => v === reused.sortSig[i]);
     const sortList = list => {
       const allGroups = list.length > 0 && list.every(x => x.group);
       let arr = list;
-      if (sortCmp && !(keepGroupOrder && allGroups)) arr = list.slice().sort(sortCmp);
+      if (sortCmp && !(keepGroupOrder && allGroups)) arr = sortCmp.sortList ? sortCmp.sortList(list) : list.slice().sort(sortCmp);
       else if (!sortCmp && allGroups && typeof initCmp === 'function')
         arr = list.slice().sort((a, b) => initCmp({ nodeA: a, nodeB: b, api: this.api, context: this.gos.context }));
       for (const c of arr) if (c.group && c.childrenAfterFilter) c.childrenAfterSort = sortList(c.childrenAfterFilter);
       return arr;
     };
-    const sortedTop = sortList(top);
+    const sortedTop = sameSort ? reused.sortedTop : sortList(top);
+    const cache = this.__aggCache;
+    if (cache && cache.top === top) {
+      cache.sortSig = sortSig;
+      cache.sortedTop = sortedTop;
+    }
     const out = [];
     const hideOpen = !!this.gos.groupHideOpenParents;
     const pivot = this.isPivotActive?.();

@@ -6,6 +6,7 @@ import { getFieldValue } from './utils.js';
 export const rowDataMethods = {
   // 노드 데이터가 바뀌었을 때 공통: 다시 그리기 버전 올림 + 빠른 검색 문장·값 캐시 버림
   markDataChanged(node) {
+    this.dataEpoch = (this.dataEpoch || 0) + 1;
     node.__version++;
     node.__quickFilterText = null;
     this.bumpValueCache();
@@ -266,7 +267,7 @@ export const rowDataMethods = {
     const expandable = node.master || (node.group && !!node.childrenAll?.length);
     if (!expandable || node.expanded === expanded) return;
     node.expanded = expanded;
-    this.refreshModel({ keepRenderedRows: true, skipFilter: true });
+    this.refreshModel({ keepRenderedRows: true, skipFilter: true, reuseAgg: true });
     node.__dispatchLocal('expandedChanged', { expanded });
     this.dispatch('rowGroupOpened', { node, data: node.data, rowIndex: node.rowIndex, expanded });
   },
