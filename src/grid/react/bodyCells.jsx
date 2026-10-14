@@ -1,5 +1,5 @@
 // 바디 셀: 내장 셀 렌더러(체크박스·그룹·스켈레톤)와 셀 하나 (값·편집기·범위·깜빡임·병합)
-import { useRef } from 'react';
+import { memo, useRef } from 'react';
 import { cx, resolveClassRules, resolveClassValue, toText } from '../core/utils.js';
 import { Checkbox, Icon } from './common.jsx';
 import { EditorHost } from './editors.jsx';
@@ -107,7 +107,8 @@ export function isEditableEl(t) {
 }
 
 // ── 셀 ─────────────────────────────────────────────────────
-export function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, cellSpan }) {
+//  ver: core.version — 그리드 상태가 바뀌면(notify) 올라가 모든 셀이 다시 그려짐. 스크롤만 하면 그대로라 이미 있는 셀은 건너뜀
+export const Cell = memo(function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, cellSpan }) {
   const cellRef = useRef(null);
   const g = core.gos;
   const cd = col.colDef;
@@ -411,4 +412,4 @@ export function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, co
       {showHandle && <div className={fh.mode === 'fill' ? 'r2-fill-handle' : 'r2-range-handle'} onPointerDown={e => handlers.fillHandleDown(e)} />}
     </div>
   );
-}
+});

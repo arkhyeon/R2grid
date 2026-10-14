@@ -14,6 +14,19 @@ const MAX_DIV_HEIGHT = 10_000_000;
 // ── 바디 ───────────────────────────────────────────────────
 export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) {
   const bodyVpRef = useRef(null);
+  const handlersRef = useRef(null);
+  const [stableHandlers] = useState(
+    () =>
+      new Proxy(
+        {},
+        {
+          get:
+            (_, name) =>
+            (...args) =>
+              handlersRef.current[name]?.(...args),
+        },
+      ),
+  );
   const centerVpRef = useRef(null);
   const hScrollRef = useRef(null);
   const floatTopRef = useRef(null);
@@ -340,7 +353,8 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     docOf(core).addEventListener('keydown', onKey, true);
   };
 
-  const handlers = {
+  // 셀·행 이벤트 핸들러. 셀 memo 가 깨지지 않게 셀에는 참조가 바뀌지 않는 대리 객체(handlers)를 넘기고 호출 때 최신 것을 씀
+  handlersRef.current = {
     fillHandleDown(e) {
       if (e.button !== 0) return;
       e.stopPropagation();
@@ -469,6 +483,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       core.dispatch('rowDoubleClicked', { node, data: node.data, rowIndex: node.rowIndex, rowPinned: node.rowPinned, event: e });
     },
   };
+  const handlers = stableHandlers;
 
   // 호버: 같은 row-index 의 모든 섹션에 r2-row-hover 를 DOM 으로 직접 토글 (재렌더 없음)
   const setHover = key => {

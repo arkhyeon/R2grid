@@ -130,6 +130,7 @@ export function Row({ core, node, cols, sectionCols, top, height, rp, handlers }
           node={node}
           col={col}
           handlers={handlers}
+          ver={core.version}
           spanWidth={span ? width : undefined}
           colSpan={span}
           cellSpan={cellSpan}
