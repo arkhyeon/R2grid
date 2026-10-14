@@ -196,9 +196,7 @@ export const valueMethods = {
     } else changed = false;
     if (!changed) return false;
     this.recordUndo(node, column, oldValue, newValue, source);
-    node.__version++;
-    this.bumpValueCache();
-    node.__quickFilterText = null;
+    this.markDataChanged(node);
     // 집계 먼저 (cellValueChanged 에서 그룹·루트 aggData 가 새 값이게). suppressChangeDetection 이면 다시 집계 안 함
     if (!this.gos.suppressChangeDetection) this.markAggDirty(node);
     this.dispatch('cellValueChanged', {

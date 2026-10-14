@@ -33,10 +33,20 @@ export class RowNode {
     this.childIndex = -1;
     this.firstChild = false;
     this.lastChild = false;
-    this.__version = 0;
-    this.__explicitHeight = null;
-    this.__autoHeight = null;
-    this.__quickFilterText = null;
+    // ── 그리드 내부용 (화면 코드에서 쓰지 말 것) ──
+    // 모든 노드에 있는 것
+    this.__version = 0; // 데이터가 바뀔 때마다 +1 (core.markDataChanged) — 셀 다시 그리기 판단
+    this.__explicitHeight = null; // setRowHeight 로 지정한 높이
+    this.__autoHeight = null; // autoHeight 컬럼으로 잰 높이
+    this.__quickFilterText = null; // 빠른 검색용 문장 캐시
+    this.__qfVer = -1; // 위 캐시를 만든 빠른 검색 버전
+    this.__qfPivot = false; // 위 캐시를 피벗 모드에서 만들었는지
+    // 기능을 쓸 때만 붙는 것 (필요할 때 생김)
+    //  값 캐시(valueCache)     __vc(Map colId→값) · __vcVer
+    //  피벗                    __pivotKey · __pivotEpoch · __pivotArr · __pivotArrEpoch (피벗 키 캐시)
+    //  그룹                    __filler(경로 중간에 만든 빈 그룹) · __expInit(처음 펼침 적용 여부) · __footerShown · __firstDisplayed · __prevAgg(집계 깜빡임 비교값)
+    //  SSRM                    __store · __storeIndex · __route · __serverIdx · __ssrmGroup · __ssrmTree · __ssrmSeen
+    //  화면                    __redraw(redrawRows 횟수 → React key) · __dragging(행 끌기 중)
   }
 
   // 그룹 노드의 리프 자식 (트리데이터는 데이터가 있는 모든 하위 노드)

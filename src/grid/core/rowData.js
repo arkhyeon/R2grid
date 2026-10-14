@@ -4,6 +4,13 @@ import { RowNode } from './RowNode.js';
 import { getFieldValue } from './utils.js';
 
 export const rowDataMethods = {
+  // 노드 데이터가 바뀌었을 때 공통: 다시 그리기 버전 올림 + 빠른 검색 문장·값 캐시 버림
+  markDataChanged(node) {
+    node.__version++;
+    node.__quickFilterText = null;
+    this.bumpValueCache();
+  },
+
   // ── 행 데이터 ─────────────────────────────────────────────
   makeRowId(data, level = 0) {
     const fn = this.gos.getRowId;
@@ -66,9 +73,7 @@ export const rowDataMethods = {
           if (node) {
             if (node.data !== data) {
               node.data = data;
-              node.__version++;
-              this.bumpValueCache();
-              node.__quickFilterText = null;
+              this.markDataChanged(node);
             }
           } else {
             node = new RowNode(this, data, id);
@@ -170,9 +175,7 @@ export const rowDataMethods = {
         if (!node) return;
         const before = this.flashCandidates(node);
         node.data = d;
-        node.__version++;
-        this.bumpValueCache();
-        node.__quickFilterText = null;
+        this.markDataChanged(node);
         this.flashChangedCells(node, before);
         result.update.push(node);
       });
@@ -234,9 +237,7 @@ export const rowDataMethods = {
     this.spanEpoch = (this.spanEpoch || 0) + 1;
     const before = isUpdate ? this.flashCandidates(node) : null;
     node.data = data;
-    node.__version++;
-    this.bumpValueCache();
-    node.__quickFilterText = null;
+    this.markDataChanged(node);
     this.updateSelectable(node);
     if (before) this.flashChangedCells(node, before);
     node.__dispatchLocal('dataChanged', { oldData: null, newData: data, update: isUpdate });
