@@ -13,4 +13,3 @@ export { RowNode } from './core/RowNode.js';
 export { Column, ColumnGroup } from './core/Column.js';
 export { provideGlobalGridOptions, getGlobalGridOptions, GRID_VERSION } from './core/globals.js';
 export { moonTheme } from './core/theme.js';
-

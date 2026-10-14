@@ -18,10 +18,7 @@ function LoadingOverlayComponent() {
 
 export default function Table({ width, height, ref, gridOptions, menuRole = 2, ...props }) {
   const wrapperRef = useRef(null);
-  const mergedGridOptions = useMemo(
-    () => ({ cellSelection: true, copyHeadersToClipboard: true, ...gridOptions }),
-    [gridOptions],
-  );
+  const mergedGridOptions = useMemo(() => ({ cellSelection: true, copyHeadersToClipboard: true, ...gridOptions }), [gridOptions]);
   const cellSelectionEnabled = !!mergedGridOptions?.cellSelection;
   useEffect(() => {
     if (!cellSelectionEnabled) return undefined;
@@ -30,11 +27,7 @@ export default function Table({ width, height, ref, gridOptions, menuRole = 2, .
     const handler = e => {
       const target = e.target;
       if (!(target instanceof Element)) return;
-      if (
-        target.closest('.r2-pinned-left-cols-container') ||
-        target.closest('.r2-selection-column') ||
-        target.closest('.r2-row-number')
-      ) {
+      if (target.closest('.r2-pinned-left-cols-container') || target.closest('.r2-selection-column') || target.closest('.r2-row-number')) {
         e.stopImmediatePropagation();
       }
     };

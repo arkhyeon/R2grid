@@ -157,18 +157,7 @@ export function evaluateExpression(expr, params) {
     exprCache.set(expr, fn);
   }
   try {
-    return fn(
-      params.value,
-      params.value,
-      params.data,
-      params.node,
-      params.colDef,
-      params.column,
-      params.api,
-      params.context,
-      params.rowIndex,
-      params.context,
-    );
+    return fn(params.value, params.value, params.data, params.node, params.colDef, params.column, params.api, params.context, params.rowIndex, params.context);
   } catch {
     return false;
   }

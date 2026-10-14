@@ -69,7 +69,8 @@ function builtinItem(core, key, params) {
       const cur = core.manualPinPosition(node);
       const sub = [];
       if (core.rowPinningAllowed('top')) sub.push({ name: t('pinTop'), checked: cur === 'top', action: () => core.pinRowManual(node, 'top', 'contextMenu') });
-      if (core.rowPinningAllowed('bottom')) sub.push({ name: t('pinBottom'), checked: cur === 'bottom', action: () => core.pinRowManual(node, 'bottom', 'contextMenu') });
+      if (core.rowPinningAllowed('bottom'))
+        sub.push({ name: t('pinBottom'), checked: cur === 'bottom', action: () => core.pinRowManual(node, 'bottom', 'contextMenu') });
       sub.push({ name: t('unpinRow'), checked: !cur, disabled: !cur, action: () => core.pinRowManual(node, null, 'contextMenu') });
       return { name: t('pinRow'), icon: 'pin', subMenu: sub };
     }
@@ -81,10 +82,18 @@ function builtinItem(core, key, params) {
       return col && col.sort ? { name: t('sortUnSort'), icon: 'none', action: () => core.setColumnSort(col, null, false, 'columnMenu') } : null;
     case 'columnFilter':
       return col && col.colDef.filter && !core.isAdvancedFilterEnabled()
-        ? { name: t('columnFilter'), icon: 'filter', action: () => setTimeout(() => core.openPopup({ type: 'filter', column: col, anchorColId: col.colId }), 0) }
+        ? {
+            name: t('columnFilter'),
+            icon: 'filter',
+            action: () => setTimeout(() => core.openPopup({ type: 'filter', column: col, anchorColId: col.colId }), 0),
+          }
         : null;
     case 'columnChooser':
-      return { name: t('columnChooser'), icon: 'columns', action: () => setTimeout(() => core.openPopup({ type: 'columnChooser', chooserParams: col?.colDef.columnChooserParams }), 0) };
+      return {
+        name: t('columnChooser'),
+        icon: 'columns',
+        action: () => setTimeout(() => core.openPopup({ type: 'columnChooser', chooserParams: col?.colDef.columnChooserParams }), 0),
+      };
     case 'chartRange':
       return core.gos.enableCharts && core.ranges.length
         ? {
@@ -215,9 +224,7 @@ export function MenuList({ core, items, params, onClose, autoFocus = true }) {
             </span>
             <span className="r2-menu-option-part r2-menu-option-text">{item.name}</span>
             <span className="r2-menu-option-part r2-menu-option-shortcut">{item.shortcut}</span>
-            <span className="r2-menu-option-part r2-menu-option-popup-pointer">
-              {item.subMenu ? <Icon name="small-right" /> : null}
-            </span>
+            <span className="r2-menu-option-part r2-menu-option-popup-pointer">{item.subMenu ? <Icon name="small-right" /> : null}</span>
           </div>
         );
       })}
@@ -243,13 +250,7 @@ function SubMenu({ core, items, params, rect, onClose }) {
   const pos = usePopupPosition(ref, () => (rect ? { x: rect.right, y: rect.top - 4, alignRight: rect.left } : null), [rect], core);
   return createPortal(
     <PopupLayer core={core}>
-      <div
-        ref={ref}
-        data-r2-subpopup-of=""
-        className="r2-menu r2-ltr r2-popup-child r2-sub-menu"
-        style={pos.style}
-        onMouseDown={e => e.stopPropagation()}
-      >
+      <div ref={ref} data-r2-subpopup-of="" className="r2-menu r2-ltr r2-popup-child r2-sub-menu" style={pos.style} onMouseDown={e => e.stopPropagation()}>
         <MenuList core={core} items={items} params={params} onClose={onClose} />
       </div>
     </PopupLayer>,
@@ -268,12 +269,7 @@ export function ContextMenuPopup({ core, popup }) {
   const pos = usePopupPosition(ref, () => ({ x: popup.x, y: popup.y, flipY: popup.y }), [popup], core);
   return createPortal(
     <PopupLayer core={core}>
-      <div
-        ref={ref}
-        className="r2-menu r2-ltr r2-popup-child r2-context-menu"
-        style={pos.style}
-        onContextMenu={e => e.preventDefault()}
-      >
+      <div ref={ref} className="r2-menu r2-ltr r2-popup-child r2-context-menu" style={pos.style} onContextMenu={e => e.preventDefault()}>
         <MenuList core={core} items={popup.items} params={popup.params} onClose={close} />
       </div>
     </PopupLayer>,
@@ -333,11 +329,8 @@ export function ColumnChooserList({ core, showSearch = true, toolPanel = false, 
   // 피벗 모드: 체크 = 값/행 그룹/피벗 중 허용된 첫 역할에 넣기·빼기 (컬럼 툴패널과 같음)
   const pivotRole = c => (c.colDef.enableValue ? 'values' : c.colDef.enableRowGroup ? 'rowGroup' : c.colDef.enablePivot ? 'pivot' : null);
   // 어느 영역(값/행 그룹/열 레이블)에든 들어 있으면 체크
-  const rolesOf = c => [
-    !!c.colDef.aggFunc && 'values',
-    core.rowGroupColumns().includes(c) && 'rowGroup',
-    core.pivotColumns().includes(c) && 'pivot',
-  ].filter(Boolean);
+  const rolesOf = c =>
+    [!!c.colDef.aggFunc && 'values', core.rowGroupColumns().includes(c) && 'rowGroup', core.pivotColumns().includes(c) && 'pivot'].filter(Boolean);
   const inRole = c => rolesOf(c).length > 0;
   const toggleRole = c => {
     const roles = rolesOf(c);
@@ -347,7 +340,13 @@ export function ColumnChooserList({ core, showSearch = true, toolPanel = false, 
   const isOn = c => (pivotUi ? inRole(c) : c.visible);
   const toggle = c => (pivotUi ? toggleRole(c) : !c.colDef.lockVisible && core.setColumnsVisible([c], !c.visible, 'toolPanelUi'));
   const setAll = (list, on) =>
-    pivotUi ? list.filter(c => isOn(c) !== on).forEach(toggleRole) : core.setColumnsVisible(list.filter(c => !c.colDef.lockVisible), on, 'toolPanelUi');
+    pivotUi
+      ? list.filter(c => isOn(c) !== on).forEach(toggleRole)
+      : core.setColumnsVisible(
+          list.filter(c => !c.colDef.lockVisible),
+          on,
+          'toolPanelUi',
+        );
   const triState = list => {
     const n = list.filter(isOn).length;
     return !list.length ? false : n === list.length ? true : n === 0 ? false : null;
@@ -432,7 +431,9 @@ export function ColumnChooserList({ core, showSearch = true, toolPanel = false, 
             return;
           }
           if (!movable(col)) return;
-          const items = colItems().map(it => core.getColumn(it.getAttribute('data-col-id'))).filter(c => c && c !== col);
+          const items = colItems()
+            .map(it => core.getColumn(it.getAttribute('data-col-id')))
+            .filter(c => c && c !== col);
           const i = indexAt(e);
           const before = colItems()
             .slice(0, i)
@@ -451,30 +452,32 @@ export function ColumnChooserList({ core, showSearch = true, toolPanel = false, 
   return (
     <div className="r2-column-select" role="presentation">
       {((hasGroups && !params.suppressColumnExpandAll) || !params.suppressColumnSelectAll || showFilter) && (
-      <div className="r2-column-select-header" role="presentation">
-        {hasGroups && !params.suppressColumnExpandAll && (
-          <span
-            className="r2-column-select-header-icon"
-            role="button"
-            aria-label={localeText(core, allCollapsed ? 'expandAll' : 'collapseAll', allCollapsed ? '모두 펼치기' : '모두 접기')}
-            onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(groupKeys))}
-          >
-            <Icon name={allCollapsed ? 'tree-closed' : 'tree-open'} />
-          </span>
-        )}
-        {!params.suppressColumnSelectAll && <Checkbox className="r2-column-select-header-checkbox" checked={allState} onToggle={() => setAll(shownCols, allState !== true)} />}
-        {showFilter && (
-          <div className="r2-column-select-header-filter-wrapper r2-text-field r2-input-field">
-            <input
-              className="r2-input-field-input r2-text-field-input"
-              placeholder={localeText(core, 'searchOoo')}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onKeyDown={e => e.stopPropagation()}
-            />
-          </div>
-        )}
-      </div>
+        <div className="r2-column-select-header" role="presentation">
+          {hasGroups && !params.suppressColumnExpandAll && (
+            <span
+              className="r2-column-select-header-icon"
+              role="button"
+              aria-label={localeText(core, allCollapsed ? 'expandAll' : 'collapseAll', allCollapsed ? '모두 펼치기' : '모두 접기')}
+              onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(groupKeys))}
+            >
+              <Icon name={allCollapsed ? 'tree-closed' : 'tree-open'} />
+            </span>
+          )}
+          {!params.suppressColumnSelectAll && (
+            <Checkbox className="r2-column-select-header-checkbox" checked={allState} onToggle={() => setAll(shownCols, allState !== true)} />
+          )}
+          {showFilter && (
+            <div className="r2-column-select-header-filter-wrapper r2-text-field r2-input-field">
+              <input
+                className="r2-input-field-input r2-text-field-input"
+                placeholder={localeText(core, 'searchOoo')}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                onKeyDown={e => e.stopPropagation()}
+              />
+            </div>
+          )}
+        </div>
       )}
       <div ref={listRef} className="r2-column-select-list" role="tree" {...listDnd}>
         {rows.map(r => {
@@ -508,7 +511,9 @@ export function ColumnChooserList({ core, showSearch = true, toolPanel = false, 
               className={cx(
                 'r2-column-select-column',
                 canDrag(c) && 'r2-column-select-column-draggable',
-                typeof c.colDef?.toolPanelClass === 'function' ? c.colDef.toolPanelClass({ colDef: c.colDef, column: c, api: core.api, context: core.gos.context }) : c.colDef?.toolPanelClass,
+                typeof c.colDef?.toolPanelClass === 'function'
+                  ? c.colDef.toolPanelClass({ colDef: c.colDef, column: c, api: core.api, context: core.gos.context })
+                  : c.colDef?.toolPanelClass,
               )}
               style={{ paddingLeft: 8 + r.depth * 16 + (hasGroups ? 16 : 0) }}
               role="treeitem"
@@ -584,9 +589,7 @@ export function ColumnMenuPopup({ core, popup }) {
     ref,
     () => {
       if (popup.x != null) return { x: popup.x, y: popup.y };
-      const anchor =
-        popup.anchorEl ||
-        core.eRoot?.querySelector(`.r2-header-cell[col-id="${CSS.escape(column.colId)}"]`);
+      const anchor = popup.anchorEl || core.eRoot?.querySelector(`.r2-header-cell[col-id="${CSS.escape(column.colId)}"]`);
       if (!anchor) return { x: 100, y: 100 };
       const r = anchor.getBoundingClientRect();
       return { x: legacy ? r.right - 220 : r.left, y: r.bottom, alignTo: r, clip: visibleClipOf(anchor) };
@@ -604,22 +607,14 @@ export function ColumnMenuPopup({ core, popup }) {
       <>
         <div className="r2-tabs-header r2-menu-header" role="tablist">
           {tabs.map(t => (
-            <span
-              key={t}
-              className={cx('r2-tab', tab === t && 'r2-tab-selected')}
-              role="tab"
-              aria-selected={tab === t}
-              onClick={() => setTab(t)}
-            >
+            <span key={t} className={cx('r2-tab', tab === t && 'r2-tab-selected')} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>
               <Icon name={t === 'filterMenuTab' ? 'filter' : t === 'columnsMenuTab' ? 'columns' : 'menu'} />
             </span>
           ))}
         </div>
         <div className="r2-tabs-body r2-menu-body" role="presentation">
           {tab === 'filterMenuTab' && <FilterUI core={core} column={column} onClose={close} />}
-          {tab === 'generalMenuTab' && (
-            <MenuList core={core} items={mainMenuItems(core, column, true)} params={params} onClose={close} autoFocus={false} />
-          )}
+          {tab === 'generalMenuTab' && <MenuList core={core} items={mainMenuItems(core, column, true)} params={params} onClose={close} autoFocus={false} />}
           {tab === 'columnsMenuTab' && <ColumnChooserList core={core} params={column?.colDef.columnChooserParams || {}} />}
         </div>
       </>
@@ -697,11 +692,7 @@ export function ColumnChooserPopup({ core }) {
   );
   return createPortal(
     <PopupLayer core={core}>
-      <div
-        ref={ref}
-        className="r2-dialog r2-popup-child r2-column-chooser"
-        style={{ ...pos.style, width: 240 }}
-      >
+      <div ref={ref} className="r2-dialog r2-popup-child r2-column-chooser" style={{ ...pos.style, width: 240 }}>
         <div className="r2-panel-title-bar">
           <span className="r2-panel-title-bar-title">{localeText(core, 'columnChooser')}</span>
           <span className="r2-panel-title-bar-button" onClick={close} role="button">
@@ -728,8 +719,24 @@ function usePostProcessPopup(core) {
     last.current = p;
     const layers = [...docOf(core).querySelectorAll('[data-r2-popup] > *')];
     const ePopup = layers[layers.length - 1] || null;
-    const type = { contextMenu: 'contextMenu', columnMenu: 'columnMenu', filter: 'columnFilter', columnChooser: 'columnChooser', advancedFilterBuilder: 'advancedFilterBuilder' }[p.type] || p.type;
-    fn({ type, ePopup, column: p.column ?? null, rowNode: p.params?.node ?? null, eventSource: p.anchorEl ?? null, mouseEvent: p.event ?? null, api: core.api, context: core.gos.context });
+    const type =
+      {
+        contextMenu: 'contextMenu',
+        columnMenu: 'columnMenu',
+        filter: 'columnFilter',
+        columnChooser: 'columnChooser',
+        advancedFilterBuilder: 'advancedFilterBuilder',
+      }[p.type] || p.type;
+    fn({
+      type,
+      ePopup,
+      column: p.column ?? null,
+      rowNode: p.params?.node ?? null,
+      eventSource: p.anchorEl ?? null,
+      mouseEvent: p.event ?? null,
+      api: core.api,
+      context: core.gos.context,
+    });
   });
 }
 

@@ -125,7 +125,16 @@ function ControlRow({ control, value, onChange }) {
       </div>
     );
   } else if (type === 'number') {
-    field = <input type="number" value={value ?? ''} min={min} max={max} step={step} onChange={e => onChange(e.target.value === '' ? undefined : Number(e.target.value))} />;
+    field = (
+      <input
+        type="number"
+        value={value ?? ''}
+        min={min}
+        max={max}
+        step={step}
+        onChange={e => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+      />
+    );
   } else {
     field = <input type="text" value={value ?? ''} onChange={e => onChange(e.target.value)} />;
   }
@@ -428,7 +437,15 @@ export default function Playground() {
           </button>
         </div>
         <div className="pg-search">
-          <input ref={searchRef} type="search" placeholder="기능·옵션·API 검색 ( / )" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={searchKeyDown} spellCheck={false} />
+          <input
+            ref={searchRef}
+            type="search"
+            placeholder="기능·옵션·API 검색 ( / )"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={searchKeyDown}
+            spellCheck={false}
+          />
         </div>
         <div className="pg-count">{results ? `${results.length}개 결과` : `기능 ${STORIES.length}개 · 분류 ${CATEGORIES.length}개`}</div>
         <nav className="pg-nav">
@@ -478,7 +495,14 @@ export default function Playground() {
                         {items
                           .filter(s => s.group === g)
                           .map(s => (
-                            <button key={s.id} type="button" className="pg-nav-item" data-active={s.id === active.id} onClick={() => select(s.id)} title={s.title}>
+                            <button
+                              key={s.id}
+                              type="button"
+                              className="pg-nav-item"
+                              data-active={s.id === active.id}
+                              onClick={() => select(s.id)}
+                              title={s.title}
+                            >
                               {s.name}
                               <Badge kind={badgeOf(s)} />
                             </button>

@@ -97,7 +97,15 @@ export function Icon({ name, className, ...rest }) {
   if (custom != null) {
     const v = typeof custom === 'function' ? custom() : custom;
     const html = v instanceof Element ? v.outerHTML : String(v ?? '');
-    return <span className={cx('r2-icon', `r2-icon-${name}`, className)} unselectable="on" role="presentation" {...rest} dangerouslySetInnerHTML={{ __html: html }} />;
+    return (
+      <span
+        className={cx('r2-icon', `r2-icon-${name}`, className)}
+        unselectable="on"
+        role="presentation"
+        {...rest}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    );
   }
   const d = ICONS[name];
   return (

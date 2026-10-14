@@ -1,14 +1,6 @@
 // 셀 에디터. 내장 에디터 이름(r2TextCellEditor 등) + 커스텀 React 에디터 지원.
 // 커스텀 에디터 props: value, onValueChange, eventKey, column, colDef, node, data, rowIndex, api, context, stopEditing ...
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { cx, isPrintableKey } from '../core/utils.js';
 import { stableElement } from './renderComponent.js';
 import { Checkbox, Icon } from './common.jsx';
@@ -374,49 +366,48 @@ function RichSelectEditor({ core, ed, params, plain, getCellEl }) {
         </span>
       </div>
       {open && (
-      <SelectListPopup anchorRef={fieldRef} getCellEl={getCellEl} count={shown.length}>
-        {fitH => (
-      <div
-        ref={listRef}
-        className="r2-rich-select-list"
-        role="listbox"
-        // 높이 = 선택지 개수만큼 (CSS 고정 높이보다 우선), 공간·valueListMaxHeight 넘치면 스크롤
-        style={{ height: shown.length * rowH, maxHeight: Number.isFinite(Math.min(maxH, fitH ?? Infinity)) ? Math.min(maxH, fitH ?? Infinity) : undefined }}
-      >
-        <div className="r2-rich-select-virtual-list-container" style={{ height: shown.length * rowH }}>
-          {shown.map((v, i) => {
-            const label = format(v);
-            const selected = v === ed.value;
-            return (
-              <div
-                key={i}
-                className={cx(
-                  'r2-rich-select-row',
-                  i === hi && 'r2-rich-select-row-highlighted',
-                  selected && 'r2-rich-select-row-selected',
-                )}
-                style={{ height: rowH, top: i * rowH }}
-                role="option"
-                aria-selected={selected}
-                onMouseMove={() => hi !== i && setHi(i)}
-                onMouseDown={e => e.preventDefault()}
-                onClick={() => choose(v)}
-              >
-                {ItemRenderer
-                  ? stableElement(core, `richItem:${column.colId}`, ItemRenderer, {
-                      value: v,
-                      valueFormatted: label,
-                      api: core.api,
-                      context: core.gos.context,
-                    })
-                  : label}
+        <SelectListPopup anchorRef={fieldRef} getCellEl={getCellEl} count={shown.length}>
+          {fitH => (
+            <div
+              ref={listRef}
+              className="r2-rich-select-list"
+              role="listbox"
+              // 높이 = 선택지 개수만큼 (CSS 고정 높이보다 우선), 공간·valueListMaxHeight 넘치면 스크롤
+              style={{
+                height: shown.length * rowH,
+                maxHeight: Number.isFinite(Math.min(maxH, fitH ?? Infinity)) ? Math.min(maxH, fitH ?? Infinity) : undefined,
+              }}
+            >
+              <div className="r2-rich-select-virtual-list-container" style={{ height: shown.length * rowH }}>
+                {shown.map((v, i) => {
+                  const label = format(v);
+                  const selected = v === ed.value;
+                  return (
+                    <div
+                      key={i}
+                      className={cx('r2-rich-select-row', i === hi && 'r2-rich-select-row-highlighted', selected && 'r2-rich-select-row-selected')}
+                      style={{ height: rowH, top: i * rowH }}
+                      role="option"
+                      aria-selected={selected}
+                      onMouseMove={() => hi !== i && setHi(i)}
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => choose(v)}
+                    >
+                      {ItemRenderer
+                        ? stableElement(core, `richItem:${column.colId}`, ItemRenderer, {
+                            value: v,
+                            valueFormatted: label,
+                            api: core.api,
+                            context: core.gos.context,
+                          })
+                        : label}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
-      </div>
-        )}
-      </SelectListPopup>
+            </div>
+          )}
+        </SelectListPopup>
       )}
     </div>
   );
@@ -562,7 +553,11 @@ export function EditorHost({ core, ed, getCellEl }) {
     <CustomEditor core={core} ed={ed} params={params} getCellEl={getCellEl} />
   );
   if (!ed.editor.popup) return content;
-  return <PopupEditor core={core} ed={ed} getCellEl={getCellEl}>{content}</PopupEditor>;
+  return (
+    <PopupEditor core={core} ed={ed} getCellEl={getCellEl}>
+      {content}
+    </PopupEditor>
+  );
 }
 
 function PopupEditor({ core, ed, getCellEl, children }) {

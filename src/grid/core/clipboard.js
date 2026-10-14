@@ -63,7 +63,10 @@ function collectCopyTarget(core) {
   }
   const rs = core.rsOpts;
   if (rs && rs.copySelectedRows && core.selected.size) {
-    const nodes = core.getSelectedNodes().filter(n => n.displayed).sort((a, b) => a.rowIndex - b.rowIndex);
+    const nodes = core
+      .getSelectedNodes()
+      .filter(n => n.displayed)
+      .sort((a, b) => a.rowIndex - b.rowIndex);
     return [{ nodes, columns: exportableColumns(core.displayedColumns) }];
   }
   if (core.focus) {
@@ -144,9 +147,7 @@ export function copySelectionToEvent(core, e, cut = false) {
   if (cut) {
     core.dispatch('cutStart', { source: 'ui' });
     core.beginUndoBatch();
-    blocks.forEach(({ nodes, columns }) =>
-      nodes.forEach(n => columns.forEach(c => core.writeCell(n, c, null, 'clipboardCut'))),
-    );
+    blocks.forEach(({ nodes, columns }) => nodes.forEach(n => columns.forEach(c => core.writeCell(n, c, null, 'clipboardCut'))));
     core.endUndoBatch();
     core.dispatch('cutEnd', { source: 'ui' });
   } else {
@@ -160,13 +161,11 @@ export function cutSelectionToClipboard(core) {
   const blocks = collectCopyTarget(core);
   if (!blocks.length) return;
   core.dispatch('cutStart', { source: 'ui' });
-    core.beginUndoBatch();
+  core.beginUndoBatch();
   send(core, buildClipboardText(core, blocks, !!core.gos.copyHeadersToClipboard));
-  blocks.forEach(({ nodes, columns }) =>
-    nodes.forEach(n => columns.forEach(c => core.writeCell(n, c, null, 'clipboardCut'))),
-  );
+  blocks.forEach(({ nodes, columns }) => nodes.forEach(n => columns.forEach(c => core.writeCell(n, c, null, 'clipboardCut'))));
   core.endUndoBatch();
-    core.dispatch('cutEnd', { source: 'ui' });
+  core.dispatch('cutEnd', { source: 'ui' });
 }
 
 // TSV 파싱 (따옴표로 감싼 멀티라인 셀 지원)

@@ -1,11 +1,20 @@
 import { check } from '../check.mjs';
 const { GridCore } = await import('../../src/grid/core/GridCore.js');
-const mk = o => { const c = new GridCore(o); c.setViewportSize(800, 400); return c; };
+const mk = o => {
+  const c = new GridCore(o);
+  c.setViewportSize(800, 400);
+  return c;
+};
 const cols = [
   { field: 'n', editable: true, cellEditor: 'r2NumberCellEditor', cellEditorParams: { min: 0, max: 100 } },
   { field: 's', editable: true, cellEditor: 'r2TextCellEditor', cellEditorParams: { maxLength: 3 } },
   { field: 'd', editable: true, cellEditor: 'r2DateStringCellEditor', cellEditorParams: { min: '2026-01-01' } },
-  { field: 'q', editable: true, cellEditor: 'r2NumberCellEditor', cellEditorParams: { step: 5, getValidationErrors: ({ value, internalErrors }) => (value === 7 ? ['7 안 됨'] : internalErrors) } },
+  {
+    field: 'q',
+    editable: true,
+    cellEditor: 'r2NumberCellEditor',
+    cellEditorParams: { step: 5, getValidationErrors: ({ value, internalErrors }) => (value === 7 ? ['7 안 됨'] : internalErrors) },
+  },
 ];
 const rows = () => [{ n: 10, s: 'ab', d: '2026-05-01', q: 5 }];
 
@@ -15,7 +24,11 @@ let node = g.displayedNodes[0];
 g.startEdit(node, g.getColumn('n'));
 g.editing.primary.setValue(150);
 check('min/max 오류', g.editing.primary.errors, ['100 이하여야 합니다']);
-check('validateEdit', g.api.validateEdit().map(x => [x.column.colId, x.messages]), [['n', ['100 이하여야 합니다']]]);
+check(
+  'validateEdit',
+  g.api.validateEdit().map(x => [x.column.colId, x.messages]),
+  [['n', ['100 이하여야 합니다']]],
+);
 check('revert: 끝내기 성공', g.stopEditing(false), true);
 check('revert: 값 그대로', node.data.n, 10);
 g.startEdit(node, g.getColumn('n'));
@@ -60,8 +73,15 @@ check('block: 취소는 됨', [!!g.editing, node.data.n], [false, 1]);
 // fullRow: getFullRowEditValidationErrors
 let seen;
 g = mk({
-  columnDefs: cols, rowData: rows(), editType: 'fullRow',
-  getFullRowEditValidationErrors: ({ editorsState }) => { seen = editorsState.map(e => e.colId); const n = editorsState.find(e => e.colId === 'n'); const q = editorsState.find(e => e.colId === 'q'); return n.newValue > q.newValue ? ['n 은 q 보다 클 수 없음'] : null; },
+  columnDefs: cols,
+  rowData: rows(),
+  editType: 'fullRow',
+  getFullRowEditValidationErrors: ({ editorsState }) => {
+    seen = editorsState.map(e => e.colId);
+    const n = editorsState.find(e => e.colId === 'n');
+    const q = editorsState.find(e => e.colId === 'q');
+    return n.newValue > q.newValue ? ['n 은 q 보다 클 수 없음'] : null;
+  },
 });
 node = g.displayedNodes[0];
 g.startEdit(node, g.getColumn('n'));

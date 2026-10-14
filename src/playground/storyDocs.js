@@ -70,12 +70,19 @@ const STORY_DOCS = {
   },
   'pinned-rows': {
     whenToUse: ['합계 행을 항상 아래에 보여줄 때', '편집용 기본값 행을 맨 위에 고정할 때'],
-    notes: ['고정 행 값은 그리드가 계산하지 않습니다. 자동 합계는 grandTotalRow, 묶지 않는 화면은 alwaysAggregateAtRootLevel + getRootNode().aggData 를 쓰세요.', '렌더마다 행 객체를 새로 만들면([{ ... }]) 편집한 값이 사라집니다. useState 등으로 같은 객체를 유지하세요.'],
+    notes: [
+      '고정 행 값은 그리드가 계산하지 않습니다. 자동 합계는 grandTotalRow, 묶지 않는 화면은 alwaysAggregateAtRootLevel + getRootNode().aggData 를 쓰세요.',
+      '렌더마다 행 객체를 새로 만들면([{ ... }]) 편집한 값이 사라집니다. useState 등으로 같은 객체를 유지하세요.',
+    ],
   },
   'row-pinning': {
     badge: 'NEW',
     whenToUse: ['사용자가 비교하려는 행을 직접 위·아래에 붙여둘 때', '오류 행처럼 눈에 띄어야 할 행을 처음부터 위에 고정할 때 — isRowPinned'],
-    notes: ['getRowId 가 없으면 rowData 를 통째로 바꿀 때 고정이 풀립니다.', '그룹 행·합계 행·pinnedTopRowData 행은 고정할 수 없습니다.', '고정 행 수에 제한이 없어서 많이 고정하면 본문이 그만큼 좁아집니다.'],
+    notes: [
+      'getRowId 가 없으면 rowData 를 통째로 바꿀 때 고정이 풀립니다.',
+      '그룹 행·합계 행·pinnedTopRowData 행은 고정할 수 없습니다.',
+      '고정 행 수에 제한이 없어서 많이 고정하면 본문이 그만큼 좁아집니다.',
+    ],
   },
   'row-drag': {
     whenToUse: ['우선순위처럼 행 순서를 사용자가 직접 정할 때'],
@@ -106,7 +113,11 @@ const STORY_DOCS = {
 
   // ─── 셀 ─────────────────────────────
   'cell-rendering': {
-    whenToUse: ['값을 표시용으로 바꿀 때 — valueFormatter (정렬·필터는 원래 값 기준)', '셀에 버튼·배지·링크를 넣을 때 — cellRenderer', '조건에 따라 색을 칠할 때 — cellClassRules'],
+    whenToUse: [
+      '값을 표시용으로 바꿀 때 — valueFormatter (정렬·필터는 원래 값 기준)',
+      '셀에 버튼·배지·링크를 넣을 때 — cellRenderer',
+      '조건에 따라 색을 칠할 때 — cellClassRules',
+    ],
     notes: [
       'valueFormatter 결과가 CSV·엑셀에도 그대로 나갑니다.',
       'valueGetter 계산이 무겁고 행이 많으면 valueCache 를 켜세요. 정렬·필터·집계에서 같은 값을 다시 계산하지 않고, 데이터가 바뀌면(편집·트랜잭션·rowData) 전체가 만료됩니다. valueCacheNeverExpires 면 api.expireValueCache() 나 refreshCells({ force: true }) 를 부를 때만 만료.',
@@ -130,14 +141,20 @@ const STORY_DOCS = {
   editing: {
     badge: 'UPDATE',
     whenToUse: ['목록에서 바로 값을 고칠 때', '정해진 값 중 하나를 고를 때 — r2SelectCellEditor / r2RichSelectCellEditor'],
-    notes: ['선택 목록은 셀 아래(공간이 없으면 위)에 붙고, 셀을 스크롤해 화면 밖으로 내보내면 함께 가려집니다.', '편집 중 필터·데이터 변경으로 행이 사라지면 편집이 취소됩니다.'],
+    notes: [
+      '선택 목록은 셀 아래(공간이 없으면 위)에 붙고, 셀을 스크롤해 화면 밖으로 내보내면 함께 가려집니다.',
+      '편집 중 필터·데이터 변경으로 행이 사라지면 편집이 취소됩니다.',
+    ],
   },
   'edit-validation': {
     badge: 'NEW',
-    whenToUse: ['입력 범위·글자 수가 정해진 값을 고칠 때 (잘못된 값이 저장되지 않게)', '여러 칸을 같이 봐야 맞는지 알 수 있을 때 — getFullRowEditValidationErrors'],
+    whenToUse: [
+      '입력 범위·글자 수가 정해진 값을 고칠 때 (잘못된 값이 저장되지 않게)',
+      '여러 칸을 같이 봐야 맞는지 알 수 있을 때 — getFullRowEditValidationErrors',
+    ],
     notes: [
-      "getValidationErrors 는 내장 규칙 결과(internalErrors)를 받아 최종 오류를 돌려줍니다. null 을 돌려주면 내장 규칙도 무시됩니다.",
-      "오류 문구는 localeText 의 validationMin·validationMax·validationStep·validationMaxLength·validationMinDate·validationMaxDate 로 바꿀 수 있습니다 (${value} 자리에 기준값).",
+      'getValidationErrors 는 내장 규칙 결과(internalErrors)를 받아 최종 오류를 돌려줍니다. null 을 돌려주면 내장 규칙도 무시됩니다.',
+      '오류 문구는 localeText 의 validationMin·validationMax·validationStep·validationMaxLength·validationMinDate·validationMaxDate 로 바꿀 수 있습니다 (${value} 자리에 기준값).',
       '사용자 에디터는 getValidationErrors() 를 ref 또는 useGridCellEditor 로 내보내면 같은 방식으로 검사합니다.',
     ],
   },
@@ -240,7 +257,10 @@ const STORY_DOCS = {
   },
   pivot: {
     whenToUse: ['연도·분기 같은 값을 컬럼으로 펼쳐 교차 집계할 때'],
-    notes: ['피벗 결과 컬럼은 늘 피벗 키 순서(pivotComparator)대로 다시 만듭니다. 데이터가 바뀌어 새 키가 생기면 순서에 맞는 자리에 들어갑니다.', '값을 편집하면 그룹·합계 행·결과 컬럼 집계가 바로 다시 계산됩니다 (정렬·필터는 그대로).'],
+    notes: [
+      '피벗 결과 컬럼은 늘 피벗 키 순서(pivotComparator)대로 다시 만듭니다. 데이터가 바뀌어 새 키가 생기면 순서에 맞는 자리에 들어갑니다.',
+      '값을 편집하면 그룹·합계 행·결과 컬럼 집계가 바로 다시 계산됩니다 (정렬·필터는 그대로).',
+    ],
   },
   'columns-tool-panel': {
     badge: 'NEW',
@@ -254,11 +274,18 @@ const STORY_DOCS = {
   },
   transactions: {
     whenToUse: ['몇 행만 추가·수정·삭제됐을 때 전체를 다시 그리지 않고 반영', '스크롤·선택·펼침 상태를 유지한 채 갱신'],
-    notes: ['update·remove 는 getRowId 로 행을 찾습니다. 없으면 같은 객체 참조여야 합니다.', '편집·setDataValue 뒤에는 그룹·합계 집계를 바로 다시 계산합니다. 값을 대량으로 바꾸는 화면에서 이게 필요 없으면 suppressChangeDetection.', 'getRowId 가 있으면 rowData 를 통째로 바꿔도 같은 id 행은 그대로 유지(선택·펼침 보존)되고, 순서는 새 rowData 를 따릅니다. 기존 순서를 지키려면 suppressMaintainUnsortedOrder.'],
+    notes: [
+      'update·remove 는 getRowId 로 행을 찾습니다. 없으면 같은 객체 참조여야 합니다.',
+      '편집·setDataValue 뒤에는 그룹·합계 집계를 바로 다시 계산합니다. 값을 대량으로 바꾸는 화면에서 이게 필요 없으면 suppressChangeDetection.',
+      'getRowId 가 있으면 rowData 를 통째로 바꿔도 같은 id 행은 그대로 유지(선택·펼침 보존)되고, 순서는 새 rowData 를 따릅니다. 기존 순서를 지키려면 suppressMaintainUnsortedOrder.',
+    ],
   },
   'server-side': {
     badge: 'UPDATE',
-    whenToUse: ['전체를 한 번에 받기엔 너무 많은 데이터 (서버가 정렬·필터·페이지 처리)', '저장 후 목록을 다시 요청하지 않고 바뀐 행만 반영할 때 — applyServerSideTransaction'],
+    whenToUse: [
+      '전체를 한 번에 받기엔 너무 많은 데이터 (서버가 정렬·필터·페이지 처리)',
+      '저장 후 목록을 다시 요청하지 않고 바뀐 행만 반영할 때 — applyServerSideTransaction',
+    ],
     notes: [
       '트랜잭션은 이미 불러온 행에만 적용됩니다. 서버 데이터를 먼저 바꾼 뒤 그리드에 알려야 다음 로드와 어긋나지 않습니다.',
       '불러오는 중이면 applyServerSideTransaction 은 적용하지 않고 StoreLoading 을 돌려줍니다 — Async 판을 쓰세요.',
@@ -313,7 +340,7 @@ const STORY_DOCS = {
   'column-menu': {
     whenToUse: ['헤더 메뉴 항목을 화면에 맞게 줄이거나 추가할 때'],
     notes: [
-      "컬럼 선택기(columnChooser·컬럼 탭) 모양은 colDef.columnChooserParams 로: contractColumnSelection, suppressColumnExpandAll, suppressColumnSelectAll, suppressColumnFilter, columnLayout(목록에 보일 묶음·순서를 따로 지정).",
+      '컬럼 선택기(columnChooser·컬럼 탭) 모양은 colDef.columnChooserParams 로: contractColumnSelection, suppressColumnExpandAll, suppressColumnSelectAll, suppressColumnFilter, columnLayout(목록에 보일 묶음·순서를 따로 지정).',
       'api.showColumnChooser(params) 로 코드에서 열 때도 같은 params 를 넘깁니다.',
     ],
   },
@@ -338,7 +365,11 @@ const STORY_DOCS = {
   },
   'excel-export': {
     badge: 'UPDATE',
-    whenToUse: ['제목·합계·서식이 있는 엑셀 보고서', '여러 그리드를 시트별로 한 파일에 — exportMultipleSheetsAsExcel', '받은 파일을 바로 거르고 정렬하게 — exportAsExcelTable, 날짜 형식 dataType'],
+    whenToUse: [
+      '제목·합계·서식이 있는 엑셀 보고서',
+      '여러 그리드를 시트별로 한 파일에 — exportMultipleSheetsAsExcel',
+      '받은 파일을 바로 거르고 정렬하게 — exportAsExcelTable, 날짜 형식 dataType',
+    ],
     notes: [
       'exportAsExcelTable 의 범위는 컬럼 헤더 행 ~ 마지막 데이터 행입니다. 표 안에서는 셀 병합을 할 수 없으니 데이터 행 병합(mergeAcross)과 같이 쓰지 마세요.',
       "dataType: 'DateTime' 은 'YYYY-MM-DD[ HH:mm[:ss]]' 문자열이나 Date 를 엑셀 날짜 값으로 바꿉니다. 표시 형식은 같은 스타일의 numberFormat 으로 지정하세요.",
@@ -352,7 +383,10 @@ const STORY_DOCS = {
   'cross-filter-chart': {
     badge: 'NEW',
     whenToUse: ['대시보드처럼 차트를 눌러 목록을 거르고, 다른 차트도 같이 바뀌게 할 때'],
-    notes: ['필터는 카테고리 컬럼의 Set 필터 모델로 걸립니다 (filterType: "set"). 컬럼 메뉴의 필터와 같은 상태입니다.', '전체 값(옅은 막대)은 필터와 무관한 모든 행 기준입니다.'],
+    notes: [
+      '필터는 카테고리 컬럼의 Set 필터 모델로 걸립니다 (filterType: "set"). 컬럼 메뉴의 필터와 같은 상태입니다.',
+      '전체 값(옅은 막대)은 필터와 무관한 모든 행 기준입니다.',
+    ],
   },
   'integrated-charts': {
     badge: 'UPDATE',

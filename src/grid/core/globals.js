@@ -8,10 +8,7 @@ export function provideGlobalGridOptions(options, mergeStrategy = 'shallow') {
       const out = { ...a };
       Object.keys(b || {}).forEach(k => {
         const v = b[k];
-        out[k] =
-          v && typeof v === 'object' && !Array.isArray(v) && typeof a?.[k] === 'object' && !v.install
-            ? merge(a[k], v)
-            : v;
+        out[k] = v && typeof v === 'object' && !Array.isArray(v) && typeof a?.[k] === 'object' && !v.install ? merge(a[k], v) : v;
       });
       return out;
     };

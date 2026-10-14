@@ -77,7 +77,16 @@ export const ssrmMethods = {
     // getServerSideGroupLevelParams: 단계별 블록 크기·캐시 수
     const fn = this.gos.getServerSideGroupLevelParams;
     if (typeof fn === 'function' && !this.isInfinite()) {
-      const p = fn({ level: route.length, parentRowNode: parentNode || undefined, rowGroupColumns: this.rowGroupColumns(), pivotColumns: [], groupKeys: [...route], api: this.api, context: this.gos.context }) || {};
+      const p =
+        fn({
+          level: route.length,
+          parentRowNode: parentNode || undefined,
+          rowGroupColumns: this.rowGroupColumns(),
+          pivotColumns: [],
+          groupKeys: [...route],
+          api: this.api,
+          context: this.gos.context,
+        }) || {};
       if (p.cacheBlockSize != null) st.blockSize = p.cacheBlockSize;
       if (p.maxBlocksInCache != null) st.maxBlocks = p.maxBlocksInCache;
     }
@@ -174,7 +183,9 @@ export const ssrmMethods = {
     this.ssrmLastSort = this.ssrmSortState();
     this.ssrmLastFilter = this.ssrmFilterState();
     // 그룹 기준이 바뀌면 펼침 기억도 의미가 없어짐
-    const sig = this.rowGroupColumns().map(c => c.colId).join('|');
+    const sig = this.rowGroupColumns()
+      .map(c => c.colId)
+      .join('|');
     if (sig !== this.ssrmGroupSig) {
       this.ssrmExpanded = new Set();
       // 그룹 경로가 바뀌면 그룹 선택 트리도 의미가 없어짐
@@ -200,7 +211,11 @@ export const ssrmMethods = {
   // 요청 모양을 바꾸는 컬럼 상태 (행 그룹 · 값 컬럼 집계)
   ssrmModelSig() {
     if (this.isInfinite()) return '';
-    return `${this.rowGroupColumns().map(c => c.colId).join('|')}/${this.valueColumns().map(c => `${c.colId}:${c.colDef.aggFunc}`).join('|')}`;
+    return `${this.rowGroupColumns()
+      .map(c => c.colId)
+      .join('|')}/${this.valueColumns()
+      .map(c => `${c.colId}:${c.colDef.aggFunc}`)
+      .join('|')}`;
   },
 
   ssrmResizeStore(st, count) {
@@ -263,7 +278,12 @@ export const ssrmMethods = {
       .filter(c => c.sort)
       .sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0))
       .map(c => ({ colId: c.colId, sort: c.sort }));
-    const colInfo = c => ({ id: c.colId, displayName: this.getDisplayName?.(c, true) ?? c.colId, field: c.colDef.field, aggFunc: typeof c.colDef.aggFunc === 'string' ? c.colDef.aggFunc : undefined });
+    const colInfo = c => ({
+      id: c.colId,
+      displayName: this.getDisplayName?.(c, true) ?? c.colId,
+      field: c.colDef.field,
+      aggFunc: typeof c.colDef.aggFunc === 'string' ? c.colDef.aggFunc : undefined,
+    });
     const tree = this.isServerTree();
     return {
       startRow,
@@ -408,7 +428,10 @@ export const ssrmMethods = {
     if (store.level >= cols.length) return null;
     const col = cols[store.level];
     const cd = col.colDef;
-    const key = typeof cd.valueGetter === 'function' ? cd.valueGetter({ data, node: null, colDef: cd, column: col, api: this.api, context: this.gos.context }) : getFieldValue(data, cd.field);
+    const key =
+      typeof cd.valueGetter === 'function'
+        ? cd.valueGetter({ data, node: null, colDef: cd, column: col, api: this.api, context: this.gos.context })
+        : getFieldValue(data, cd.field);
     return { group: true, key, field: cd.field, col };
   },
 
@@ -740,7 +763,11 @@ export const ssrmMethods = {
     if (!this.ssrm || !st) return { status: 'StoreNotFound' };
     if (this.ssrmIsLoading()) return { status: 'StoreLoading' };
     const allow = this.gos.isApplyServerSideTransaction;
-    if (typeof allow === 'function' && allow({ transaction: tx, parentNode: st.parentNode || undefined, groupLevelInfo: {}, api: this.api, context: this.gos.context }) === false) return { status: 'Cancelled' };
+    if (
+      typeof allow === 'function' &&
+      allow({ transaction: tx, parentNode: st.parentNode || undefined, groupLevelInfo: {}, api: this.api, context: this.gos.context }) === false
+    )
+      return { status: 'Cancelled' };
     const nodes = st.nodes;
     const res = { status: 'Applied', add: [], update: [], remove: [] };
     const hasId = typeof this.gos.getRowId === 'function';
@@ -853,7 +880,13 @@ export const ssrmMethods = {
       const build = (x, id) => ({
         id,
         selectAll: !!(x?.selectAllChildren ?? x?.selectAll),
-        toggled: new Map((x?.toggledNodes || []).map(t => (typeof t === 'object' ? [String(t.nodeId), build(t, String(t.nodeId))] : [String(t), { id: String(t), selectAll: !x?.selectAll, toggled: new Map() }]))),
+        toggled: new Map(
+          (x?.toggledNodes || []).map(t =>
+            typeof t === 'object'
+              ? [String(t.nodeId), build(t, String(t.nodeId))]
+              : [String(t), { id: String(t), selectAll: !x?.selectAll, toggled: new Map() }],
+          ),
+        ),
       });
       this.ssrmSelTree = build(state, undefined);
     } else {

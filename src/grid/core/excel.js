@@ -9,7 +9,7 @@ import { zipAsync, zipSync } from './zip.js';
 
 const xmlEsc = s =>
   String(s)
-// eslint-disable-next-line no-control-regex -- XML 에 넣을 수 없는 제어 문자를 지우는 정규식
+    // eslint-disable-next-line no-control-regex -- XML 에 넣을 수 없는 제어 문자를 지우는 정규식
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, '')
     .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
@@ -77,9 +77,7 @@ class StyleBook {
     }
     let fillId = 0;
     if (s.interior?.color) {
-      this.fills.push(
-        `<fill><patternFill patternType="solid"><fgColor rgb="${argb(s.interior.color)}"/><bgColor indexed="64"/></patternFill></fill>`,
-      );
+      this.fills.push(`<fill><patternFill patternType="solid"><fgColor rgb="${argb(s.interior.color)}"/><bgColor indexed="64"/></patternFill></fill>`);
       fillId = this.fills.length - 1;
     }
     let borderId = 0;
@@ -345,7 +343,7 @@ export function getSheetDataForExcel(core, params = {}) {
         const g = cols[i].groupChain[level] || null;
         let j = i;
         while (j + 1 < cols.length && g && cols[j + 1].groupChain[level] === g) j++;
-        const name = g ? g.colGroupDef.headerName ?? '' : '';
+        const name = g ? (g.colGroupDef.headerName ?? '') : '';
         cells.push({ c: i, type: 'String', value: name, xf: styles.xfFor(['headerGroup']) });
         if (j > i) merges.push(`${colLetter(i)}${r + 1}:${colLetter(j)}${r + 1}`);
         i = j + 1;
@@ -359,12 +357,11 @@ export function getSheetDataForExcel(core, params = {}) {
     headerRow = r;
     const excelRow = r + 1;
     const cells = cols.map((col, i) => {
-      const name = typeof p.processHeaderCallback === 'function'
-        ? p.processHeaderCallback({ column: col, api: core.api, context: core.gos.context })
-        : core.getDisplayName(col);
-      const hc = resolveClassValue(col.colDef.headerClass, { colDef: col.colDef, column: col, api: core.api })
-        .split(/\s+/)
-        .filter(Boolean);
+      const name =
+        typeof p.processHeaderCallback === 'function'
+          ? p.processHeaderCallback({ column: col, api: core.api, context: core.gos.context })
+          : core.getDisplayName(col);
+      const hc = resolveClassValue(col.colDef.headerClass, { colDef: col.colDef, column: col, api: core.api }).split(/\s+/).filter(Boolean);
       return { c: i, type: 'String', value: name ?? '', xf: styles.xfFor(['header', ...hc]) };
     });
     rows.push({ cells, height: rowHeightFor(excelRow, true) });
@@ -394,7 +391,10 @@ export function getSheetDataForExcel(core, params = {}) {
     if (p.columnWidth != null) px = typeof p.columnWidth === 'function' ? p.columnWidth({ column: col, index: i }) : p.columnWidth;
     return px;
   });
-  let sheetName = String(p.sheetName || 'Sheet1').replace(/[\\/?*[\]:]/g, '').slice(0, 31) || 'Sheet1';
+  let sheetName =
+    String(p.sheetName || 'Sheet1')
+      .replace(/[\\/?*[\]:]/g, '')
+      .slice(0, 31) || 'Sheet1';
   // 틀 고정: freezeRows 'headers' = 머리글까지, freezeColumns 'pinned' = 왼쪽 고정 컬럼까지
   const fr = typeof p.freezeRows === 'function' ? p.freezeRows({ api: core.api, context: core.gos.context }) : p.freezeRows;
   const freeze = {
@@ -420,7 +420,9 @@ export function getSheetDataForExcel(core, params = {}) {
       c.value = names[i];
     });
     table = {
-      name: String(t.name || `${sheetName}Table`).replace(/[^\w.]/g, '_').replace(/^(\d)/, '_$1'),
+      name: String(t.name || `${sheetName}Table`)
+        .replace(/[^\w.]/g, '_')
+        .replace(/^(\d)/, '_$1'),
       ref: `A${headerRow + 1}:${colLetter(cols.length - 1)}${Math.max(headerRow + 2, lastDataRow + 1)}`,
       names,
       showFilterButton: t.showFilterButton !== false,
@@ -457,9 +459,14 @@ function headerFooterXml(cfg) {
     (list || []).forEach(it => {
       const pos = it.position || 'Center';
       const f = it.font || {};
-      const font = f.fontName || f.bold || f.italic ? `&"${f.fontName || 'Calibri'},${f.bold && f.italic ? 'Bold Italic' : f.bold ? 'Bold' : f.italic ? 'Italic' : 'Regular'}"` : '';
+      const font =
+        f.fontName || f.bold || f.italic
+          ? `&"${f.fontName || 'Calibri'},${f.bold && f.italic ? 'Bold Italic' : f.bold ? 'Bold' : f.italic ? 'Italic' : 'Regular'}"`
+          : '';
       const size = f.size ? `&${f.size}` : '';
-      const val = String(it.value ?? '').replace(/&/g, '&&').replace(/&&\[(Page|Pages|Date|Time|Tab|File)\]/g, (_, k) => ({ Page: '&P', Pages: '&N', Date: '&D', Time: '&T', Tab: '&A', File: '&F' })[k]);
+      const val = String(it.value ?? '')
+        .replace(/&/g, '&&')
+        .replace(/&&\[(Page|Pages|Date|Time|Tab|File)\]/g, (_, k) => ({ Page: '&P', Pages: '&N', Date: '&D', Time: '&T', Tab: '&A', File: '&F' })[k]);
       by[pos] = (by[pos] || '') + font + size + val;
     });
     return `${by.Left ? `&L${by.Left}` : ''}${by.Center ? `&C${by.Center}` : ''}${by.Right ? `&R${by.Right}` : ''}`;
@@ -480,7 +487,9 @@ function sheetXmlChunks(sheet, drawingRid, tableRid) {
   }
   out.push(
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${
-      maxOutline || sheet.pageSetup?.fitToPage ? `<sheetPr>${maxOutline ? '<outlinePr summaryBelow="0"/>' : ''}${sheet.pageSetup?.fitToPage ? '<pageSetUpPr fitToPage="1"/>' : ''}</sheetPr>` : ''
+      maxOutline || sheet.pageSetup?.fitToPage
+        ? `<sheetPr>${maxOutline ? '<outlinePr summaryBelow="0"/>' : ''}${sheet.pageSetup?.fitToPage ? '<pageSetUpPr fitToPage="1"/>' : ''}</sheetPr>`
+        : ''
     }<sheetViews><sheetView workbookViewId="0">${pane}</sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"${maxOutline ? ` outlineLevelRow="${maxOutline}"` : ''}/>`,
   );
   if (sheet.widths.length) {
@@ -534,8 +543,15 @@ function sheetXmlChunks(sheet, drawingRid, tableRid) {
   }
   const ps = sheet.pageSetup;
   if (ps) {
-    const size = PAGE_SIZES[String(ps.pageSize || '').toLowerCase().replace(/\s+/g, '')];
-    out.push(`<pageSetup${size ? ` paperSize="${size}"` : ''}${ps.orientation ? ` orientation="${String(ps.orientation).toLowerCase()}"` : ''}${ps.fitToPage ? ' fitToWidth="1" fitToHeight="0"' : ''}/>`);
+    const size =
+      PAGE_SIZES[
+        String(ps.pageSize || '')
+          .toLowerCase()
+          .replace(/\s+/g, '')
+      ];
+    out.push(
+      `<pageSetup${size ? ` paperSize="${size}"` : ''}${ps.orientation ? ` orientation="${String(ps.orientation).toLowerCase()}"` : ''}${ps.fitToPage ? ' fitToWidth="1" fitToHeight="0"' : ''}/>`,
+    );
   }
   out.push(headerFooterXml(sheet.headerFooter));
   if (drawingRid) out.push(`<drawing r:id="${drawingRid}"/>`);
@@ -621,17 +637,24 @@ function buildFiles(sheets) {
       files.push({
         name: `xl/drawings/_rels/drawing${n}.xml.rels`,
         content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${local
-          .map((l, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${l.mediaName}"/>`)
+          .map(
+            (l, i) =>
+              `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${l.mediaName}"/>`,
+          )
           .join('')}</Relationships>`,
       });
-      rels.push(`<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing${n}.xml"/>`);
+      rels.push(
+        `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing${n}.xml"/>`,
+      );
       drawingRid = 'rId1';
     }
     let tableN = 0;
     if (sheet.table) {
       tableN = ++tableSeq;
       tableRid = `rId${rels.length + 1}`;
-      rels.push(`<Relationship Id="${tableRid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table${tableN}.xml"/>`);
+      rels.push(
+        `<Relationship Id="${tableRid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table${tableN}.xml"/>`,
+      );
       files.push({ name: `xl/tables/table${tableN}.xml`, content: tableXml(sheet.table, tableN) });
     }
     if (rels.length) {
@@ -682,7 +705,9 @@ function buildFiles(sheets) {
           s =>
             `<Relationship Id="rId${s.n}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${s.n}.xml"/>`,
         )
-        .join('')}<Relationship Id="rId${sheetEntries.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`,
+        .join(
+          '',
+        )}<Relationship Id="rId${sheetEntries.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`,
     },
     { name: 'xl/styles.xml', content: styles.xml() },
   );

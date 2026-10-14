@@ -9,8 +9,9 @@ const gridTheme = moonTheme.withParams({ accentColor: '#4db8ff' }, 'dark');
 provideGlobalGridOptions({ theme: gridTheme });
 
 // 기본: 플레이그라운드 / ?demo: 기존 종합 데모 단독 화면
-const legacy = new URLSearchParams(window.location.search).has('demo') || new URLSearchParams(window.location.search).has('rows') || new URLSearchParams(window.location.search).has('tab');
+const legacy =
+  new URLSearchParams(window.location.search).has('demo') ||
+  new URLSearchParams(window.location.search).has('rows') ||
+  new URLSearchParams(window.location.search).has('tab');
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>{legacy ? <App /> : <Playground />}</React.StrictMode>,
-);
+ReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode>{legacy ? <App /> : <Playground />}</React.StrictMode>);

@@ -1,7 +1,19 @@
 import { check } from '../check.mjs';
 const { GridCore } = await import('../../src/grid/core/GridCore.js');
 const rows = () => ['a', 'b', 'c', 'd'].map(n => ({ n, v: 1 }));
-const mk = o => { const c = new GridCore({ columnDefs: [{ field: 'n', rowDrag: true }, { field: 'v', filter: true }], rowData: rows(), rowDragManaged: true, ...o }); c.setViewportSize(800, 400); return c; };
+const mk = o => {
+  const c = new GridCore({
+    columnDefs: [
+      { field: 'n', rowDrag: true },
+      { field: 'v', filter: true },
+    ],
+    rowData: rows(),
+    rowDragManaged: true,
+    ...o,
+  });
+  c.setViewportSize(800, 400);
+  return c;
+};
 const order = c => c.displayedNodes.map(n => n.data.n);
 const h = c => c.rowHeightAt(0);
 // suppressMoveWhenRowDragging: 끄는 동안 순서 그대로, 놓으면 이동

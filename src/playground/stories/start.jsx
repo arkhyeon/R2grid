@@ -14,7 +14,16 @@ function QuickStart({ p, ctx }) {
       defaultColDef={{ flex: p.flex ? 1 : undefined, minWidth: 90, filter: p.filter, sortable: true, resizable: true }}
       onGridReady={() => ctx.log('gridReady')}
       onRowClicked={e => ctx.log(`rowClicked: ${e.data.taskName}`)}
-      onSortChanged={e => ctx.log(`sortChanged: ${JSON.stringify(e.api.getColumnState().filter(s => s.sort).map(s => s.colId + ':' + s.sort))}`)}
+      onSortChanged={e =>
+        ctx.log(
+          `sortChanged: ${JSON.stringify(
+            e.api
+              .getColumnState()
+              .filter(s => s.sort)
+              .map(s => s.colId + ':' + s.sort),
+          )}`,
+        )
+      }
     />
   );
 }
@@ -146,7 +155,19 @@ export default function Page() {
     category: CAT,
     name: '테마 · 다크 모드',
     desc: 'moonTheme.withParams 로 색/크기를 바꾸고, 조상 요소의 data-r2-theme-mode="dark" 로 다크 스킴을 켭니다. provideGlobalGridOptions 로 전역 테마를 지정할 수 있습니다.',
-    keywords: ['theme', 'moonTheme', 'withParams', 'accentColor', 'data-r2-theme-mode', 'dark', 'provideGlobalGridOptions', 'rowHeight', 'headerHeight', 'styleNonce', 'themeStyleContainer'],
+    keywords: [
+      'theme',
+      'moonTheme',
+      'withParams',
+      'accentColor',
+      'data-r2-theme-mode',
+      'dark',
+      'provideGlobalGridOptions',
+      'rowHeight',
+      'headerHeight',
+      'styleNonce',
+      'themeStyleContainer',
+    ],
     controls: [
       {
         key: 'dark',
@@ -171,10 +192,34 @@ export default function Page() {
         label: 'headerBackgroundColor',
         desc: '헤더 행 배경색. 비우면 테마 기본(배경색에 아주 옅은 회색).',
       },
-      { key: 'fontSize', type: 'number', default: 13, label: 'fontSize', desc: '셀·헤더 글자 크기(px). 행 높이는 따로 지정하지 않으면 글자 크기와 spacing 으로 계산됩니다.' },
-      { key: 'spacing', type: 'number', default: 8, label: 'spacing', desc: '간격 기준값(px). 셀 좌우 패딩, 아이콘 사이, 메뉴 여백 등이 이 값의 배수로 정해집니다. 키우면 전체가 성기게 됩니다.' },
-      { key: 'rowHeight', type: 'number', default: 32, label: 'rowHeight', desc: '모든 행의 높이(px). 테마 계산값보다 우선합니다. 행마다 다르게 하려면 getRowHeight.' },
-      { key: 'headerHeight', type: 'number', default: 36, label: 'headerHeight', desc: '컬럼 헤더 행 높이(px). 그룹 헤더 행은 groupHeaderHeight 로 따로 지정.' },
+      {
+        key: 'fontSize',
+        type: 'number',
+        default: 13,
+        label: 'fontSize',
+        desc: '셀·헤더 글자 크기(px). 행 높이는 따로 지정하지 않으면 글자 크기와 spacing 으로 계산됩니다.',
+      },
+      {
+        key: 'spacing',
+        type: 'number',
+        default: 8,
+        label: 'spacing',
+        desc: '간격 기준값(px). 셀 좌우 패딩, 아이콘 사이, 메뉴 여백 등이 이 값의 배수로 정해집니다. 키우면 전체가 성기게 됩니다.',
+      },
+      {
+        key: 'rowHeight',
+        type: 'number',
+        default: 32,
+        label: 'rowHeight',
+        desc: '모든 행의 높이(px). 테마 계산값보다 우선합니다. 행마다 다르게 하려면 getRowHeight.',
+      },
+      {
+        key: 'headerHeight',
+        type: 'number',
+        default: 36,
+        label: 'headerHeight',
+        desc: '컬럼 헤더 행 높이(px). 그룹 헤더 행은 groupHeaderHeight 로 따로 지정.',
+      },
     ],
     render: p => <Theme p={p} />,
     code: p => `import { moonTheme } from 'r2grid';

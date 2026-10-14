@@ -45,7 +45,15 @@ function Pagination({ p, ctx }) {
   );
 }
 
-const btn = { padding: '5px 12px', marginRight: 6, borderRadius: 6, border: '1px solid var(--pg-field-border)', background: 'var(--pg-field-bg)', color: 'inherit', cursor: 'pointer' };
+const btn = {
+  padding: '5px 12px',
+  marginRight: 6,
+  borderRadius: 6,
+  border: '1px solid var(--pg-field-border)',
+  background: 'var(--pg-field-bg)',
+  color: 'inherit',
+  cursor: 'pointer',
+};
 
 function Ssrm({ p, ctx }) {
   const ref = useRef(null);
@@ -67,7 +75,8 @@ function Ssrm({ p, ctx }) {
   const api = () => ref.current?.api;
   // 서버에 먼저 반영했다고 치고, 그리드에는 트랜잭션으로 같은 변경을 알림
   const apply = (tx, label) => {
-    const done = res => ctx.log(`${label}: ${res?.status} (add ${res?.add?.length ?? 0} / update ${res?.update?.length ?? 0} / remove ${res?.remove?.length ?? 0})`);
+    const done = res =>
+      ctx.log(`${label}: ${res?.status} (add ${res?.add?.length ?? 0} / update ${res?.update?.length ?? 0} / remove ${res?.remove?.length ?? 0})`);
     if (p.async) api().applyServerSideTransactionAsync(tx, done);
     else done(api().applyServerSideTransaction(tx));
     setTick(t => t + 1);
@@ -95,9 +104,15 @@ function Ssrm({ p, ctx }) {
   return (
     <div>
       <div style={{ marginBottom: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        <button type="button" style={btn} onClick={add}>맨 위에 추가</button>
-        <button type="button" style={btn} onClick={update}>선택 행 완료 처리</button>
-        <button type="button" style={btn} onClick={remove}>선택 행 삭제</button>
+        <button type="button" style={btn} onClick={add}>
+          맨 위에 추가
+        </button>
+        <button type="button" style={btn} onClick={update}>
+          선택 행 완료 처리
+        </button>
+        <button type="button" style={btn} onClick={remove}>
+          선택 행 삭제
+        </button>
         <button type="button" style={btn} onClick={() => ctx.log(`getServerSideSelectionState: ${JSON.stringify(api().getServerSideSelectionState())}`)}>
           선택 상태 보기
         </button>
@@ -201,7 +216,9 @@ function Infinite({ p, ctx }) {
     <>
       <div className="pg-toolbar">
         <button onClick={() => ref.current.api.purgeInfiniteCache()}>purgeInfiniteCache</button>
-        <button onClick={() => ctx.log(`getInfiniteRowCount=${ref.current.api.getInfiniteRowCount()} lastKnown=${ref.current.api.isLastRowIndexKnown()}`)}>행 수 확인</button>
+        <button onClick={() => ctx.log(`getInfiniteRowCount=${ref.current.api.getInfiniteRowCount()} lastKnown=${ref.current.api.isLastRowIndexKnown()}`)}>
+          행 수 확인
+        </button>
         <span className="pg-note">스크롤하면 다음 블록을 요청하고, 마지막 블록에서 전체 행 수가 확정됩니다</span>
       </div>
       <Grid
@@ -219,7 +236,11 @@ function Infinite({ p, ctx }) {
 }
 
 // viewport 행 모델 예: 종목 1,000개 중 보이는 범위만 받고, 1초마다 보이는 종목 시세를 밀어 넣음
-const TICKERS = Array.from({ length: 1000 }, (_, i) => ({ code: `A${String(100000 + i * 37).slice(0, 6)}`, name: `종목 ${i + 1}`, base: 1000 + ((i * 7919) % 90000) }));
+const TICKERS = Array.from({ length: 1000 }, (_, i) => ({
+  code: `A${String(100000 + i * 37).slice(0, 6)}`,
+  name: `종목 ${i + 1}`,
+  base: 1000 + ((i * 7919) % 90000),
+}));
 function makeTickerSource(ctx, intervalMs) {
   let params = null;
   let range = [0, -1];
@@ -297,7 +318,18 @@ export default [
     category: CAT,
     name: '페이지네이션',
     desc: 'pagination + paginationPageSize / paginationAutoPageSize / paginationPageSizeSelector. 행 그룹은 최상위 행 단위로 페이지를 나누고 펼친 자식은 같은 페이지에 둡니다 (paginateChildRows 로 변경).',
-    keywords: ['pagination', 'paginationPageSize', 'paginationAutoPageSize', 'paginationPageSizeSelector', 'paginateChildRows', 'suppressPaginationPanel', 'paginationGoToPage', 'paginationGetTotalPages', 'paginationGetRowCount', 'onPaginationChanged'],
+    keywords: [
+      'pagination',
+      'paginationPageSize',
+      'paginationAutoPageSize',
+      'paginationPageSizeSelector',
+      'paginateChildRows',
+      'suppressPaginationPanel',
+      'paginationGoToPage',
+      'paginationGetTotalPages',
+      'paginationGetRowCount',
+      'onPaginationChanged',
+    ],
     controls: [
       {
         key: 'size',
@@ -367,14 +399,36 @@ export default [
     category: CAT,
     name: '서버 사이드 행 모델 (SSRM)',
     desc: "rowModelType: 'serverSide' — 보이는 구간의 블록(cacheBlockSize)만 getRows 로 요청합니다. 정렬/필터가 바뀌면 캐시를 비우고 request.sortModel / filterModel 로 다시 요청합니다. 서버 데이터를 바꾼 뒤 applyServerSideTransaction 으로 알리면 다시 요청하지 않고 불러온 행에 바로 반영합니다. 선택은 행 id 기준이라 아직 안 불러온 행까지 '전체 선택' 할 수 있습니다.",
-    keywords: ['rowModelType', 'serverSide', 'serverSideDatasource', 'getRows', 'success', 'fail', 'cacheBlockSize', 'maxBlocksInCache', 'serverSideInitialRowCount', 'refreshServerSide', 'retryServerSideLoads', 'setGridOption', 'request.sortModel', 'request.filterModel', 'applyServerSideTransaction', 'applyServerSideTransactionAsync', 'flushServerSideAsyncTransactions', 'applyServerSideRowData', 'getServerSideSelectionState', 'setServerSideSelectionState', 'asyncTransactionWaitMillis'],
+    keywords: [
+      'rowModelType',
+      'serverSide',
+      'serverSideDatasource',
+      'getRows',
+      'success',
+      'fail',
+      'cacheBlockSize',
+      'maxBlocksInCache',
+      'serverSideInitialRowCount',
+      'refreshServerSide',
+      'retryServerSideLoads',
+      'setGridOption',
+      'request.sortModel',
+      'request.filterModel',
+      'applyServerSideTransaction',
+      'applyServerSideTransactionAsync',
+      'flushServerSideAsyncTransactions',
+      'applyServerSideRowData',
+      'getServerSideSelectionState',
+      'setServerSideSelectionState',
+      'asyncTransactionWaitMillis',
+    ],
     controls: [
       {
         key: 'selection',
         type: 'boolean',
         default: true,
         label: "rowSelection: { mode: 'multiRow' }",
-        desc: "SSRM 에서 선택은 { selectAll, toggledNodes } 상태로 관리됩니다. 헤더 체크박스로 전체 선택하면 selectAll=true 가 되어 아직 안 불러온 행도 로드되는 즉시 선택된 상태로 나오고, 그 뒤 해제한 행만 toggledNodes 에 남습니다. getState().rowSelection 에도 이 모양으로 저장됩니다.",
+        desc: 'SSRM 에서 선택은 { selectAll, toggledNodes } 상태로 관리됩니다. 헤더 체크박스로 전체 선택하면 selectAll=true 가 되어 아직 안 불러온 행도 로드되는 즉시 선택된 상태로 나오고, 그 뒤 해제한 행만 toggledNodes 에 남습니다. getState().rowSelection 에도 이 모양으로 저장됩니다.',
         on: "체크박스·헤더 체크박스 표시 — '선택 상태 보기' 로 상태 확인",
         off: '선택 없음 (완료 처리·삭제 버튼은 선택 행이 필요)',
       },
@@ -410,12 +464,16 @@ export default [
 const res = await api.post('/rows', newRow);
 gridRef.current.api.${p.async ? 'applyServerSideTransactionAsync' : 'applyServerSideTransaction'}({ add: [res.data], addIndex: 0 }${p.async ? ', r => console.log(r.status)' : ''});
 gridRef.current.api.${p.async ? 'applyServerSideTransactionAsync' : 'applyServerSideTransaction'}({ update: [changedRow] });
-gridRef.current.api.${p.async ? 'applyServerSideTransactionAsync' : 'applyServerSideTransaction'}({ remove: [deletedRow] });${p.selection ? `
+gridRef.current.api.${p.async ? 'applyServerSideTransactionAsync' : 'applyServerSideTransaction'}({ remove: [deletedRow] });${
+      p.selection
+        ? `
 
 // 선택 상태 — 안 불러온 행 포함
 const { selectAll, toggledNodes } = gridRef.current.api.getServerSideSelectionState();
 // selectAll=true  → toggledNodes 는 선택 해제된 id
-// selectAll=false → toggledNodes 는 선택된 id` : ''}`,
+// selectAll=false → toggledNodes 는 선택된 id`
+        : ''
+    }`,
     usage: {
       file: 'page/work/workGroup/work/modal/WorkGroupPlanModal.jsx',
       code: `const onGridReady = e => {
@@ -434,8 +492,23 @@ const { selectAll, toggledNodes } = gridRef.current.api.getServerSideSelectionSt
     id: 'server-side-group',
     category: CAT,
     name: '서버 사이드 행 그룹',
-    desc: "SSRM 에서 rowGroup 컬럼이 있으면 그룹을 서버가 만듭니다. 처음엔 1단계 그룹 행만 요청하고, 그룹을 펼칠 때마다 request.groupKeys(펼친 그룹 키 경로)로 그 그룹의 하위 행을 따로 요청합니다. 그룹 행의 값 컬럼은 서버가 계산해 보낸 집계값을 그대로 보여줍니다. 펼친 그룹은 기억해서 정렬·필터로 다시 불러와도 그대로 펼쳐집니다.",
-    keywords: ['rowModelType', 'serverSide', 'rowGroup', 'request.groupKeys', 'request.rowGroupCols', 'request.valueCols', 'getChildCount', 'groupDefaultExpanded', 'isServerSideGroup', 'getServerSideGroupKey', 'getServerSideGroupLevelState', 'refreshServerSide', 'route', 'rowGroupPanelShow'],
+    desc: 'SSRM 에서 rowGroup 컬럼이 있으면 그룹을 서버가 만듭니다. 처음엔 1단계 그룹 행만 요청하고, 그룹을 펼칠 때마다 request.groupKeys(펼친 그룹 키 경로)로 그 그룹의 하위 행을 따로 요청합니다. 그룹 행의 값 컬럼은 서버가 계산해 보낸 집계값을 그대로 보여줍니다. 펼친 그룹은 기억해서 정렬·필터로 다시 불러와도 그대로 펼쳐집니다.',
+    keywords: [
+      'rowModelType',
+      'serverSide',
+      'rowGroup',
+      'request.groupKeys',
+      'request.rowGroupCols',
+      'request.valueCols',
+      'getChildCount',
+      'groupDefaultExpanded',
+      'isServerSideGroup',
+      'getServerSideGroupKey',
+      'getServerSideGroupLevelState',
+      'refreshServerSide',
+      'route',
+      'rowGroupPanelShow',
+    ],
     controls: [
       {
         key: 'levels',
@@ -475,7 +548,7 @@ const { selectAll, toggledNodes } = gridRef.current.api.getServerSideSelectionSt
         type: 'boolean',
         default: true,
         label: "groupSelects: 'descendants'",
-        desc: "rowSelection.groupSelects. 그룹 행을 체크하면 아직 안 불러온 하위 행까지 전부 선택된 것으로 칩니다. 선택은 { selectAllChildren, toggledNodes: [{ nodeId, selectAllChildren, toggledNodes }] } 트리로 관리되고, getServerSideSelectionState / getState().rowSelection 으로 그대로 저장·복원됩니다. 그룹 id 가 단계마다 겹치지 않게 getRowId 에서 parentKeys 를 붙였습니다.",
+        desc: 'rowSelection.groupSelects. 그룹 행을 체크하면 아직 안 불러온 하위 행까지 전부 선택된 것으로 칩니다. 선택은 { selectAllChildren, toggledNodes: [{ nodeId, selectAllChildren, toggledNodes }] } 트리로 관리되고, getServerSideSelectionState / getState().rowSelection 으로 그대로 저장·복원됩니다. 그룹 id 가 단계마다 겹치지 않게 getRowId 에서 parentKeys 를 붙였습니다.',
         on: '그룹 체크 → 하위 전체 선택, 하위 일부만 선택되면 그룹 체크박스가 일부(−) 표시',
         off: '선택 없음',
       },
@@ -517,18 +590,32 @@ ${GROUP_LEVELS[p.levels].map((f, i) => `  { field: '${f}', rowGroup: true, rowGr
 api.refreshServerSide({ route: ['Oracle'], purge: true });
 api.applyServerSideTransaction({ route: ['Oracle', '진행'], add: [newRow] });
 
-// 서버 트리: treeData + isServerSideGroup(data) + getServerSideGroupKey(data)${p.groupSelect ? `
+// 서버 트리: treeData + isServerSideGroup(data) + getServerSideGroupKey(data)${
+      p.groupSelect
+        ? `
 
 // 선택 상태 (안 불러온 하위 포함) — 서버에 그대로 보내 대상 행을 계산
 const sel = api.getServerSideSelectionState();
-// { selectAllChildren: false, toggledNodes: [{ nodeId: 'Oracle', selectAllChildren: true, toggledNodes: [...] }] }` : ''}`,
+// { selectAllChildren: false, toggledNodes: [{ nodeId: 'Oracle', selectAllChildren: true, toggledNodes: [...] }] }`
+        : ''
+    }`,
   },
   {
     id: 'viewport-model',
     category: CAT,
     name: '실시간 보이는 범위 (Viewport)',
     desc: "rowModelType: 'viewport'. 데이터 소스가 init 에서 행 수를 알리고(setRowCount), 그리드는 보이는 범위가 바뀔 때마다 setViewportRange(first, last) 로 알려 줍니다. 데이터 소스는 그 범위의 행을 setRowData({ 번호: 데이터 }) 로 언제든 밀어 넣습니다 — 시세·모니터링처럼 서버가 계속 갱신하는 화면용.",
-    keywords: ['rowModelType', 'viewport', 'viewportDatasource', 'setViewportRange', 'setRowCount', 'setRowData', 'viewportRowModelPageSize', 'viewportRowModelBufferSize', 'enableCellChangeFlash'],
+    keywords: [
+      'rowModelType',
+      'viewport',
+      'viewportDatasource',
+      'setViewportRange',
+      'setRowCount',
+      'setRowData',
+      'viewportRowModelPageSize',
+      'viewportRowModelBufferSize',
+      'enableCellChangeFlash',
+    ],
     controls: [
       {
         key: 'pageSize',
@@ -578,8 +665,25 @@ const sel = api.getServerSideSelectionState();
     category: CAT,
     name: '무한 스크롤 (Infinite)',
     desc: "rowModelType: 'infinite' + datasource.getRows({ startRow, endRow, sortModel, filterModel, successCallback(rows, lastRow) }). lastRow 를 모르면 -1. maxBlocksInCache 를 넘으면 오래된 블록을 버립니다.",
-    keywords: ['rowModelType', 'infinite', 'datasource', 'successCallback', 'failCallback', 'lastRow', 'cacheBlockSize', 'maxBlocksInCache', 'infiniteInitialRowCount', 'cacheOverflowSize', 'purgeInfiniteCache', 'refreshInfiniteCache', 'getInfiniteRowCount', 'isLastRowIndexKnown', 'setRowCount'],
-    controls: [{
+    keywords: [
+      'rowModelType',
+      'infinite',
+      'datasource',
+      'successCallback',
+      'failCallback',
+      'lastRow',
+      'cacheBlockSize',
+      'maxBlocksInCache',
+      'infiniteInitialRowCount',
+      'cacheOverflowSize',
+      'purgeInfiniteCache',
+      'refreshInfiniteCache',
+      'getInfiniteRowCount',
+      'isLastRowIndexKnown',
+      'setRowCount',
+    ],
+    controls: [
+      {
         key: 'maxBlocks',
         type: 'select',
         default: 0,
@@ -590,7 +694,8 @@ const sel = api.getServerSideSelectionState();
           { value: 3, desc: '3블록만 유지 — 메모리 적게, 되돌아가면 재요청' },
           { value: 10, desc: '10블록 유지' },
         ],
-      }],
+      },
+    ],
     render: (p, ctx) => <Infinite p={p} ctx={ctx} />,
     code: p => `const datasource = {
   getRows: ({ startRow, endRow, sortModel, filterModel, successCallback, failCallback }) => {

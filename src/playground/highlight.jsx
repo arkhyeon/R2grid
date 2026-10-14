@@ -37,7 +37,9 @@ export function Code({ code }) {
     <pre className="pg-code">
       <code>
         {tokenize(code).map((t, i) =>
-          t.type === 'plain' ? t.text : (
+          t.type === 'plain' ? (
+            t.text
+          ) : (
             <span key={i} className={`tk-${t.type}`}>
               {t.text}
             </span>

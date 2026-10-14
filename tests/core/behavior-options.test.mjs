@@ -2,7 +2,16 @@
 import { check } from '../check.mjs';
 const { GridCore } = await import('../../src/grid/core/GridCore.js');
 const mk = o => {
-  const c = new GridCore({ getRowId: p => String(p.data.id), rowData: [{ id: 1, a: 'x', v: 3 }, { id: 2, a: 'y', v: 1 }, { id: 3, a: 'z', v: 2 }], columnDefs: [{ field: 'a' }, { field: 'v', editable: true }], ...o });
+  const c = new GridCore({
+    getRowId: p => String(p.data.id),
+    rowData: [
+      { id: 1, a: 'x', v: 3 },
+      { id: 2, a: 'y', v: 1 },
+      { id: 3, a: 'z', v: 2 },
+    ],
+    columnDefs: [{ field: 'a' }, { field: 'v', editable: true }],
+    ...o,
+  });
   c.setViewportSize(800, 400);
   return c;
 };
@@ -29,11 +38,27 @@ s1.api.applyTransaction({ update: [{ id: 2, a: 'y', v: 10 }] });
 check('suppressModelUpdateAfterUpdateTransaction: 순서 그대로, 값만', vs(s1), [10, 2, 3]);
 s1.api.applyTransaction({ add: [{ id: 4, a: 'w', v: 0 }] });
 check('추가가 있으면 평소대로 다시 정렬', vs(s1), [0, 2, 3, 10]);
-const g1 = mk({ suppressModelUpdateAfterUpdateTransaction: true, columnDefs: [{ field: 'a', rowGroup: true, hide: true }, { field: 'v', aggFunc: 'sum' }], rowData: [{ id: 1, a: 'x', v: 3 }, { id: 2, a: 'x', v: 1 }] });
+const g1 = mk({
+  suppressModelUpdateAfterUpdateTransaction: true,
+  columnDefs: [
+    { field: 'a', rowGroup: true, hide: true },
+    { field: 'v', aggFunc: 'sum' },
+  ],
+  rowData: [
+    { id: 1, a: 'x', v: 3 },
+    { id: 2, a: 'x', v: 1 },
+  ],
+});
 g1.api.applyTransaction({ update: [{ id: 2, a: 'x', v: 5 }] });
 check('수정만 트랜잭션도 집계는 갱신', g1.groupTop[0].aggData, { v: 8 });
 // 변경 감지
-const c0 = mk({ columnDefs: [{ field: 'a', rowGroup: true, hide: true }, { field: 'v', aggFunc: 'sum', editable: true }], suppressChangeDetection: true });
+const c0 = mk({
+  columnDefs: [
+    { field: 'a', rowGroup: true, hide: true },
+    { field: 'v', aggFunc: 'sum', editable: true },
+  ],
+  suppressChangeDetection: true,
+});
 const x = c0.groupTop.find(n => n.key === 'x');
 c0.api.getRowNode('1').setDataValue('v', 100);
 check('suppressChangeDetection: 편집 뒤 집계 그대로', x.aggData, { v: 3 });

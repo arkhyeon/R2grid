@@ -39,7 +39,10 @@ function HeaderGroupCell({ core, seg, level, height }) {
     <div
       className={cx(
         'r2-header-group-cell r2-focus-managed',
-        seg.group && core.headerFocus?.rowIndex === level && core.getColumn(core.headerFocus.colId)?.groupChain?.[level] === seg.group && 'r2-header-cell-focus',
+        seg.group &&
+          core.headerFocus?.rowIndex === level &&
+          core.getColumn(core.headerFocus.colId)?.groupChain?.[level] === seg.group &&
+          'r2-header-cell-focus',
         seg.group ? 'r2-header-group-cell-with-group' : 'r2-header-group-cell-no-group',
         cls,
       )}
@@ -50,14 +53,19 @@ function HeaderGroupCell({ core, seg, level, height }) {
     >
       {seg.group && def.headerGroupComponent && (
         <div className="r2-header-group-cell-label" role="presentation">
-          {stableElement(core, `hgroup:${seg.group.groupId}`, typeof def.headerGroupComponent === 'string' ? core.gos.components?.[def.headerGroupComponent] : def.headerGroupComponent, {
-            displayName: def.headerName ?? '',
-            columnGroup: seg.group,
-            setExpanded: v => core.setColumnGroupOpened(seg.group, !!v, 'uiColumnExpanded'),
-            api: core.api,
-            context: core.gos.context,
-            ...(def.headerGroupComponentParams || {}),
-          })}
+          {stableElement(
+            core,
+            `hgroup:${seg.group.groupId}`,
+            typeof def.headerGroupComponent === 'string' ? core.gos.components?.[def.headerGroupComponent] : def.headerGroupComponent,
+            {
+              displayName: def.headerName ?? '',
+              columnGroup: seg.group,
+              setExpanded: v => core.setColumnGroupOpened(seg.group, !!v, 'uiColumnExpanded'),
+              api: core.api,
+              context: core.gos.context,
+              ...(def.headerGroupComponentParams || {}),
+            },
+          )}
         </div>
       )}
       {seg.group && !def.headerGroupComponent && (
@@ -67,10 +75,7 @@ function HeaderGroupCell({ core, seg, level, height }) {
           </span>
           {seg.group.expandable && (
             <span
-              className={cx(
-                'r2-header-icon r2-header-expand-icon',
-                seg.group.expanded ? 'r2-header-expand-icon-expanded' : 'r2-header-expand-icon-collapsed',
-              )}
+              className={cx('r2-header-icon r2-header-expand-icon', seg.group.expanded ? 'r2-header-expand-icon-expanded' : 'r2-header-expand-icon-collapsed')}
               onClick={e => {
                 e.stopPropagation();
                 core.setColumnGroupOpened(seg.group, !seg.group.expanded, 'uiColumnExpanded');
@@ -129,7 +134,13 @@ function HeaderCell({ core, col, height: rowHeight, groupHeaderHeight, multiSort
   const sortable = col.isSortable();
   const s = col.sort;
   const headerCls = resolveClassValue(cd.headerClass, { colDef: cd, column: col, api: core.api, context: core.gos.context });
-  const style = { ...core.colPos(col.left), width: col.actualWidth, height, ...(spanPx ? { top: -spanPx } : null), ...(typeof cd.headerStyle === 'function' ? cd.headerStyle({ column: col, colDef: cd, api: core.api }) : cd.headerStyle) };
+  const style = {
+    ...core.colPos(col.left),
+    width: col.actualWidth,
+    height,
+    ...(spanPx ? { top: -spanPx } : null),
+    ...(typeof cd.headerStyle === 'function' ? cd.headerStyle({ column: col, colDef: cd, api: core.api }) : cd.headerStyle),
+  };
   const name = core.getDisplayName(col);
   const isSelection = col.autoType === 'selection';
   const rs = core.rsOpts;
@@ -177,8 +188,7 @@ function HeaderCell({ core, col, height: rowHeight, groupHeaderHeight, multiSort
 
   const showMenuBtn = !isSelection && !col.autoType && !cd.suppressHeaderMenuButton && !cd.suppressMenu;
   // 플로팅 필터가 있으면 필터 버튼은 플로팅 필터 쪽에
-  const showFilterBtn =
-    !legacy && !!cd.filter && !cd.floatingFilter && !cd.suppressHeaderFilterButton && !col.autoType && !core.isAdvancedFilterEnabled();
+  const showFilterBtn = !legacy && !!cd.filter && !cd.floatingFilter && !cd.suppressHeaderFilterButton && !col.autoType && !core.isAdvancedFilterEnabled();
   const toggleMenu = e => {
     e.stopPropagation();
     if (menuOpen) core.closePopup();
@@ -199,14 +209,22 @@ function HeaderCell({ core, col, height: rowHeight, groupHeaderHeight, multiSort
       return;
     }
     if (isSelection || !sortable) return;
-    if (e.target instanceof Element && e.target.closest('.r2-header-cell-menu-button,.r2-header-cell-filter-button,.r2-header-cell-resize,.r2-header-select-all')) return;
+    if (
+      e.target instanceof Element &&
+      e.target.closest('.r2-header-cell-menu-button,.r2-header-cell-filter-button,.r2-header-cell-resize,.r2-header-select-all')
+    )
+      return;
     const multiKey = core.gos.multiSortKey === 'ctrl' ? e.ctrlKey || e.metaKey : e.shiftKey;
     core.toggleColumnSort(col, multiKey && !core.gos.suppressMultiSort);
   };
 
   const onPointerDown = e => {
     if (e.button !== 0) return;
-    if (e.target instanceof Element && e.target.closest('.r2-header-cell-resize,.r2-header-cell-menu-button,.r2-header-cell-filter-button,.r2-header-select-all,input')) return;
+    if (
+      e.target instanceof Element &&
+      e.target.closest('.r2-header-cell-resize,.r2-header-cell-menu-button,.r2-header-cell-filter-button,.r2-header-select-all,input')
+    )
+      return;
     if (cd.suppressMovable || cd.lockPosition || core.gos.suppressMovableColumns || col.isAuto) return;
     drag.current.begin(e, col);
   };
@@ -232,16 +250,16 @@ function HeaderCell({ core, col, height: rowHeight, groupHeaderHeight, multiSort
     });
   } else {
     const headerCheckbox =
-      (isSelection && rs?.mode === 'multiRow' && rs.headerCheckbox !== false) ||
-      (!isSelection && rs?.legacy && cd.headerCheckboxSelection);
+      (isSelection && rs?.mode === 'multiRow' && rs.headerCheckbox !== false) || (!isSelection && rs?.legacy && cd.headerCheckboxSelection);
     content = (
-      <div
-        className={cx('r2-cell-label-container', s ? `r2-header-cell-sorted-${s}` : 'r2-header-cell-sorted-none')}
-        role="presentation"
-      >
+      <div className={cx('r2-cell-label-container', s ? `r2-header-cell-sorted-${s}` : 'r2-header-cell-sorted-none')} role="presentation">
         {showMenuBtn && (
           <span
-            className={cx('r2-header-icon r2-header-cell-menu-button', !legacy && 'r2-header-menu-icon', core.gos.suppressMenuHide !== false && !legacy && 'r2-header-menu-always-show')}
+            className={cx(
+              'r2-header-icon r2-header-cell-menu-button',
+              !legacy && 'r2-header-menu-icon',
+              core.gos.suppressMenuHide !== false && !legacy && 'r2-header-menu-always-show',
+            )}
             aria-hidden="true"
             onClick={toggleMenu}
           >
@@ -249,11 +267,7 @@ function HeaderCell({ core, col, height: rowHeight, groupHeaderHeight, multiSort
           </span>
         )}
         {showFilterBtn && (
-          <span
-            className={cx('r2-header-icon r2-header-cell-filter-button', col.filterActive && 'r2-filter-active')}
-            aria-hidden="true"
-            onClick={toggleFilter}
-          >
+          <span className={cx('r2-header-icon r2-header-cell-filter-button', col.filterActive && 'r2-filter-active')} aria-hidden="true" onClick={toggleFilter}>
             <Icon name={col.filterActive ? 'filter-active' : 'filter'} />
           </span>
         )}
@@ -417,7 +431,8 @@ function useColumnDrag(core) {
       }
       const rootRect = core.eRoot?.getBoundingClientRect();
       const outside =
-        rootRect && (ev.clientY < rootRect.top - 30 || ev.clientY > rootRect.bottom + 30 || ev.clientX < rootRect.left - 30 || ev.clientX > rootRect.right + 30);
+        rootRect &&
+        (ev.clientY < rootRect.top - 30 || ev.clientY > rootRect.bottom + 30 || ev.clientX < rootRect.left - 30 || ev.clientX > rootRect.right + 30);
       // 드롭 영역(행 그룹/값/열 레이블) 위 — 해당 역할 허용 컬럼만 (enableRowGroup/enableValue/enablePivot)
       const hit = docOf(core).elementFromPoint(ev.clientX, ev.clientY);
       const zoneEl = !outside && hit?.closest?.('.r2-column-drop[data-kind]');
@@ -427,7 +442,9 @@ function useColumnDrag(core) {
       if (outside || zone) return;
       // 포인터 아래 헤더 셀 → 이동 위치 계산
       // 보이는(높이 있는) 컬럼 헤더 행의 아래쪽 — 빈 고정 영역 행(높이 0)이나 위로 늘린 셀 영향 없음
-      const headerRow = [...(core.eRoot?.querySelectorAll('.r2-header-row-column') || [])].find(r => r.offsetHeight > 0 && r.closest('.r2-root') === core.eRoot.querySelector('.r2-root'));
+      const headerRow = [...(core.eRoot?.querySelectorAll('.r2-header-row-column') || [])].find(
+        r => r.offsetHeight > 0 && r.closest('.r2-root') === core.eRoot.querySelector('.r2-root'),
+      );
       const y = headerRow ? headerRow.getBoundingClientRect().bottom - 5 : ev.clientY;
       const under = docOf(core).elementFromPoint(ev.clientX, y)?.closest?.('.r2-header-cell[col-id]');
       if (!under || !core.eRoot.contains(under)) return;
@@ -496,10 +513,18 @@ function useColumnDrag(core) {
               icon={g.zone === 'rowGroup' ? 'group' : g.zone === 'values' ? 'aggregate' : g.zone === 'pivot' ? 'pivot' : g.hidden ? 'hide' : 'move'}
               dragSource={{ type: 'header' }}
               iconClassName="r2-shake-left-to-right"
-              defaultIcon={<Icon name={g.zone === 'rowGroup' ? 'group' : g.zone === 'values' ? 'aggregation' : g.zone === 'pivot' ? 'pivot' : g.hidden ? 'eye-slash' : 'arrows'} />}
+              defaultIcon={
+                <Icon
+                  name={
+                    g.zone === 'rowGroup' ? 'group' : g.zone === 'values' ? 'aggregation' : g.zone === 'pivot' ? 'pivot' : g.hidden ? 'eye-slash' : 'arrows'
+                  }
+                />
+              }
             />
           </div>
-          {g.insertX != null && !g.zone && !g.hidden && <div className="r2-column-move-indicator" style={{ position: 'fixed', left: g.insertX - 1, top: g.insertTop, height: g.insertH }} />}
+          {g.insertX != null && !g.zone && !g.hidden && (
+            <div className="r2-column-move-indicator" style={{ position: 'fixed', left: g.insertX - 1, top: g.insertTop, height: g.insertH }} />
+          )}
         </PopupLayer>,
         docOf(core).body,
       )
@@ -584,7 +609,8 @@ function usePanelDrop(core) {
       e.preventDefault();
       const col = core.getColumn(d.colId);
       if (!col || col === t.col) return;
-      if (col.colDef.lockPinned !== true && (col.pinned || null) !== (t.col.pinned || null)) core.setColumnsPinned([col], t.col.pinned || null, 'toolPanelDragAndDrop');
+      if (col.colDef.lockPinned !== true && (col.pinned || null) !== (t.col.pinned || null))
+        core.setColumnsPinned([col], t.col.pinned || null, 'toolPanelDragAndDrop');
       if (!col.colDef.suppressMovable && !col.colDef.lockPosition) {
         const rest = core.allColumns.filter(c => c !== col);
         core.moveColumns([col], rest.indexOf(t.col) + (t.after ? 1 : 0), 'toolPanelDragAndDrop');
@@ -619,8 +645,20 @@ export function GridHeader({ core, headerHeight, groupHeaderHeight, scrollbarWid
       {...panelDrop}
     >
       {panelDropLine}
-      <div className={cx('r2-pinned-left-header', !core.leftWidth && 'r2-hidden')} role="rowgroup" style={{ width: core.leftWidth, minWidth: core.leftWidth, maxWidth: core.leftWidth }}>
-        <HeaderRows core={core} cols={core.displayedLeft} width={core.leftWidth} headerHeight={headerHeight} groupHeaderHeight={groupHeaderHeight} floatingHeight={floatingHeight} drag={drag} />
+      <div
+        className={cx('r2-pinned-left-header', !core.leftWidth && 'r2-hidden')}
+        role="rowgroup"
+        style={{ width: core.leftWidth, minWidth: core.leftWidth, maxWidth: core.leftWidth }}
+      >
+        <HeaderRows
+          core={core}
+          cols={core.displayedLeft}
+          width={core.leftWidth}
+          headerHeight={headerHeight}
+          groupHeaderHeight={groupHeaderHeight}
+          floatingHeight={floatingHeight}
+          drag={drag}
+        />
       </div>
       <div
         className="r2-header-viewport"
@@ -632,11 +670,31 @@ export function GridHeader({ core, headerHeight, groupHeaderHeight, scrollbarWid
         }}
       >
         <div className="r2-header-container" role="rowgroup" style={{ width: core.centerWidth }}>
-          <HeaderRows core={core} cols={core.displayedCenter} width={core.centerWidth} headerHeight={headerHeight} groupHeaderHeight={groupHeaderHeight} floatingHeight={floatingHeight} drag={drag} />
+          <HeaderRows
+            core={core}
+            cols={core.displayedCenter}
+            width={core.centerWidth}
+            headerHeight={headerHeight}
+            groupHeaderHeight={groupHeaderHeight}
+            floatingHeight={floatingHeight}
+            drag={drag}
+          />
         </div>
       </div>
-      <div className={cx('r2-pinned-right-header', !core.rightWidth && 'r2-hidden')} role="rowgroup" style={{ width: core.rightWidth, minWidth: core.rightWidth, maxWidth: core.rightWidth }}>
-        <HeaderRows core={core} cols={core.displayedRight} width={core.rightWidth} headerHeight={headerHeight} groupHeaderHeight={groupHeaderHeight} floatingHeight={floatingHeight} drag={drag} />
+      <div
+        className={cx('r2-pinned-right-header', !core.rightWidth && 'r2-hidden')}
+        role="rowgroup"
+        style={{ width: core.rightWidth, minWidth: core.rightWidth, maxWidth: core.rightWidth }}
+      >
+        <HeaderRows
+          core={core}
+          cols={core.displayedRight}
+          width={core.rightWidth}
+          headerHeight={headerHeight}
+          groupHeaderHeight={groupHeaderHeight}
+          floatingHeight={floatingHeight}
+          drag={drag}
+        />
       </div>
       {scrollbarWidth > 0 && <div className="r2-header-scrollbar-spacer" style={{ width: scrollbarWidth, minWidth: scrollbarWidth }} />}
       {ghost}

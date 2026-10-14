@@ -4,11 +4,19 @@ const tick = () => new Promise(r => setTimeout(r, 5));
 const rows = [{ n: 1 }, { n: 5 }, { n: 10 }, { n: 20 }];
 const Comp = () => null;
 // doesFilterPass 방식
-let g = new GridCore({ enableFilterHandlers: true, columnDefs: [{ field: 'n', filter: { component: Comp, doesFilterPass: ({ model, data }) => data.n >= model.min } }], rowData: rows });
+let g = new GridCore({
+  enableFilterHandlers: true,
+  columnDefs: [{ field: 'n', filter: { component: Comp, doesFilterPass: ({ model, data }) => data.n >= model.min } }],
+  rowData: rows,
+});
 g.setViewportSize(800, 400);
 g.api.setFilterModel({ n: { min: 5 } });
 await tick();
-check('doesFilterPass', g.displayedNodes.map(n => n.data.n), [5, 10, 20]);
+check(
+  'doesFilterPass',
+  g.displayedNodes.map(n => n.data.n),
+  [5, 10, 20],
+);
 check('핸들러 조회', typeof g.api.getColumnFilterHandler('n').doesFilterPass, 'function');
 check('필터 활성', g.getColumn('n').filterActive, true);
 // handler 키 (gridOptions.filterHandlers)
@@ -35,9 +43,17 @@ check('processModelToApply 적용', [g.api.getFilterModel().n, g.displayedNodes.
 check('init·refresh 호출', log, ['init:n:null', 'refresh:{"from":2,"to":12}']);
 // apply 버튼 흐름: 화면 상태만 바꾸고 doFilterAction('apply') 때 적용
 g.setHandlerFilterState(col, { model: { from: 15, to: 30 } });
-check('적용 전엔 그대로', g.displayedNodes.map(n => n.data.n), [5, 10]);
+check(
+  '적용 전엔 그대로',
+  g.displayedNodes.map(n => n.data.n),
+  [5, 10],
+);
 g.api.doFilterAction({ colId: 'n', action: 'apply' });
-check('apply', g.displayedNodes.map(n => n.data.n), [20]);
+check(
+  'apply',
+  g.displayedNodes.map(n => n.data.n),
+  [20],
+);
 g.setHandlerFilterState(col, { model: { from: 0, to: 1 } });
 g.api.doFilterAction({ action: 'cancel' });
 check('cancel → 적용된 값 상태로', g.getHandlerFilterState(col).model, { from: 15, to: 30 });

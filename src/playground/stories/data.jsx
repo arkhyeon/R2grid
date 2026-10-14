@@ -22,12 +22,48 @@ function BigData({ p, ctx }) {
   return (
     <>
       <div className="pg-toolbar">
-        <span className="pg-note">{p.rows.toLocaleString()}행 · {info} · DOM 행은 화면 높이만큼만 생성</span>
-        <button onClick={() => time('행 수 정렬', () => ref.current.api.applyColumnState({ state: [{ colId: 'rowCnt', sort: 'desc' }], defaultState: { sort: null } }))}>행 수 정렬</button>
-        <button onClick={() => time('2컬럼 정렬', () => ref.current.api.applyColumnState({ state: [{ colId: 'dbms', sort: 'asc', sortIndex: 0 }, { colId: 'rowCnt', sort: 'desc', sortIndex: 1 }], defaultState: { sort: null } }))}>DBMS+행 수 정렬</button>
-        <button onClick={() => time('텍스트 필터', () => ref.current.api.setFilterModel({ owner: { filterType: 'text', type: 'contains', filter: 'USER_1' } }))}>소유자 필터</button>
+        <span className="pg-note">
+          {p.rows.toLocaleString()}행 · {info} · DOM 행은 화면 높이만큼만 생성
+        </span>
+        <button
+          onClick={() =>
+            time('행 수 정렬', () => ref.current.api.applyColumnState({ state: [{ colId: 'rowCnt', sort: 'desc' }], defaultState: { sort: null } }))
+          }
+        >
+          행 수 정렬
+        </button>
+        <button
+          onClick={() =>
+            time('2컬럼 정렬', () =>
+              ref.current.api.applyColumnState({
+                state: [
+                  { colId: 'dbms', sort: 'asc', sortIndex: 0 },
+                  { colId: 'rowCnt', sort: 'desc', sortIndex: 1 },
+                ],
+                defaultState: { sort: null },
+              }),
+            )
+          }
+        >
+          DBMS+행 수 정렬
+        </button>
+        <button
+          onClick={() => time('텍스트 필터', () => ref.current.api.setFilterModel({ owner: { filterType: 'text', type: 'contains', filter: 'USER_1' } }))}
+        >
+          소유자 필터
+        </button>
         <button onClick={() => time('전체 선택', () => ref.current.api.selectAll())}>전체 선택</button>
-        <button onClick={() => time('초기화', () => { ref.current.api.setFilterModel(null); ref.current.api.deselectAll(); ref.current.api.applyColumnState({ defaultState: { sort: null } }); })}>초기화</button>
+        <button
+          onClick={() =>
+            time('초기화', () => {
+              ref.current.api.setFilterModel(null);
+              ref.current.api.deselectAll();
+              ref.current.api.applyColumnState({ defaultState: { sort: null } });
+            })
+          }
+        >
+          초기화
+        </button>
         <button onClick={() => ctx.log(`DOM 행 수: ${document.querySelectorAll('.pg-stage .r2-center-cols-container .r2-row').length}`)}>DOM 행 수</button>
       </div>
       <Grid gridRef={ref} height={420} rowData={rowData} columnDefs={BASE_COLUMNS} rowSelection={{ mode: 'multiRow' }} rowBuffer={p.rowBuffer} />
@@ -109,14 +145,20 @@ function Flash({ p, ctx }) {
       </div>
       {p.grouped && (
         <div className="pg-toolbar">
-          <span className="pg-note">DBMS 별 행 수 합계 — 값을 바꾸면 그룹 합계도 깜빡임. 플로팅 필터로 거르면 {p.afterFilter ? '바뀐 합계가 깜빡임' : '합계는 바뀌어도 깜빡이지 않음'}</span>
+          <span className="pg-note">
+            DBMS 별 행 수 합계 — 값을 바꾸면 그룹 합계도 깜빡임. 플로팅 필터로 거르면 {p.afterFilter ? '바뀐 합계가 깜빡임' : '합계는 바뀌어도 깜빡이지 않음'}
+          </span>
         </div>
       )}
       <Grid
         key={String(p.grouped)}
         gridRef={ref}
         rowData={rowData}
-        columnDefs={p.grouped ? BASE_COLUMNS.map(c => (c.field === 'dbms' ? { ...c, rowGroup: true, hide: true } : c.field === 'rowCnt' ? { ...c, aggFunc: 'sum' } : c)) : BASE_COLUMNS}
+        columnDefs={
+          p.grouped
+            ? BASE_COLUMNS.map(c => (c.field === 'dbms' ? { ...c, rowGroup: true, hide: true } : c.field === 'rowCnt' ? { ...c, aggFunc: 'sum' } : c))
+            : BASE_COLUMNS
+        }
         groupDefaultExpanded={p.grouped ? -1 : undefined}
         allowShowChangeAfterFilter={p.afterFilter}
         defaultColDef={{ enableCellChangeFlash: p.flash, floatingFilter: !!p.grouped }}
@@ -169,7 +211,18 @@ const rowData = useMemo(() => makeRows(${p.rows}), []);
     category: CAT,
     name: '트랜잭션 (add/update/remove)',
     desc: 'applyTransaction 으로 전체 rowData 교체 없이 부분 갱신합니다. getRowId 로 안정적인 행 id 를 지정하세요.',
-    keywords: ['applyTransaction', 'applyTransactionAsync', 'getRowId', 'add', 'update', 'remove', 'addIndex', 'onRowDataUpdated', 'getSelectedRows', 'suppressMaintainUnsortedOrder'],
+    keywords: [
+      'applyTransaction',
+      'applyTransactionAsync',
+      'getRowId',
+      'add',
+      'update',
+      'remove',
+      'addIndex',
+      'onRowDataUpdated',
+      'getSelectedRows',
+      'suppressMaintainUnsortedOrder',
+    ],
     controls: [
       {
         key: 'keepOrder',

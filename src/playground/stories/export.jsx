@@ -15,7 +15,14 @@ function Csv({ p, ctx }) {
         <button onClick={() => setPreview(ref.current.api.getDataAsCsv(params()).split('\n').slice(0, 6).join('\n'))}>getDataAsCsv 미리보기</button>
       </div>
       {preview && <pre style={{ fontSize: 12, background: 'var(--pg-code-bg)', color: 'var(--pg-code-text)', padding: 8, borderRadius: 6 }}>{preview}</pre>}
-      <Grid gridRef={ref} height={300} rowData={SAMPLE} columnDefs={BASE_COLUMNS} rowSelection={{ mode: 'multiRow' }} onGridReady={() => ctx.log('행을 선택하고 onlySelected 를 켜면 선택 행만 내보냅니다')} />
+      <Grid
+        gridRef={ref}
+        height={300}
+        rowData={SAMPLE}
+        columnDefs={BASE_COLUMNS}
+        rowSelection={{ mode: 'multiRow' }}
+        onGridReady={() => ctx.log('행을 선택하고 onlySelected 를 켜면 선택 행만 내보냅니다')}
+      />
     </>
   );
 }
@@ -28,15 +35,29 @@ function Excel({ p, ctx }) {
     api.exportDataAsExcel({
       fileName: '작업목록.xlsx',
       sheetName: '작업',
-      prependContent: p.title ? [{ cells: [{ data: { type: 'String', value: 'R2grid 작업 목록 보고서' }, mergeAcross: cols - 1, styleId: 'title' }] }] : undefined,
-      appendContent: p.total ? [{ cells: [{ data: { type: 'String', value: '합계' } }, ...Array(3).fill({ data: { type: 'String', value: '' } }), { data: { type: 'Number', value: SAMPLE.reduce((s, r) => s + r.rowCnt, 0) } }] }] : undefined,
+      prependContent: p.title
+        ? [{ cells: [{ data: { type: 'String', value: 'R2grid 작업 목록 보고서' }, mergeAcross: cols - 1, styleId: 'title' }] }]
+        : undefined,
+      appendContent: p.total
+        ? [
+            {
+              cells: [
+                { data: { type: 'String', value: '합계' } },
+                ...Array(3).fill({ data: { type: 'String', value: '' } }),
+                { data: { type: 'Number', value: SAMPLE.reduce((s, r) => s + r.rowCnt, 0) } },
+              ],
+            },
+          ]
+        : undefined,
       onlySelected: p.onlySelected,
       freezeRows: p.freeze !== 'none' ? 'headers' : undefined,
       freezeColumns: p.freeze === 'both' ? 'pinned' : undefined,
       rowGroupExpandState: p.group !== 'none' ? p.group : undefined,
       exportAsExcelTable: p.table ? { name: 'Tasks' } : undefined,
       pageSetup: p.print ? { orientation: 'Landscape', pageSize: 'A4' } : undefined,
-      headerFooterConfig: p.print ? { all: { header: [{ value: '작업 목록', position: 'Center', font: { bold: true } }], footer: [{ value: '&[Page] / &[Pages]', position: 'Right' }] } } : undefined,
+      headerFooterConfig: p.print
+        ? { all: { header: [{ value: '작업 목록', position: 'Center', font: { bold: true } }], footer: [{ value: '&[Page] / &[Pages]', position: 'Right' }] } }
+        : undefined,
     });
     ctx.log('exportDataAsExcel (xlsx, deflate 압축)');
   };
@@ -58,7 +79,12 @@ function Excel({ p, ctx }) {
         gridRef={ref}
         rowData={SAMPLE}
         columnDefs={[
-          { headerName: '기본', children: BASE_COLUMNS.slice(0, 3).map(c => (c.field === 'id' ? { ...c, pinned: 'left' } : c.field === 'dbms' ? { ...c, rowGroup: p.group !== 'none', hide: p.group !== 'none' } : c)) },
+          {
+            headerName: '기본',
+            children: BASE_COLUMNS.slice(0, 3).map(c =>
+              c.field === 'id' ? { ...c, pinned: 'left' } : c.field === 'dbms' ? { ...c, rowGroup: p.group !== 'none', hide: p.group !== 'none' } : c,
+            ),
+          },
           { headerName: '상세', children: BASE_COLUMNS.slice(3).map(c => (c.field === 'rowCnt' ? { ...c, aggFunc: 'sum' } : c)) },
           { field: 'updatedAt', headerName: '수정일', width: 110, cellClass: p.dates ? 'excelDate' : undefined },
         ]}
@@ -163,7 +189,14 @@ function Charts({ p, ctx }) {
         </button>
         <span className="pg-note">또는 숫자 컬럼을 포함해 범위를 드래그 → 우클릭 → 범위 차트</span>
       </div>
-      <Grid gridRef={ref} height={360} rowData={SAMPLE} columnDefs={[...BASE_COLUMNS, { field: 'progress', headerName: '진행률', width: 100 }]} cellSelection enableCharts />
+      <Grid
+        gridRef={ref}
+        height={360}
+        rowData={SAMPLE}
+        columnDefs={[...BASE_COLUMNS, { field: 'progress', headerName: '진행률', width: 100 }]}
+        cellSelection
+        enableCharts
+      />
       <div ref={container} style={{ height: p.inline ? 320 : 0, marginTop: p.inline ? 10 : 0 }} />
     </>
   );
@@ -175,7 +208,16 @@ export default [
     category: CAT,
     name: 'CSV 내보내기',
     desc: 'exportDataAsCsv / getDataAsCsv. 표시 순서·필터·정렬이 반영되고 valueFormatter 결과로 저장합니다.',
-    keywords: ['exportDataAsCsv', 'getDataAsCsv', 'columnSeparator', 'onlySelected', 'skipColumnHeaders', 'processCellCallback', 'fileName', 'defaultCsvExportParams'],
+    keywords: [
+      'exportDataAsCsv',
+      'getDataAsCsv',
+      'columnSeparator',
+      'onlySelected',
+      'skipColumnHeaders',
+      'processCellCallback',
+      'fileName',
+      'defaultCsvExportParams',
+    ],
     controls: [
       {
         key: 'sep',
@@ -221,7 +263,33 @@ export default [
     category: CAT,
     name: 'Excel(xlsx) 내보내기',
     desc: '외부 라이브러리 없이 xlsx 를 직접 생성합니다. 그룹 헤더 병합, prepend/appendContent(mergeAcross), excelStyles(dataType 포함), rowHeight, addImageToCell(차트 이미지), 다중 시트, 틀 고정, 행 그룹 개요(접기), 엑셀 표, 인쇄 설정.',
-    keywords: ['exportDataAsExcel', 'getDataAsExcel', 'getMultipleSheetsAsExcel', 'exportMultipleSheetsAsExcel', 'getSheetDataForExcel', 'excelStyles', 'prependContent', 'appendContent', 'mergeAcross', 'addImageToCell', 'rowHeight', 'sheetName', 'xlsx', 'freezeRows', 'freezeColumns', 'rowGroupExpandState', 'suppressRowOutline', 'exportAsExcelTable', 'dataType', 'DateTime', 'Formula', 'autoConvertFormulas', 'pageSetup', 'margins', 'headerFooterConfig'],
+    keywords: [
+      'exportDataAsExcel',
+      'getDataAsExcel',
+      'getMultipleSheetsAsExcel',
+      'exportMultipleSheetsAsExcel',
+      'getSheetDataForExcel',
+      'excelStyles',
+      'prependContent',
+      'appendContent',
+      'mergeAcross',
+      'addImageToCell',
+      'rowHeight',
+      'sheetName',
+      'xlsx',
+      'freezeRows',
+      'freezeColumns',
+      'rowGroupExpandState',
+      'suppressRowOutline',
+      'exportAsExcelTable',
+      'dataType',
+      'DateTime',
+      'Formula',
+      'autoConvertFormulas',
+      'pageSetup',
+      'margins',
+      'headerFooterConfig',
+    ],
     controls: [
       {
         key: 'title',
@@ -298,7 +366,7 @@ export default [
         type: 'boolean',
         default: false,
         label: 'pageSetup · headerFooterConfig',
-        desc: "인쇄 설정. pageSetup: { orientation, pageSize }, margins(인치), headerFooterConfig 로 머리글·바닥글 (&[Page] / &[Pages] 쪽 번호, &[Date] 날짜).",
+        desc: '인쇄 설정. pageSetup: { orientation, pageSize }, margins(인치), headerFooterConfig 로 머리글·바닥글 (&[Page] / &[Pages] 쪽 번호, &[Date] 날짜).',
         on: 'A4 가로 + 가운데 머리글 + 오른쪽 쪽 번호',
         off: '엑셀 기본 인쇄 설정',
       },
@@ -360,7 +428,33 @@ api.exportDataAsExcel({
     category: CAT,
     name: '통합 차트 (범위 차트)',
     desc: 'enableCharts 후 범위를 선택해 우클릭 → 범위 차트, 또는 api.createRangeChart. 비숫자 첫 컬럼이 카테고리, 숫자 컬럼이 시리즈이며 데이터가 바뀌면 차트도 갱신됩니다. 차트 제목줄의 ⚙ 로 설정 패널을 열어 종류 · 데이터(가로축 항목, 계열 켜고 끄기) · 꾸미기(제목, 범례, 값 표시, 색, 축 제목)를 바꿉니다. PNG 저장 지원.',
-    keywords: ['enableCharts', 'createRangeChart', 'chartType', 'groupedColumn', 'stackedColumn', 'normalizedColumn', 'groupedBar', 'line', 'area', 'pie', 'donut', 'chartContainer', 'getChartModels', 'getChartRef', 'updateChart', 'downloadChart', 'getChartImageDataURL', 'chartRange', 'onChartCreated', 'openChartToolPanel', 'closeChartToolPanel', 'chartThemeOverrides', 'chartOptions', 'suppressChartToolPanelsButton', 'onChartOptionsChanged'],
+    keywords: [
+      'enableCharts',
+      'createRangeChart',
+      'chartType',
+      'groupedColumn',
+      'stackedColumn',
+      'normalizedColumn',
+      'groupedBar',
+      'line',
+      'area',
+      'pie',
+      'donut',
+      'chartContainer',
+      'getChartModels',
+      'getChartRef',
+      'updateChart',
+      'downloadChart',
+      'getChartImageDataURL',
+      'chartRange',
+      'onChartCreated',
+      'openChartToolPanel',
+      'closeChartToolPanel',
+      'chartThemeOverrides',
+      'chartOptions',
+      'suppressChartToolPanelsButton',
+      'onChartOptionsChanged',
+    ],
     controls: [
       {
         key: 'type',

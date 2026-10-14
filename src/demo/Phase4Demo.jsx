@@ -15,15 +15,7 @@ const Section = ({ title, children, note }) => (
 function RoleCheckbox(props, setRoles) {
   const { value, node, colDef } = props;
   const checked = colDef.field === 'read' ? value === 1 : value === 2;
-  return (
-    <input
-      type="checkbox"
-      className="role-cb"
-      checked={checked}
-      onChange={() => setRoles(node)}
-      onClick={e => e.stopPropagation()}
-    />
-  );
+  return <input type="checkbox" className="role-cb" checked={checked} onChange={() => setRoles(node)} onClick={e => e.stopPropagation()} />;
 }
 
 export function TreeDemo({ log }) {
@@ -35,9 +27,7 @@ export function TreeDemo({ log }) {
       ['현황', '등록', '설정'].forEach((d2, b) => {
         out.push({ mid: mid++, depth1: d1, depth2: `${d1} ${d2}`, permission: (a + b) % 3 });
         if (b === 1) {
-          ['상세A', '상세B'].forEach((d3, c) =>
-            out.push({ mid: mid++, depth1: d1, depth2: `${d1} ${d2}`, depth3: `${d2} ${d3}`, permission: c ? 0 : 2 }),
-          );
+          ['상세A', '상세B'].forEach((d3, c) => out.push({ mid: mid++, depth1: d1, depth2: `${d1} ${d2}`, depth3: `${d2} ${d3}`, permission: c ? 0 : 2 }));
         }
       });
     });
@@ -166,7 +156,7 @@ export function SsrmPlanDemo({ log }) {
 const PLAN_ROWS = [
   'SELECT STATEMENT  Cost=12',
   '  TABLE ACCESS BY INDEX ROWID TB_ORDER (cost=4 card=120)',
-  '    INDEX RANGE SCAN IX_ORDER_01 — 조건: ORDER_DT BETWEEN :1 AND :2 그리고 STATUS IN (\'A\',\'B\',\'C\') 인 경우 인덱스 범위 스캔이 수행되며 이 줄은 일부러 길게 작성해서 autoHeight 로 행 높이가 늘어나는지 확인합니다.',
+  "    INDEX RANGE SCAN IX_ORDER_01 — 조건: ORDER_DT BETWEEN :1 AND :2 그리고 STATUS IN ('A','B','C') 인 경우 인덱스 범위 스캔이 수행되며 이 줄은 일부러 길게 작성해서 autoHeight 로 행 높이가 늘어나는지 확인합니다.",
   '  NESTED LOOPS',
   '    TABLE ACCESS FULL TB_CUSTOMER',
 ];
@@ -213,9 +203,7 @@ export function SsrmLargeDemo({ log }) {
 // ── WorkGroupPrioritySetting + ConditionInfo: 행 드래그 / 상단 고정행 ──────────
 const getPinnedRowStyle = ({ node }) => (node.rowPinned ? { fontWeight: 'bold', fontStyle: 'italic' } : 0);
 export function RowDragDemo({ log }) {
-  const [conditionList] = useState(() =>
-    Array.from({ length: 6 }, (_, i) => ({ seq: i + 1, mc_id: `COL_${i + 1}`, comp_op: i % 3, value: `값${i + 1}` })),
-  );
+  const [conditionList] = useState(() => Array.from({ length: 6 }, (_, i) => ({ seq: i + 1, mc_id: `COL_${i + 1}`, comp_op: i % 3, value: `값${i + 1}` })));
   // CLM ConditionInfo 처럼 같은 객체 참조를 유지 (pinnedTopRowData={[defaultConditionInfo]})
   const [defaultConditionInfo] = useState(() => ({ mc_id: '', comp_op: null, value: '' }));
   return (
@@ -226,7 +214,13 @@ export function RowDragDemo({ log }) {
           id="PriorityTable"
           height="260px"
           rowData={useMemo(() => Array.from({ length: 8 }, (_, i) => ({ prio: i + 1, name: `업무그룹 ${String.fromCharCode(65 + i)}` })), [])}
-          columnDefs={useMemo(() => [{ field: 'prio', headerName: '순위', width: 80, flex: 0, valueGetter: p => p.node.rowIndex + 1 }, { field: 'name', headerName: '업무그룹' }], [])}
+          columnDefs={useMemo(
+            () => [
+              { field: 'prio', headerName: '순위', width: 80, flex: 0, valueGetter: p => p.node.rowIndex + 1 },
+              { field: 'name', headerName: '업무그룹' },
+            ],
+            [],
+          )}
           rowSelection={{ mode: 'singleRow', checkboxes: false, enableClickSelection: true }}
           rowDragManaged
           animateRows
@@ -250,7 +244,13 @@ export function RowDragDemo({ log }) {
           columnDefs={useMemo(
             () => [
               { field: 'mc_id', headerName: '컬럼', rowDrag: props => props.context.editable, flex: 1.1 },
-              { field: 'comp_op', headerName: '연산자', cellEditor: 'r2RichSelectCellEditor', cellEditorParams: { values: [0, 1, 2] }, valueFormatter: ({ value }) => ['=', '>', '<'][value] ?? '연산자...' },
+              {
+                field: 'comp_op',
+                headerName: '연산자',
+                cellEditor: 'r2RichSelectCellEditor',
+                cellEditorParams: { values: [0, 1, 2] },
+                valueFormatter: ({ value }) => ['=', '>', '<'][value] ?? '연산자...',
+              },
               { field: 'value', headerName: '값' },
             ],
             [],
@@ -332,7 +332,13 @@ const stageGroup = n => ({
   marryChildren: true,
   children: [
     { headerName: '파기모델', field: `stage_${n}_model`, flex: 0.73, columnGroupShow: 'open', valueGetter: ({ column, data }) => makeStageData(column, data) },
-    { headerName: '사용', field: `stage_${n}_yn`, flex: 0.2, valueGetter: ({ column, data }) => makeStageData(column, data), cellStyle: { textAlign: 'center' } },
+    {
+      headerName: '사용',
+      field: `stage_${n}_yn`,
+      flex: 0.2,
+      valueGetter: ({ column, data }) => makeStageData(column, data),
+      cellStyle: { textAlign: 'center' },
+    },
     { headerName: '추출방식', field: `stage_${n}_extr`, flex: 0.4, columnGroupShow: 'open', valueGetter: ({ column, data }) => makeStageData(column, data) },
     { headerName: '파기구분', field: `stage_${n}_type`, flex: 0.35, valueGetter: ({ column, data }) => makeStageData(column, data) },
   ],
@@ -412,7 +418,9 @@ const PrefixFilter = React.forwardRef(function PrefixFilter(props, ref) {
   );
 });
 export function CustomFilterDemo({ log }) {
-  const [rows] = useState(() => Array.from({ length: 200 }, (_, i) => ({ name: `${['가', '나', '다'][i % 3]}작업${i}`, cnt: (i * 37) % 1000, grp: `그룹${i % 4}` })));
+  const [rows] = useState(() =>
+    Array.from({ length: 200 }, (_, i) => ({ name: `${['가', '나', '다'][i % 3]}작업${i}`, cnt: (i * 37) % 1000, grp: `그룹${i % 4}` })),
+  );
   const [legacy] = useState(() => new URLSearchParams(location.search).has('legacyFilter'));
   return (
     <Table
@@ -455,7 +463,11 @@ export function SpanDemo() {
       suppressRowTransform
       columnDefs={useMemo(
         () => [
-          { field: 'region', headerName: '지역', rowSpan: p => (p.data?.region === '서울' && p.node.rowIndex === 0 ? 4 : p.data?.region === '부산' && p.node.rowIndex === 4 ? 2 : 1) },
+          {
+            field: 'region',
+            headerName: '지역',
+            rowSpan: p => (p.data?.region === '서울' && p.node.rowIndex === 0 ? 4 : p.data?.region === '부산' && p.node.rowIndex === 4 ? 2 : 1),
+          },
           { field: 'sec', headerName: '구분', colSpan: p => (p.data?.sec === 'TOTAL' ? 2 : 1) },
           { field: 'a', headerName: 'A' },
           { field: 'b', headerName: 'B' },
@@ -464,7 +476,11 @@ export function SpanDemo() {
         [],
       )}
       isFullWidthRow={p => !!p.rowNode.data?.banner}
-      fullWidthCellRenderer={p => <div className="demo-banner" style={{ padding: '0 12px', lineHeight: '30px', fontWeight: 600 }}>{p.data.banner}</div>}
+      fullWidthCellRenderer={p => (
+        <div className="demo-banner" style={{ padding: '0 12px', lineHeight: '30px', fontWeight: 600 }}>
+          {p.data.banner}
+        </div>
+      )}
       onGridReady={e => {
         window.__spanApi = e.api;
       }}
@@ -476,10 +492,16 @@ export function SpanDemo() {
 export default function Phase4Demo({ log }) {
   return (
     <div className="p4">
-      <Section title="colSpan / rowSpan / full-width 행" note="sec=TOTAL 이면 2칸 병합, 서울 4행·부산 2행 rowSpan(suppressRowTransform), 10행마다 isFullWidthRow 배너">
+      <Section
+        title="colSpan / rowSpan / full-width 행"
+        note="sec=TOTAL 이면 2칸 병합, 서울 4행·부산 2행 rowSpan(suppressRowTransform), 10행마다 isFullWidthRow 배너"
+      >
         <SpanDemo />
       </Section>
-      <Section title="커스텀 필터 + 행그룹 페이지네이션" note="reactive: model/onModelChange + useGridFilter · ?legacyFilter 로 imperative(forwardRef) · 그룹 4개, pageSize 3">
+      <Section
+        title="커스텀 필터 + 행그룹 페이지네이션"
+        note="reactive: model/onModelChange + useGridFilter · ?legacyFilter 로 imperative(forwardRef) · 그룹 4개, pageSize 3"
+      >
         <CustomFilterDemo log={log} />
       </Section>
       <Section title="컬럼 그룹 접기 — WorkGroupList" note="columnGroupShow:'open' + marryChildren + column.originalParent.colGroupDef.field">

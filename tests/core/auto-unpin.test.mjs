@@ -21,7 +21,14 @@ g.setViewportSize(300, 300);
 check('lockPinned 건너뜀', pins(g), ['b:left', 'd:right']);
 // processUnpinnedColumns
 let seen;
-g = new GridCore({ columnDefs: cols(), rowData: [{}], processUnpinnedColumns: p => { seen = [p.columns.map(c => c.colId), p.viewportWidth]; return p.columns.filter(c => c.colId === 'a'); } });
+g = new GridCore({
+  columnDefs: cols(),
+  rowData: [{}],
+  processUnpinnedColumns: p => {
+    seen = [p.columns.map(c => c.colId), p.viewportWidth];
+    return p.columns.filter(c => c.colId === 'a');
+  },
+});
 g.setViewportSize(300, 300);
 check('processUnpinnedColumns 인자', seen, [['d', 'a'], 300]);
 check('processUnpinnedColumns 결과만 해제', pins(g), ['b:left', 'd:right', 'e:right']);

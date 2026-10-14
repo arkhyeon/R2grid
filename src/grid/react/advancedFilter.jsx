@@ -58,7 +58,10 @@ export function AdvancedFilterBar({ core }) {
   const parent = core.gos.advancedFilterParent;
   const outside = typeof HTMLElement !== 'undefined' && parent instanceof HTMLElement;
   const bar = (
-    <div className={cx('r2-advanced-filter-header', outside && 'r2-advanced-filter-header-outside r2-theme-vars r2-theme-moon', outside && core.theme?.className)} role="row">
+    <div
+      className={cx('r2-advanced-filter-header', outside && 'r2-advanced-filter-header-outside r2-theme-vars r2-theme-moon', outside && core.theme?.className)}
+      role="row"
+    >
       <div className="r2-advanced-filter" role="presentation">
         <Icon name="filter" />
         <input
@@ -107,10 +110,22 @@ function MoveButtons({ core, i, count, move }) {
   if (!core.gos.advancedFilterBuilderParams?.showMoveButtons) return null;
   return (
     <>
-      <button type="button" className="r2-advanced-filter-builder-move" disabled={i === 0} onClick={() => move(i, -1)} aria-label={localeText(core, 'advancedFilterBuilderMoveUpButtonTooltip', '위로')}>
+      <button
+        type="button"
+        className="r2-advanced-filter-builder-move"
+        disabled={i === 0}
+        onClick={() => move(i, -1)}
+        aria-label={localeText(core, 'advancedFilterBuilderMoveUpButtonTooltip', '위로')}
+      >
         <Icon name="small-up" />
       </button>
-      <button type="button" className="r2-advanced-filter-builder-move" disabled={i === count - 1} onClick={() => move(i, 1)} aria-label={localeText(core, 'advancedFilterBuilderMoveDownButtonTooltip', '아래로')}>
+      <button
+        type="button"
+        className="r2-advanced-filter-builder-move"
+        disabled={i === count - 1}
+        onClick={() => move(i, 1)}
+        aria-label={localeText(core, 'advancedFilterBuilderMoveDownButtonTooltip', '아래로')}
+      >
         <Icon name="small-down" />
       </button>
     </>
@@ -139,12 +154,20 @@ function JoinEditor({ core, node, onChange, onRemove, depth, moveSelf }) {
         <button type="button" onClick={() => onChange({ ...node, conditions: [...node.conditions, blankCond(core)] })}>
           {t('advancedFilterBuilderAddCondition', '+ 조건')}
         </button>
-        <button type="button" onClick={() => onChange({ ...node, conditions: [...node.conditions, { filterType: 'join', type: 'OR', conditions: [blankCond(core)] }] })}>
+        <button
+          type="button"
+          onClick={() => onChange({ ...node, conditions: [...node.conditions, { filterType: 'join', type: 'OR', conditions: [blankCond(core)] }] })}
+        >
           {t('advancedFilterBuilderAddGroup', '+ 그룹')}
         </button>
         {moveSelf}
         {onRemove && (
-          <button type="button" className="r2-advanced-filter-builder-remove" onClick={onRemove} aria-label={t('advancedFilterBuilderRemoveGroup', '그룹 삭제')}>
+          <button
+            type="button"
+            className="r2-advanced-filter-builder-remove"
+            onClick={onRemove}
+            aria-label={t('advancedFilterBuilderRemoveGroup', '그룹 삭제')}
+          >
             <Icon name="cross" />
           </button>
         )}
@@ -194,7 +217,12 @@ function JoinEditor({ core, node, onChange, onRemove, depth, moveSelf }) {
               />
             )}
             <MoveButtons core={core} i={i} count={node.conditions.length} move={move} />
-            <button type="button" className="r2-advanced-filter-builder-remove" onClick={() => remove(i)} aria-label={t('advancedFilterBuilderRemoveCondition', '조건 삭제')}>
+            <button
+              type="button"
+              className="r2-advanced-filter-builder-remove"
+              onClick={() => remove(i)}
+              aria-label={t('advancedFilterBuilderRemoveCondition', '조건 삭제')}
+            >
               <Icon name="cross" />
             </button>
           </div>
@@ -242,7 +270,12 @@ export function AdvancedFilterBuilderPopup({ core }) {
   };
   return createPortal(
     <PopupLayer core={core}>
-      <div ref={ref} className="r2-dialog r2-popup-child r2-advanced-filter-builder" style={{ ...pos.style, width }} onKeyDown={e => e.key === 'Escape' && close()}>
+      <div
+        ref={ref}
+        className="r2-dialog r2-popup-child r2-advanced-filter-builder"
+        style={{ ...pos.style, width }}
+        onKeyDown={e => e.key === 'Escape' && close()}
+      >
         <div className="r2-panel-title-bar">
           <span className="r2-panel-title-bar-title">{t('advancedFilterBuilderTitle', '고급 필터 빌더')}</span>
           <span className="r2-panel-title-bar-button" onClick={close} role="button">

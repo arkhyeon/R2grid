@@ -1,14 +1,6 @@
 // R2Grid 컴포넌트 (props / ref.current.api)
 //  <R2Grid ref={ref} columnDefs rowData gridOptions ... onGridReady ... />  → ref.current.api
-import React, {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useLayoutEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { GridCore, DEFAULT_HEADER_HEIGHT } from '../core/GridCore.js';
 import { copySelectionToEvent } from '../core/clipboard.js';
 import { cx } from '../core/utils.js';
@@ -45,8 +37,7 @@ function GridView({ core }) {
   const baseHeaderHeight = (pivotOn ? g.pivotHeaderHeight : undefined) ?? g.headerHeight ?? DEFAULT_HEADER_HEIGHT;
   const headerHeight = core.autoHeaderPx && g.headerHeight !== 0 ? Math.max(baseHeaderHeight, core.autoHeaderPx) : baseHeaderHeight;
   const groupHeaderHeight = (pivotOn ? g.pivotGroupHeaderHeight : undefined) ?? g.groupHeaderHeight ?? baseHeaderHeight;
-  const headerTotal =
-    g.headerHeight === 0 ? 0 : core.headerGroupDepth * groupHeaderHeight + headerHeight + core.getFloatingFiltersHeight(headerHeight);
+  const headerTotal = g.headerHeight === 0 ? 0 : core.headerGroupDepth * groupHeaderHeight + headerHeight + core.getFloatingFiltersHeight(headerHeight);
   const rowHeight = core.getDefaultRowHeight();
   const autoLayout = g.domLayout === 'autoHeight' || g.domLayout === 'print';
   const overlay = core.getOverlayType();

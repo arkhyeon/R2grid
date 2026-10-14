@@ -61,9 +61,10 @@ export function getDataAsCsv(core, params = {}) {
     lines.push(
       cols
         .map(c => {
-          const name = typeof p.processHeaderCallback === 'function'
-            ? p.processHeaderCallback({ column: c, api: core.api, context: core.gos.context })
-            : core.getDisplayName(c);
+          const name =
+            typeof p.processHeaderCallback === 'function'
+              ? p.processHeaderCallback({ column: c, api: core.api, context: core.gos.context })
+              : core.getDisplayName(c);
           return quote(name ?? '');
         })
         .join(sep),

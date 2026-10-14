@@ -83,7 +83,16 @@ function GroupPanel({ ctx }) {
       columnDefs={SALES_COLS.map(c => ({ ...c, rowGroup: c.field === 'region', hide: c.field === 'region' }))}
       rowGroupPanelShow="always"
       autoGroupColumnDef={{ minWidth: 200 }}
-      onColumnRowGroupChanged={e => ctx.log(`columnRowGroupChanged: ${e.api.getRowGroupColumns().map(c => c.getColId()).join(' > ') || '(없음)'}`)}
+      onColumnRowGroupChanged={e =>
+        ctx.log(
+          `columnRowGroupChanged: ${
+            e.api
+              .getRowGroupColumns()
+              .map(c => c.getColId())
+              .join(' > ') || '(없음)'
+          }`,
+        )
+      }
     />
   );
 }
@@ -103,7 +112,13 @@ function TotalRows({ p }) {
 }
 
 // 끌어 옮기기용: 부모 id 필드 방식 (getDataPath 는 경로가 데이터에서 계산돼 자동 이동 대상이 아님)
-const TREE_BY_PARENT = TREE.map(r => ({ id: r.path.join('/'), pid: r.path.length > 1 ? r.path.slice(0, -1).join('/') : null, name: r.path.at(-1), headcount: r.headcount, budget: r.budget }));
+const TREE_BY_PARENT = TREE.map(r => ({
+  id: r.path.join('/'),
+  pid: r.path.length > 1 ? r.path.slice(0, -1).join('/') : null,
+  name: r.path.at(-1),
+  headcount: r.headcount,
+  budget: r.budget,
+}));
 
 function TreeData({ p, ctx }) {
   const [rows] = useState(() => TREE_BY_PARENT.map(r => ({ ...r })));
@@ -113,7 +128,11 @@ function TreeData({ p, ctx }) {
         treeDataParentIdField: 'pid',
         getRowId: x => x.data.id,
         rowDragManaged: true,
-        onRowDragEnd: e => e.dropPosition && ctx.log(`${e.node.data.name} → ${e.dropPosition === 'inside' ? `${e.newParent?.data.name} 안` : `${e.overNode?.data.name} ${e.dropPosition === 'above' ? '위' : '아래'}`} (pid=${e.node.data.pid})`),
+        onRowDragEnd: e =>
+          e.dropPosition &&
+          ctx.log(
+            `${e.node.data.name} → ${e.dropPosition === 'inside' ? `${e.newParent?.data.name} 안` : `${e.overNode?.data.name} ${e.dropPosition === 'above' ? '위' : '아래'}`} (pid=${e.node.data.pid})`,
+          ),
       }
     : { rowData: TREE, getDataPath: d => d.path };
   return (
@@ -174,7 +193,23 @@ export default [
     category: CAT,
     name: '행 그룹 · 집계',
     desc: 'colDef.rowGroup 으로 그룹, aggFunc(sum/min/max/avg/count/first/last/함수)로 집계. 그룹 체크 시 하위 전체 선택(groupSelects).',
-    keywords: ['rowGroup', 'rowGroupIndex', 'aggFunc', 'aggFuncs', 'groupDefaultExpanded', 'isGroupOpenByDefault', 'autoGroupColumnDef', 'groupSelects', 'groupSelectsChildren', 'suppressAggFuncInHeader', 'setRowGroupColumns', 'expandAll', 'collapseAll', 'onRowGroupOpened', 'r2-Grid-AutoColumn'],
+    keywords: [
+      'rowGroup',
+      'rowGroupIndex',
+      'aggFunc',
+      'aggFuncs',
+      'groupDefaultExpanded',
+      'isGroupOpenByDefault',
+      'autoGroupColumnDef',
+      'groupSelects',
+      'groupSelectsChildren',
+      'suppressAggFuncInHeader',
+      'setRowGroupColumns',
+      'expandAll',
+      'collapseAll',
+      'onRowGroupOpened',
+      'r2-Grid-AutoColumn',
+    ],
     controls: [
       {
         key: 'expanded',
@@ -202,7 +237,7 @@ export default [
         type: 'boolean',
         default: true,
         label: 'suppressAggFuncInHeader (반대)',
-        desc: "집계 컬럼(aggFunc) 헤더에 함수 이름을 붙일지. 그룹 행의 수량·매출 칸에 하위 합계가 표시됩니다.",
+        desc: '집계 컬럼(aggFunc) 헤더에 함수 이름을 붙일지. 그룹 행의 수량·매출 칸에 하위 합계가 표시됩니다.',
         on: "헤더 'sum(수량)'",
         off: "헤더 '수량' (suppressAggFuncInHeader: true)",
       },
@@ -242,7 +277,7 @@ rowSelection: {
     id: 'date-hierarchy',
     category: CAT,
     name: '날짜 계층으로 묶기',
-    desc: "날짜 컬럼 하나로 연 → 분기 → 월처럼 여러 단계로 묶습니다. colDef.groupHierarchy 에 단계를 나열하면 그 컬럼을 그룹으로 지정할 때 단계마다 묶음이 생깁니다. 원본 컬럼은 하나로 남아 그룹 패널·상태 저장·정렬은 원본 기준.",
+    desc: '날짜 컬럼 하나로 연 → 분기 → 월처럼 여러 단계로 묶습니다. colDef.groupHierarchy 에 단계를 나열하면 그 컬럼을 그룹으로 지정할 때 단계마다 묶음이 생깁니다. 원본 컬럼은 하나로 남아 그룹 패널·상태 저장·정렬은 원본 기준.',
     keywords: ['groupHierarchy', 'groupHierarchyConfig', 'year', 'quarter', 'month', 'formattedMonth', 'day', 'hour', 'minute', 'second', '날짜 그룹'],
     controls: [
       {
@@ -263,10 +298,14 @@ rowSelection: {
   columnDefs={[
     { field: 'updatedAt', rowGroup: true, hide: true, groupHierarchy: ${JSON.stringify(HIER_PRESETS[p.parts]).replace(/"/g, "'")} },
     { field: 'rowCnt', aggFunc: 'sum' },
-  ]}${p.parts.includes('half') ? `
+  ]}${
+    p.parts.includes('half')
+      ? `
   groupHierarchyConfig={{
     half: { headerName: '반기', valueGetter: p => (Number(p.data.updatedAt.slice(5, 7)) <= 6 ? '상반기' : '하반기') },
-  }}` : ''}
+  }}`
+      : ''
+  }
 />`,
   },
   {
@@ -274,7 +313,16 @@ rowSelection: {
     category: CAT,
     name: '그룹 표시 방식',
     desc: "groupDisplayType: 'singleColumn'(기본) / 'multipleColumns'(그룹 단계마다 컬럼) / 'groupRows'(그룹을 전체 폭 행으로). groupHideOpenParents 는 펼친 부모 행을 숨기고 첫 자식에 표시, showOpenedGroup 은 모든 자식에 표시.",
-    keywords: ['groupDisplayType', 'singleColumn', 'multipleColumns', 'groupRows', 'groupHideOpenParents', 'showOpenedGroup', 'groupRowRenderer', 'groupRowRendererParams'],
+    keywords: [
+      'groupDisplayType',
+      'singleColumn',
+      'multipleColumns',
+      'groupRows',
+      'groupHideOpenParents',
+      'showOpenedGroup',
+      'groupRowRenderer',
+      'groupRowRendererParams',
+    ],
     controls: [
       {
         key: 'type',
@@ -374,8 +422,23 @@ rowSelection: {
     category: CAT,
     name: '트리 데이터',
     desc: 'treeData + getDataPath 로 경로 배열을 계층으로 표시합니다. 부모 행 값은 aggFunc 로 집계됩니다.',
-    keywords: ['treeData', 'getDataPath', 'autoGroupColumnDef', 'groupDefaultExpanded', 'aggFunc', 'suppressAggFuncInHeader', 'getRowId', 'treeDataParentIdField', 'treeDataChildrenField', 'rowDragManaged', 'rowDragInsertDelay', 'isRowValidDropPosition', 'treeDataDisplayType'],
-    controls: [{
+    keywords: [
+      'treeData',
+      'getDataPath',
+      'autoGroupColumnDef',
+      'groupDefaultExpanded',
+      'aggFunc',
+      'suppressAggFuncInHeader',
+      'getRowId',
+      'treeDataParentIdField',
+      'treeDataChildrenField',
+      'rowDragManaged',
+      'rowDragInsertDelay',
+      'isRowValidDropPosition',
+      'treeDataDisplayType',
+    ],
+    controls: [
+      {
         key: 'expanded',
         type: 'select',
         default: -1,
@@ -392,10 +455,11 @@ rowSelection: {
         type: 'boolean',
         default: false,
         label: 'rowDragManaged',
-        desc: "트리 행을 끌어 다른 행의 위·아래(같은 부모) 또는 가운데(그 행의 자식)로 옮깁니다. 부모가 데이터에 있는 treeDataParentIdField · treeDataChildrenField 방식에서만 그리드가 직접 옮기고, 접힌 행 가운데에 rowDragInsertDelay(기본 500ms) 머무르면 펼쳐집니다.",
+        desc: '트리 행을 끌어 다른 행의 위·아래(같은 부모) 또는 가운데(그 행의 자식)로 옮깁니다. 부모가 데이터에 있는 treeDataParentIdField · treeDataChildrenField 방식에서만 그리드가 직접 옮기고, 접힌 행 가운데에 rowDragInsertDelay(기본 500ms) 머무르면 펼쳐집니다.',
         on: '부모 id 필드(pid) 트리 + 끌어 옮기기',
         off: 'getDataPath 경로 트리',
-      }],
+      },
+    ],
     render: (p, ctx) => <TreeData p={p} ctx={ctx} />,
     code: p => `<R2Grid
   treeData
@@ -426,7 +490,18 @@ suppressAggFuncInHeader`,
     category: CAT,
     name: '피벗',
     desc: 'pivotMode 에서 pivot 컬럼의 값 조합마다 결과 컬럼을 만들고, 행 그룹 × 피벗 키별로 집계합니다. 행 그룹이 없으면 합계 1행.',
-    keywords: ['pivotMode', 'pivot', 'pivotIndex', 'enablePivot', 'setPivotMode', 'setPivotColumns', 'getPivotResultColumns', 'pivotComparator', 'onColumnPivotModeChanged', 'pivot_'],
+    keywords: [
+      'pivotMode',
+      'pivot',
+      'pivotIndex',
+      'enablePivot',
+      'setPivotMode',
+      'setPivotColumns',
+      'getPivotResultColumns',
+      'pivotComparator',
+      'onColumnPivotModeChanged',
+      'pivot_',
+    ],
     controls: [
       {
         key: 'pivotMode',

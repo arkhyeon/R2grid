@@ -2,7 +2,13 @@ import { check } from '../check.mjs';
 const { GridCore } = await import('../../src/grid/core/GridCore.js');
 const rows = () => [1, 2, 3, 4, 5].map(i => ({ id: i, name: 'n' + i, amt: i * 10 }));
 const mk = extra => {
-  const c = new GridCore({ columnDefs: [{ field: 'name' }, { field: 'amt', editable: true }], rowData: rows(), getRowId: p => String(p.data.id), enableRowPinning: true, ...extra });
+  const c = new GridCore({
+    columnDefs: [{ field: 'name' }, { field: 'amt', editable: true }],
+    rowData: rows(),
+    getRowId: p => String(p.data.id),
+    enableRowPinning: true,
+    ...extra,
+  });
   c.setViewportSize(800, 400);
   return c;
 };
@@ -31,7 +37,10 @@ check('해제', [names(a.pinnedBottom), a.api.getRowNode('4').pinnedSibling ?? n
 const st = a.api.getState();
 check('state', st.rowPinning, { top: [], bottom: ['2'] });
 // 데이터 갱신(getRowId): data 교체 따라감, 삭제되면 빠짐
-a.api.setGridOption('rowData', rows().map(r => (r.id === 2 ? { ...r, name: 'N2' } : r)));
+a.api.setGridOption(
+  'rowData',
+  rows().map(r => (r.id === 2 ? { ...r, name: 'N2' } : r)),
+);
 check('데이터 갱신 반영', names(a.pinnedBottom), ['N2']);
 a.api.applyTransaction({ remove: [{ id: 2 }] });
 check('삭제 시 해제', [a.pinnedBottom.length, a.api.getState().rowPinning ?? null], [0, null]);
@@ -50,7 +59,10 @@ d.pinRowManual(d.api.getRowNode('1'), 'top');
 check('pinnedTopRowData 와 함께', names(d.pinnedTop), ['TOTAL', 'n1']);
 check('사용자 고정행은 고정 대상 아님', d.isRowPinnableNode(d.pinnedTop[0]), false);
 // 그룹 모드: 리프만
-const g = mk({ columnDefs: [{ field: 'name' }, { field: 'grp', rowGroup: true, hide: true }, { field: 'amt' }], rowData: rows().map(r => ({ ...r, grp: r.id % 2 ? 'odd' : 'even' })) });
+const g = mk({
+  columnDefs: [{ field: 'name' }, { field: 'grp', rowGroup: true, hide: true }, { field: 'amt' }],
+  rowData: rows().map(r => ({ ...r, grp: r.id % 2 ? 'odd' : 'even' })),
+});
 const grpNode = g.displayedNodes.find(n => n.group);
 check('그룹 행 고정 불가', g.isRowPinnableNode(grpNode), false);
 // 컨텍스트 메뉴 기본 항목

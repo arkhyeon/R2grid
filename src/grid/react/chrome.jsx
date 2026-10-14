@@ -124,7 +124,10 @@ function ToolPanelWrapper({ hidden, tp, core, children }) {
       role="tabpanel"
       style={{ width: width ?? tp.width, minWidth: tp.minWidth, maxWidth: tp.maxWidth }}
     >
-      <div className={cx('r2-tool-panel-horizontal-resize', `r2-tool-panel-resize-${core.sideBarPosition === 'left' ? 'right' : 'left'}`)} onPointerDown={onResizeDown} />
+      <div
+        className={cx('r2-tool-panel-horizontal-resize', `r2-tool-panel-resize-${core.sideBarPosition === 'left' ? 'right' : 'left'}`)}
+        onPointerDown={onResizeDown}
+      />
       {children}
     </div>
   );
@@ -273,13 +276,7 @@ export function Overlay({ core, type }) {
   return (
     <div className={cx('r2-overlay', loading && 'r2-overlay-modal')} aria-hidden="false">
       <div className="r2-overlay-panel" role="presentation">
-        <div
-          className={cx(
-            'r2-overlay-wrapper r2-layout-normal',
-            loading ? 'r2-overlay-loading-wrapper' : 'r2-overlay-no-rows-wrapper',
-          )}
-          role="presentation"
-        >
+        <div className={cx('r2-overlay-wrapper r2-layout-normal', loading ? 'r2-overlay-loading-wrapper' : 'r2-overlay-no-rows-wrapper')} role="presentation">
           {content}
         </div>
       </div>
@@ -299,7 +296,10 @@ export function PagingPanel({ core }) {
   const startRow = total ? page * size + 1 : 0;
   const endRow = Math.min(total, (page + 1) * size);
   // paginationNumberFormatter: 페이지 표시줄 숫자 형식
-  const fmt = n => (typeof core.gos.paginationNumberFormatter === 'function' ? core.gos.paginationNumberFormatter({ value: n, api: core.api, context: core.gos.context }) : n.toLocaleString());
+  const fmt = n =>
+    typeof core.gos.paginationNumberFormatter === 'function'
+      ? core.gos.paginationNumberFormatter({ value: n, api: core.api, context: core.gos.context })
+      : n.toLocaleString();
   let selector = g.paginationPageSizeSelector ?? true;
   if (g.paginationAutoPageSize) selector = false;
   let options = Array.isArray(selector) ? selector : [20, 50, 100];
@@ -321,11 +321,7 @@ export function PagingPanel({ core }) {
       {selector && (
         <span className="r2-paging-page-size">
           <span className="r2-paging-page-size-label">{t('pageSizeSelectorLabel')}</span>
-          <select
-            className="r2-picker-field-wrapper"
-            value={size}
-            onChange={e => core.setGridOption('paginationPageSize', Number(e.target.value))}
-          >
+          <select className="r2-picker-field-wrapper" value={size} onChange={e => core.setGridOption('paginationPageSize', Number(e.target.value))}>
             {options.map(o => (
               <option key={o} value={o}>
                 {o}
@@ -401,7 +397,8 @@ export function useTooltip(core) {
     }
     const target = tooltipTarget(core, el);
     const cd = target?.colDef || {};
-    const sel = typeof cd.tooltipComponentSelector === 'function' ? cd.tooltipComponentSelector({ ...target, value: text, api: core.api, context: g().context }) : null;
+    const sel =
+      typeof cd.tooltipComponentSelector === 'function' ? cd.tooltipComponentSelector({ ...target, value: text, api: core.api, context: g().context }) : null;
     let comp = sel?.component ?? cd.tooltipComponent;
     if (typeof comp === 'string') comp = g().components?.[comp];
     const params = comp

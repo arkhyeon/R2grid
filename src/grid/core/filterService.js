@@ -5,27 +5,8 @@
 //  set    : { filterType:'set', values:['a', null] }
 import { getFieldValue, toText } from './utils.js';
 
-export const TEXT_FILTER_TYPES = [
-  'contains',
-  'notContains',
-  'equals',
-  'notEqual',
-  'startsWith',
-  'endsWith',
-  'blank',
-  'notBlank',
-];
-export const NUMBER_FILTER_TYPES = [
-  'equals',
-  'notEqual',
-  'greaterThan',
-  'greaterThanOrEqual',
-  'lessThan',
-  'lessThanOrEqual',
-  'inRange',
-  'blank',
-  'notBlank',
-];
+export const TEXT_FILTER_TYPES = ['contains', 'notContains', 'equals', 'notEqual', 'startsWith', 'endsWith', 'blank', 'notBlank'];
+export const NUMBER_FILTER_TYPES = ['equals', 'notEqual', 'greaterThan', 'greaterThanOrEqual', 'lessThan', 'lessThanOrEqual', 'inRange', 'blank', 'notBlank'];
 export const DATE_FILTER_TYPES = ['equals', 'notEqual', 'lessThan', 'greaterThan', 'inRange', 'blank', 'notBlank'];
 
 // colDef.filter → 내부 필터 종류. 사용자 컴포넌트(함수/클래스/components 등록명)는 'custom'
@@ -70,9 +51,7 @@ export function textConditionPasses(cond, raw, filterParams) {
   const filterText = cond.filter;
   if (filterText == null || filterText === '') return true;
   if (raw == null) return type === 'notEqual' || type === 'notContains';
-  const fmt =
-    filterParams?.textFormatter ||
-    (filterParams?.caseSensitive ? s => s : s => s.toLocaleLowerCase());
+  const fmt = filterParams?.textFormatter || (filterParams?.caseSensitive ? s => s : s => s.toLocaleLowerCase());
   const v = fmt(toText(raw));
   const f = fmt(String(filterText));
   if (filterParams?.textMatcher) {
@@ -113,8 +92,7 @@ export function numberConditionPasses(cond, raw, filterParams) {
     if (type === 'notEqual') return filterParams?.includeBlanksInNotEqual !== false;
     if (type === 'equals') return !!filterParams?.includeBlanksInEquals;
     if (type === 'lessThan' || type === 'lessThanOrEqual') return !!filterParams?.includeBlanksInLessThan;
-    if (type === 'greaterThan' || type === 'greaterThanOrEqual')
-      return !!filterParams?.includeBlanksInGreaterThan;
+    if (type === 'greaterThan' || type === 'greaterThanOrEqual') return !!filterParams?.includeBlanksInGreaterThan;
     if (type === 'inRange') return !!filterParams?.includeBlanksInRange;
     return false;
   }
@@ -190,9 +168,7 @@ export function setFilterKey(value, filterParams, params) {
 function evaluateCombined(model, single) {
   if (Array.isArray(model.conditions)) {
     if (!model.conditions.length) return true;
-    return model.operator === 'OR'
-      ? model.conditions.some(single)
-      : model.conditions.every(single);
+    return model.operator === 'OR' ? model.conditions.some(single) : model.conditions.every(single);
   }
   return single(model);
 }
@@ -246,11 +222,7 @@ export function isModelActive(model) {
   if (!model) return false;
   if (model.filterType === 'set') return Array.isArray(model.values);
   const condActive = c =>
-    c &&
-    (c.type === 'blank' ||
-      c.type === 'notBlank' ||
-      (c.filter != null && c.filter !== '') ||
-      (c.dateFrom != null && c.dateFrom !== ''));
+    c && (c.type === 'blank' || c.type === 'notBlank' || (c.filter != null && c.filter !== '') || (c.dateFrom != null && c.dateFrom !== ''));
   if (Array.isArray(model.conditions)) return model.conditions.some(condActive);
   return condActive(model);
 }

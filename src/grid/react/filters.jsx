@@ -2,14 +2,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { localeText } from '../core/locale.js';
-import {
-  DATE_FILTER_TYPES,
-  NUMBER_FILTER_TYPES,
-  TEXT_FILTER_TYPES,
-  isModelActive,
-  resolveCustomFilterImpl,
-  resolveFilterKind,
-} from '../core/filterService.js';
+import { DATE_FILTER_TYPES, NUMBER_FILTER_TYPES, TEXT_FILTER_TYPES, isModelActive, resolveCustomFilterImpl, resolveFilterKind } from '../core/filterService.js';
 import { cx } from '../core/utils.js';
 import { Checkbox, Icon } from './common.jsx';
 import { stableElement } from './renderComponent.js';
@@ -173,12 +166,7 @@ function FilterButtons({ core, buttons, onApply, onClear, onReset, onCancel }) {
   return (
     <div className="r2-filter-apply-panel">
       {buttons.map(b => (
-        <button
-          key={b}
-          type="button"
-          className="r2-button r2-standard-button r2-filter-apply-panel-button"
-          onClick={handler[b]}
-        >
+        <button key={b} type="button" className="r2-button r2-standard-button r2-filter-apply-panel-button" onClick={handler[b]}>
           {localeText(core, label[b])}
         </button>
       ))}
@@ -263,9 +251,7 @@ function SetFilterUI({ core, column, onClose }) {
         {!fp.suppressSelectAll && shown.length > 0 && (
           <div className="r2-set-filter-item r2-set-filter-select-all" onClick={toggleAll} role="option">
             <Checkbox checked={allState} onToggle={toggleAll} />
-            <span className="r2-set-filter-item-value">
-              {localeText(core, search ? 'selectAllSearchResults' : 'selectAll')}
-            </span>
+            <span className="r2-set-filter-item-value">{localeText(core, search ? 'selectAllSearchResults' : 'selectAll')}</span>
           </div>
         )}
         {shown.length ? (
@@ -326,7 +312,7 @@ function dateToYmd(d) {
 function resolveDateComponent(core, column, fp) {
   const c = fp?.dateComponent ?? column.colDef.dateComponent ?? core.gos.dateComponent;
   if (!c) return null;
-  return typeof c === 'string' ? core.gos.components?.[c] ?? null : c;
+  return typeof c === 'string' ? (core.gos.components?.[c] ?? null) : c;
 }
 
 function DateField({ core, column, fp, slot, value, onChange, placeholder, inputRef, onKeyDown, className, ariaLabel }) {
@@ -388,8 +374,8 @@ function ConditionFilterUI({ core, column, kind, onClose }) {
   const fromModel = m => {
     const conv = c => ({
       type: c.type || defaultType,
-      from: kind === 'date' ? (c.dateFrom || '').slice(0, 10) : c.filter ?? '',
-      to: kind === 'date' ? (c.dateTo || '').slice(0, 10) : c.filterTo ?? '',
+      from: kind === 'date' ? (c.dateFrom || '').slice(0, 10) : (c.filter ?? ''),
+      to: kind === 'date' ? (c.dateTo || '').slice(0, 10) : (c.filterTo ?? ''),
     });
     if (!m) return { operator: 'AND', conds: [{ type: defaultType, from: '', to: '' }] };
     if (Array.isArray(m.conditions)) return { operator: m.operator || 'AND', conds: m.conditions.map(conv) };
@@ -673,7 +659,7 @@ function ConditionFloatingInput({ core, column, kind }) {
   const fp = column.colDef.filterParams || {};
   const model = core.filterModels.get(column.colId) ?? null;
   const editable = !model || (!Array.isArray(model.conditions) && !READONLY_TYPES.has(model.type));
-  const modelText = model && !Array.isArray(model.conditions) ? (kind === 'date' ? String(model.dateFrom || '').slice(0, 10) : model.filter ?? '') : '';
+  const modelText = model && !Array.isArray(model.conditions) ? (kind === 'date' ? String(model.dateFrom || '').slice(0, 10) : (model.filter ?? '')) : '';
   const [text, setText] = useState(String(modelText));
   const timer = useRef(null);
   const lastApplied = useRef(String(modelText));
@@ -725,22 +711,33 @@ function ConditionFloatingInput({ core, column, kind }) {
     <div className="r2-floating-filter-input">
       <div className={cx('r2-input-field', kind === 'number' ? 'r2-number-field' : kind === 'date' ? 'r2-date-field' : 'r2-text-field')}>
         {kind === 'date' && resolveDateComponent(core, column, fp) ? (
-          <DateField core={core} column={column} fp={fp} slot="floating" value={text} onChange={v => onChange({ target: { value: v } })} ariaLabel={`${core.getDisplayName(column)} Filter Input`} />
+          <DateField
+            core={core}
+            column={column}
+            fp={fp}
+            slot="floating"
+            value={text}
+            onChange={v => onChange({ target: { value: v } })}
+            ariaLabel={`${core.getDisplayName(column)} Filter Input`}
+          />
         ) : (
-        <input
-          className={cx('r2-input-field-input', kind === 'number' ? 'r2-number-field-input' : kind === 'date' ? 'r2-date-field-input' : 'r2-text-field-input')}
-          type={kind === 'number' ? 'number' : kind === 'date' ? 'date' : 'text'}
-          value={text}
-          onChange={onChange}
-          onKeyDown={e => {
-            e.stopPropagation();
-            if (e.key === 'Enter') {
-              clearTimeout(timer.current);
-              apply(text);
-            }
-          }}
-          aria-label={`${core.getDisplayName(column)} Filter Input`}
-        />
+          <input
+            className={cx(
+              'r2-input-field-input',
+              kind === 'number' ? 'r2-number-field-input' : kind === 'date' ? 'r2-date-field-input' : 'r2-text-field-input',
+            )}
+            type={kind === 'number' ? 'number' : kind === 'date' ? 'date' : 'text'}
+            value={text}
+            onChange={onChange}
+            onKeyDown={e => {
+              e.stopPropagation();
+              if (e.key === 'Enter') {
+                clearTimeout(timer.current);
+                apply(text);
+              }
+            }}
+            aria-label={`${core.getDisplayName(column)} Filter Input`}
+          />
         )}
       </div>
     </div>
@@ -799,7 +796,11 @@ export function FloatingFilterCell({ core, col, height }) {
       col-id={col.colId}
       style={{ ...core.colPos(col.left), width: col.actualWidth, height }}
     >
-      {enabled && <div className="r2-floating-filter-body" role="presentation">{body}</div>}
+      {enabled && (
+        <div className="r2-floating-filter-body" role="presentation">
+          {body}
+        </div>
+      )}
       {showButton && (
         <div className="r2-floating-filter-button" role="presentation">
           <button

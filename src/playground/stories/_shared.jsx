@@ -17,7 +17,10 @@ export function Grid({ height = 360, gridRef, style, ...props }) {
 export function lit(v) {
   if (typeof v === 'string') return `'${v.replace(/'/g, "\\'")}'`;
   if (Array.isArray(v)) return `[${v.map(lit).join(', ')}]`;
-  if (v && typeof v === 'object') return `{ ${Object.entries(v).map(([k, x]) => `${k}: ${lit(x)}`).join(', ')} }`;
+  if (v && typeof v === 'object')
+    return `{ ${Object.entries(v)
+      .map(([k, x]) => `${k}: ${lit(x)}`)
+      .join(', ')} }`;
   return String(v);
 }
 

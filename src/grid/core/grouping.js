@@ -95,7 +95,14 @@ export const groupingMethods = {
     // 트리 데이터는 treeDataDisplayType: 'custom' 이면 자동 그룹 컬럼 없이 사용자 컬럼(cellRenderer: 'r2GroupCellRenderer')으로
     if (g.treeData && g.treeDataDisplayType === 'custom') return false;
     if (g.groupDisplayType === 'custom' || g.groupDisplayType === 'groupRows') return false;
-    if (g.treeData && (typeof g.getDataPath === 'function' || g.treeDataChildrenField || g.treeDataParentIdField || (g.rowModelType === 'serverSide' && typeof g.isServerSideGroup === 'function'))) return true;
+    if (
+      g.treeData &&
+      (typeof g.getDataPath === 'function' ||
+        g.treeDataChildrenField ||
+        g.treeDataParentIdField ||
+        (g.rowModelType === 'serverSide' && typeof g.isServerSideGroup === 'function'))
+    )
+      return true;
     // 컬럼 상태 기준 (api/패널로 바뀐 그룹 반영)
     if (leaves) return leaves.some(c => c.rowGroup);
     return (g.columnDefs || []).some(function hasGroup(d) {
@@ -213,9 +220,7 @@ export const groupingMethods = {
 
   rowGroupColumns() {
     const order = new Map(this.allColumns.map((c, i) => [c, i]));
-    return this.allColumns
-      .filter(c => c.rowGroup)
-      .sort((a, b) => (a.rowGroupIndex ?? 1e9) - (b.rowGroupIndex ?? 1e9) || order.get(a) - order.get(b));
+    return this.allColumns.filter(c => c.rowGroup).sort((a, b) => (a.rowGroupIndex ?? 1e9) - (b.rowGroupIndex ?? 1e9) || order.get(a) - order.get(b));
   },
 
   // 실제로 묶는 단계 컬럼: colDef.groupHierarchy 가 있는 그룹 컬럼은 그 단계들(연·분기·월… 가상 컬럼)로 펼침
@@ -255,7 +260,7 @@ export const groupingMethods = {
         } else {
           const custom = typeof part === 'string' ? this.gos.groupHierarchyConfig?.[part] : part;
           if (!custom) return null;
-          name = typeof part === 'string' ? part : custom.colId ?? custom.field ?? `part${i}`;
+          name = typeof part === 'string' ? part : (custom.colId ?? custom.field ?? `part${i}`);
           def = { ...custom };
         }
         const colId = `${HIERARCHY_COL_ID}-${src.colId}-${name}`;
@@ -448,11 +453,12 @@ export const groupingMethods = {
         for (let lvl = 0; lvl < cols.length; lvl++) {
           const col = cols[lvl];
           const v = this.getCellValue(leaf, col);
-          const key = typeof col.colDef.keyCreator === 'function'
-            ? col.colDef.keyCreator({ value: v, node: leaf, data: leaf.data, colDef: col.colDef, column: col, api: this.api, context: this.gos.context })
-            : v == null || v === ''
-              ? null
-              : toText(v);
+          const key =
+            typeof col.colDef.keyCreator === 'function'
+              ? col.colDef.keyCreator({ value: v, node: leaf, data: leaf.data, colDef: col.colDef, column: col, api: this.api, context: this.gos.context })
+              : v == null || v === ''
+                ? null
+                : toText(v);
           if (key == null && this.gos.groupAllowUnbalanced) break;
           const id = `${prefix}-${col.colId}-${key}`;
           let g = byId.get(id);
@@ -542,7 +548,11 @@ export const groupingMethods = {
       root.aggData = null;
       return;
     }
-    this.aggregateNode(root, this.allColumns.filter(c => c.colDef.aggFunc), false);
+    this.aggregateNode(
+      root,
+      this.allColumns.filter(c => c.colDef.aggFunc),
+      false,
+    );
   },
 
   // 값 편집 후 집계 다시 (필터·정렬은 그대로). 붙여넣기·채우기처럼 묶음 편집이면 끝날 때 한 번
@@ -677,7 +687,15 @@ export const groupingMethods = {
       const kids = n.childrenAfterFilter.filter(ch => ch.group || leafOk(ch));
       // 자식 그룹은 표시값(합계행 때문에 비울 수 있음)이 아닌 aggData 를 직접 사용
       const values = kids
-        .map(ch => (ch.group ? (ch.aggData && col.colId in ch.aggData ? ch.aggData[col.colId] : pk != null ? undefined : this.getCellValue(ch, col)) : this.getCellValue(ch, valueCol)))
+        .map(ch =>
+          ch.group
+            ? ch.aggData && col.colId in ch.aggData
+              ? ch.aggData[col.colId]
+              : pk != null
+                ? undefined
+                : this.getCellValue(ch, col)
+            : this.getCellValue(ch, valueCol),
+        )
         .filter(v => pk == null || v !== undefined);
       let fn = typeof af === 'function' ? af : this.gos.aggFuncs?.[af] || BUILTIN_AGG[af];
       if (af === 'count') {
@@ -779,7 +797,8 @@ export const groupingMethods = {
       const allGroups = list.length > 0 && list.every(x => x.group);
       let arr = list;
       if (sortCmp && !(keepGroupOrder && allGroups)) arr = list.slice().sort(sortCmp);
-      else if (!sortCmp && allGroups && typeof initCmp === 'function') arr = list.slice().sort((a, b) => initCmp({ nodeA: a, nodeB: b, api: this.api, context: this.gos.context }));
+      else if (!sortCmp && allGroups && typeof initCmp === 'function')
+        arr = list.slice().sort((a, b) => initCmp({ nodeA: a, nodeB: b, api: this.api, context: this.gos.context }));
       for (const c of arr) if (c.group && c.childrenAfterFilter) c.childrenAfterSort = sortList(c.childrenAfterFilter);
       return arr;
     };

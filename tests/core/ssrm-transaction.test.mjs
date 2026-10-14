@@ -80,7 +80,14 @@ await tick();
 check('리셋 후 유지', [e.api.getRowNode('0').selected, e.api.getRowNode('5').selected], [true, false]);
 // set / deselectAll
 e.api.setServerSideSelectionState({ selectAll: false, toggledNodes: ['3', '7'] });
-check('setServerSideSelectionState', e.api.getSelectedNodes().map(n => n.id).sort(), ['3', '7']);
+check(
+  'setServerSideSelectionState',
+  e.api
+    .getSelectedNodes()
+    .map(n => n.id)
+    .sort(),
+  ['3', '7'],
+);
 check('getState rowSelection', e.api.getState().rowSelection, { selectAll: false, toggledNodes: ['3', '7'] });
 e.api.deselectAll();
 check('deselectAll', [e.api.getSelectedNodes().length, e.getHeaderCheckboxState()], [0, false]);

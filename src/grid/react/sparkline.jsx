@@ -50,7 +50,9 @@ export function SparklineCell({ value, width, height, options = {}, params }) {
         if (p.y == null) return null;
         const x = pad.left + (i * w) / n + (w / n - bw) / 2;
         const y = Math.min(sy(p.y), zero);
-        const s = style ? style({ datum: value[i], yValue: p.y, first: i === 0, last: i === n - 1, min: p.y === Math.min(...ys), max: p.y === Math.max(...ys) }) || {} : {};
+        const s = style
+          ? style({ datum: value[i], yValue: p.y, first: i === 0, last: i === n - 1, min: p.y === Math.min(...ys), max: p.y === Math.max(...ys) }) || {}
+          : {};
         return <rect key={i} x={x} y={y} width={bw} height={Math.max(1, Math.abs(sy(p.y) - zero))} fill={s.fill || options.fill || stroke} />;
       });
     } else {
@@ -61,7 +63,9 @@ export function SparklineCell({ value, width, height, options = {}, params }) {
         if (p.y == null) return null;
         const y = pad.top + (i * h) / n + (h / n - bh) / 2;
         const s = style ? style({ datum: value[i], yValue: p.y, first: i === 0, last: i === n - 1 }) || {} : {};
-        return <rect key={i} x={Math.min(sxv(p.y), zx)} y={y} width={Math.max(1, Math.abs(sxv(p.y) - zx))} height={bh} fill={s.fill || options.fill || stroke} />;
+        return (
+          <rect key={i} x={Math.min(sxv(p.y), zx)} y={y} width={Math.max(1, Math.abs(sxv(p.y) - zx))} height={bh} fill={s.fill || options.fill || stroke} />
+        );
       });
     }
   } else {
@@ -77,9 +81,7 @@ export function SparklineCell({ value, width, height, options = {}, params }) {
         {area && <path d={area} fill={fill} stroke="none" />}
         <path d={d} fill="none" stroke={stroke} strokeWidth={strokeWidth} strokeLinejoin="round" strokeLinecap="round" />
         {mk.enabled &&
-          valid.map(p => (
-            <circle key={p.i} cx={sx(p.i)} cy={sy(p.y)} r={(mk.size ?? 3) / 2} fill={mk.fill || stroke} stroke={mk.stroke || 'none'} />
-          ))}
+          valid.map(p => <circle key={p.i} cx={sx(p.i)} cy={sy(p.y)} r={(mk.size ?? 3) / 2} fill={mk.fill || stroke} stroke={mk.stroke || 'none'} />)}
       </>
     );
   }

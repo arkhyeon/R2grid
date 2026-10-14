@@ -39,7 +39,12 @@ function stageGroup(n) {
 }
 const STAGE_ROWS = SAMPLE.slice(0, 40).map((r, i) => ({
   ...r,
-  stage1: { model: ['원본>임시>분리', '원본>분리', '원본'][i % 3], yn: i % 4 ? 'O' : 'X', extr: i % 2 ? '업무맵' : '계층쿼리', type: i % 2 ? '삭제' : '업데이트' },
+  stage1: {
+    model: ['원본>임시>분리', '원본>분리', '원본'][i % 3],
+    yn: i % 4 ? 'O' : 'X',
+    extr: i % 2 ? '업무맵' : '계층쿼리',
+    type: i % 2 ? '삭제' : '업데이트',
+  },
   stage2: { model: ['원본>분리', '원본'][i % 2], yn: i % 3 ? 'O' : 'X', extr: '업무맵', type: '삭제' },
 }));
 function ColumnGroups({ p, ctx }) {
@@ -77,7 +82,10 @@ function Sizing({ p, ctx }) {
         rowData={SAMPLE}
         columnDefs={BASE_COLUMNS}
         autoSizeStrategy={strategy}
-        onColumnResized={e => e.finished && ctx.log(`columnResized: ${e.column?.getColId() ?? '(여러 컬럼)'} ${e.column ? e.column.getActualWidth() + 'px' : ''} source=${e.source}`)}
+        onColumnResized={e =>
+          e.finished &&
+          ctx.log(`columnResized: ${e.column?.getColId() ?? '(여러 컬럼)'} ${e.column ? e.column.getActualWidth() + 'px' : ''} source=${e.source}`)
+        }
       />
     </>
   );
@@ -158,13 +166,23 @@ function ColSpan() {
 function Aligned({ ctx }) {
   const top = useRef(null);
   const bottom = useRef(null);
-  const totals = useMemo(() => [{ id: '합계', taskName: '', dbms: '', owner: '', rowCnt: SAMPLE.reduce((s, r) => s + r.rowCnt, 0), status: '', updatedAt: '' }], []);
+  const totals = useMemo(
+    () => [{ id: '합계', taskName: '', dbms: '', owner: '', rowCnt: SAMPLE.reduce((s, r) => s + r.rowCnt, 0), status: '', updatedAt: '' }],
+    [],
+  );
   return (
     <>
       <div className="pg-toolbar">
         <span className="pg-note">위 그리드의 컬럼 폭/순서/숨김/가로 스크롤이 아래 합계 그리드에 그대로 반영됩니다</span>
       </div>
-      <Grid gridRef={top} height={300} rowData={SAMPLE} columnDefs={BASE_COLUMNS} alignedGrids={[bottom]} onColumnResized={e => e.finished && ctx.log('위 그리드 리사이즈 → 아래 동기화')} />
+      <Grid
+        gridRef={top}
+        height={300}
+        rowData={SAMPLE}
+        columnDefs={BASE_COLUMNS}
+        alignedGrids={[bottom]}
+        onColumnResized={e => e.finished && ctx.log('위 그리드 리사이즈 → 아래 동기화')}
+      />
       <Grid gridRef={bottom} height={70} rowData={totals} columnDefs={BASE_COLUMNS} headerHeight={0} alignedGrids={[top]} />
     </>
   );
@@ -176,7 +194,22 @@ export default [
     category: CAT,
     name: '컬럼 정의',
     desc: 'width / flex / minWidth / hide / pinned / lockPosition / headerTooltip / type(numericColumn) / cellDataType 등 컬럼 속성.',
-    keywords: ['columnDefs', 'field', 'headerName', 'width', 'flex', 'minWidth', 'maxWidth', 'hide', 'pinned', 'lockPosition', 'headerTooltip', 'numericColumn', 'cellDataType', 'columnTypes'],
+    keywords: [
+      'columnDefs',
+      'field',
+      'headerName',
+      'width',
+      'flex',
+      'minWidth',
+      'maxWidth',
+      'hide',
+      'pinned',
+      'lockPosition',
+      'headerTooltip',
+      'numericColumn',
+      'cellDataType',
+      'columnTypes',
+    ],
     controls: [
       {
         key: 'pinId',
@@ -222,7 +255,18 @@ export default [
     category: CAT,
     name: '컬럼 그룹 · 접기',
     desc: '그룹 헤더(children), columnGroupShow 로 펼쳤을 때만 보이는 컬럼, marryChildren 으로 그룹 밖 이동 금지. 컬럼의 originalParent.colGroupDef 로 부모 그룹 정의에 접근할 수 있습니다.',
-    keywords: ['children', 'columnGroupShow', 'openByDefault', 'marryChildren', 'originalParent', 'colGroupDef', 'setColumnGroupOpened', 'getColumnGroupState', 'onColumnGroupOpened', 'defaultColGroupDef'],
+    keywords: [
+      'children',
+      'columnGroupShow',
+      'openByDefault',
+      'marryChildren',
+      'originalParent',
+      'colGroupDef',
+      'setColumnGroupOpened',
+      'getColumnGroupState',
+      'onColumnGroupOpened',
+      'defaultColGroupDef',
+    ],
     controls: [
       {
         key: 'openByDefault',
@@ -271,7 +315,19 @@ const valueGetter = ({ column, data }) => data[column.originalParent.colGroupDef
     category: CAT,
     name: '컬럼 크기 · 자동 맞춤',
     desc: '드래그 리사이즈, 더블클릭 자동 맞춤, autoSizeColumns / sizeColumnsToFit, autoSizeStrategy(fitCellContents / fitGridWidth / fitProvidedWidth).',
-    keywords: ['autoSizeStrategy', 'fitCellContents', 'fitGridWidth', 'fitProvidedWidth', 'autoSizeColumns', 'autoSizeAllColumns', 'sizeColumnsToFit', 'setColumnWidths', 'skipHeaderOnAutoSize', 'onColumnResized', 'resizable'],
+    keywords: [
+      'autoSizeStrategy',
+      'fitCellContents',
+      'fitGridWidth',
+      'fitProvidedWidth',
+      'autoSizeColumns',
+      'autoSizeAllColumns',
+      'sizeColumnsToFit',
+      'setColumnWidths',
+      'skipHeaderOnAutoSize',
+      'onColumnResized',
+      'resizable',
+    ],
     controls: [
       {
         key: 'strategy',
@@ -325,7 +381,19 @@ api.sizeColumnsToFit();            // 그리드 폭에 맞춤`,
     category: CAT,
     name: '컬럼 이동 · 숨김 · 상태 저장',
     desc: '헤더 드래그 이동, 그리드 밖으로 끌어 숨김, getColumnState / applyColumnState 로 폭·순서·고정·정렬·숨김을 저장/복원합니다.',
-    keywords: ['getColumnState', 'applyColumnState', 'resetColumnState', 'moveColumns', 'setColumnsVisible', 'setColumnsPinned', 'onColumnMoved', 'onColumnVisible', 'suppressDragLeaveHidesColumns', 'suppressMovableColumns', 'maintainColumnOrder'],
+    keywords: [
+      'getColumnState',
+      'applyColumnState',
+      'resetColumnState',
+      'moveColumns',
+      'setColumnsVisible',
+      'setColumnsPinned',
+      'onColumnMoved',
+      'onColumnVisible',
+      'suppressDragLeaveHidesColumns',
+      'suppressMovableColumns',
+      'maintainColumnOrder',
+    ],
     controls: [],
     render: (p, ctx) => <ColumnState ctx={ctx} />,
     code: () => `const saved = gridRef.current.api.getColumnState();      // 쿠키/스토리지 저장
@@ -350,7 +418,15 @@ onColumnVisible={saveVisibleColumnsToCookie}`,
     category: CAT,
     name: '행 번호 컬럼',
     desc: 'rowNumbers 로 맨 앞에 행 번호 컬럼(colId r2-Grid-RowNumbersColumn)을 추가합니다. 정렬·필터 후의 표시 순서대로 1부터 매기고, 셀 범위 선택(cellSelection)이 켜져 있으면 번호를 눌러 그 행 전체를 범위로 잡습니다.',
-    keywords: ['rowNumbers', 'r2-Grid-RowNumbersColumn', '행 번호', 'enableRowResizer', 'onRowResizeStarted', 'onRowResizeEnded', 'suppressCellSelectionIntegration'],
+    keywords: [
+      'rowNumbers',
+      'r2-Grid-RowNumbersColumn',
+      '행 번호',
+      'enableRowResizer',
+      'onRowResizeStarted',
+      'onRowResizeEnded',
+      'suppressCellSelectionIntegration',
+    ],
     controls: [
       {
         key: 'rowNumbers',
@@ -386,7 +462,10 @@ onColumnVisible={saveVisibleColumnsToCookie}`,
   rowNumbers={${p.rowNumbers ? `{ width: ${p.width}${p.resizer ? ', enableRowResizer: true' : ''} }` : 'false'}}${p.cellSelection ? '\n  cellSelection' : ''}
   ...
 />`,
-    usage: { file: 'page/work/workGroup/WorkGroupList.jsx', code: `<Table\n  id="WorkGroupListTable"\n  ref={gridRef}\n  rowNumbers\n  rowData={workList}\n  columnDefs={columnDefs}\n  ...` },
+    usage: {
+      file: 'page/work/workGroup/WorkGroupList.jsx',
+      code: `<Table\n  id="WorkGroupListTable"\n  ref={gridRef}\n  rowNumbers\n  rowData={workList}\n  columnDefs={columnDefs}\n  ...`,
+    },
   },
   {
     id: 'selection-column',

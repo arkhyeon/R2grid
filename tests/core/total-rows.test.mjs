@@ -9,7 +9,10 @@ const rows = [
 ];
 const mk = extra => {
   const core = new GridCore({
-    columnDefs: [{ field: 'g', rowGroup: true, hide: true }, { field: 'v', aggFunc: 'sum' }],
+    columnDefs: [
+      { field: 'g', rowGroup: true, hide: true },
+      { field: 'v', aggFunc: 'sum' },
+    ],
     rowData: rows.map(r => ({ ...r })),
     groupDefaultExpanded: -1,
     ...extra,
@@ -32,7 +35,16 @@ const view = core => {
 check('기본(합계행 없음, 그룹행에 집계)', view(mk({})), ['G:A:3', 'L::1', 'L::2', 'G:B:10', 'L::10']);
 check('groupTotalRow bottom', view(mk({ groupTotalRow: 'bottom' })), ['G:A:', 'L::1', 'L::2', 'F:합계 A:3', 'G:B:', 'L::10', 'F:합계 B:10']);
 check('grandTotalRow bottom', view(mk({ grandTotalRow: 'bottom' })), ['G:A:3', 'L::1', 'L::2', 'G:B:10', 'L::10', 'F:합계:13']);
-check('grandTotalRow top + 레거시 groupIncludeFooter', view(mk({ grandTotalRow: 'top', groupIncludeFooter: true })), ['F:합계:13', 'G:A:', 'L::1', 'L::2', 'F:합계 A:3', 'G:B:', 'L::10', 'F:합계 B:10']);
+check('grandTotalRow top + 레거시 groupIncludeFooter', view(mk({ grandTotalRow: 'top', groupIncludeFooter: true })), [
+  'F:합계:13',
+  'G:A:',
+  'L::1',
+  'L::2',
+  'F:합계 A:3',
+  'G:B:',
+  'L::10',
+  'F:합계 B:10',
+]);
 const c = mk({ grandTotalRow: 'pinnedBottom' });
 check('pinnedBottom 총합계', [c.api.getPinnedBottomRowCount(), c.getCellValue(c.api.getPinnedBottomRow(0), c.api.getColumn('v'))], [1, 13]);
 const d = mk({ groupTotalRow: 'bottom' });

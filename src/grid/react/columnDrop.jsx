@@ -42,7 +42,8 @@ export function dropIntoZone(core, kind, col, index) {
     core.api.setRowGroupColumns(list);
     // 그룹으로 끌어 넣으면 컬럼 숨김 (기본, suppressGroupChangesColumnVisibility 로 끔)
     const sv = core.gos.suppressGroupChangesColumnVisibility;
-    if (!wasGrouped && col.visible && !(sv === true || sv === 'suppressHideOnGroup' || core.gos.suppressRowGroupHidesColumns)) core.setColumnsVisible([col], false, 'toolPanelUi');
+    if (!wasGrouped && col.visible && !(sv === true || sv === 'suppressHideOnGroup' || core.gos.suppressRowGroupHidesColumns))
+      core.setColumnsVisible([col], false, 'toolPanelUi');
   } else core.setPivotColumns(list, 'toolPanelUi');
 }
 
@@ -65,8 +66,13 @@ export function removeFromZone(core, kind, col) {
     core.api.removeRowGroupColumns([col]);
     // 그룹에서 빼면 다시 표시 (기본, suppressGroupChangesColumnVisibility / suppressMakeColumnVisibleAfterUnGroup 로 끔)
     const sv = core.gos.suppressGroupChangesColumnVisibility;
-    if (!col.visible && !(sv === true || sv === 'suppressShowOnUngroup' || core.gos.suppressMakeColumnVisibleAfterUnGroup)) core.setColumnsVisible([col], true, 'toolPanelUi');
-  } else core.setPivotColumns(core.pivotColumns().filter(c => c !== col), 'toolPanelUi');
+    if (!col.visible && !(sv === true || sv === 'suppressShowOnUngroup' || core.gos.suppressMakeColumnVisibleAfterUnGroup))
+      core.setColumnsVisible([col], true, 'toolPanelUi');
+  } else
+    core.setPivotColumns(
+      core.pivotColumns().filter(c => c !== col),
+      'toolPanelUi',
+    );
 }
 
 export function setDragColumn(e, col, fromZone) {
@@ -125,7 +131,13 @@ export function ColumnDropZone({ core, kind, horizontal = false }) {
 
   return (
     <div
-      className={cx('r2-column-drop', horizontal ? 'r2-column-drop-horizontal' : 'r2-column-drop-vertical', `r2-column-drop-${kind}`, kind === 'rowGroup' && horizontal && 'r2-row-group-panel', over != null && 'r2-column-drop-dragging')}
+      className={cx(
+        'r2-column-drop',
+        horizontal ? 'r2-column-drop-horizontal' : 'r2-column-drop-vertical',
+        `r2-column-drop-${kind}`,
+        kind === 'rowGroup' && horizontal && 'r2-row-group-panel',
+        over != null && 'r2-column-drop-dragging',
+      )}
       data-kind={kind}
       role="toolbar"
       onDragOver={onDragOver}

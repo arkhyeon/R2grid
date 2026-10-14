@@ -7,7 +7,6 @@ import { Icon } from './common.jsx';
 import { PopupLayer, usePopupPosition } from './popup.jsx';
 import { docOf } from '../core/utils.js';
 
-
 function niceScale(min, max, ticks = 5) {
   if (min === max) {
     min = min > 0 ? 0 : min - 1;
@@ -48,7 +47,12 @@ export function ChartSvg({ data, type, width, height, title, options = {}, palet
   const dim = ci => cross && cross.selected.size > 0 && !cross.selected.has(ci);
   const legendH = showLegend ? 28 : 0;
   const titleH = title ? 34 : 14;
-  const pad = { top: titleH + (legendTop ? legendH : 0), right: 16, bottom: 30 + (legendTop ? 0 : legendH) + (xTitle ? 18 : 0) + (isPie ? 0 : 14), left: 56 + (yTitle ? 18 : 0) };
+  const pad = {
+    top: titleH + (legendTop ? legendH : 0),
+    right: 16,
+    bottom: 30 + (legendTop ? 0 : legendH) + (xTitle ? 18 : 0) + (isPie ? 0 : 14),
+    left: 56 + (yTitle ? 18 : 0),
+  };
   const W = width;
   const H = height;
   const pw = Math.max(10, W - pad.left - pad.right);
@@ -128,10 +132,12 @@ export function ChartSvg({ data, type, width, height, title, options = {}, palet
         min = Math.min(min, neg);
       });
     } else {
-      series.forEach(s => [...s.values, ...(cross ? s.totals : [])].forEach(v => {
-        max = Math.max(max, v);
-        min = Math.min(min, v);
-      }));
+      series.forEach(s =>
+        [...s.values, ...(cross ? s.totals : [])].forEach(v => {
+          max = Math.max(max, v);
+          min = Math.min(min, v);
+        }),
+      );
     }
     const sc = niceScale(min, normalized ? 100 : max);
     const valLen = horizontal ? pw : ph;
@@ -141,11 +147,19 @@ export function ChartSvg({ data, type, width, height, title, options = {}, palet
       if (horizontal) {
         const x = pad.left + vpos(t);
         els.push(<line key={`g${i}`} x1={x} x2={x} y1={pad.top} y2={pad.top + ph} stroke="currentColor" opacity="0.12" />);
-        els.push(<text key={`t${i}`} x={x} y={pad.top + ph + 14} textAnchor="middle" fontSize="10" fill="currentColor" opacity="0.7">{normalized ? `${t}%` : fmt(t)}</text>);
+        els.push(
+          <text key={`t${i}`} x={x} y={pad.top + ph + 14} textAnchor="middle" fontSize="10" fill="currentColor" opacity="0.7">
+            {normalized ? `${t}%` : fmt(t)}
+          </text>,
+        );
       } else {
         const y = pad.top + ph - vpos(t);
         els.push(<line key={`g${i}`} x1={pad.left} x2={pad.left + pw} y1={y} y2={y} stroke="currentColor" opacity="0.12" />);
-        els.push(<text key={`t${i}`} x={pad.left - 6} y={y + 3} textAnchor="end" fontSize="10" fill="currentColor" opacity="0.7">{normalized ? `${t}%` : fmt(t)}</text>);
+        els.push(
+          <text key={`t${i}`} x={pad.left - 6} y={y + 3} textAnchor="end" fontSize="10" fill="currentColor" opacity="0.7">
+            {normalized ? `${t}%` : fmt(t)}
+          </text>,
+        );
       }
     });
     const band = (horizontal ? ph : pw) / n;
@@ -155,9 +169,17 @@ export function ChartSvg({ data, type, width, height, title, options = {}, palet
       if (ci % every) return;
       const label = String(c).length > 10 ? `${String(c).slice(0, 9)}…` : c;
       if (horizontal) {
-        els.push(<text key={`c${ci}`} x={pad.left - 6} y={pad.top + band * ci + band / 2 + 3} textAnchor="end" fontSize="10" fill="currentColor" opacity="0.8">{label}</text>);
+        els.push(
+          <text key={`c${ci}`} x={pad.left - 6} y={pad.top + band * ci + band / 2 + 3} textAnchor="end" fontSize="10" fill="currentColor" opacity="0.8">
+            {label}
+          </text>,
+        );
       } else {
-        els.push(<text key={`c${ci}`} x={pad.left + band * ci + band / 2} y={pad.top + ph + 14} textAnchor="middle" fontSize="10" fill="currentColor" opacity="0.8">{label}</text>);
+        els.push(
+          <text key={`c${ci}`} x={pad.left + band * ci + band / 2} y={pad.top + ph + 14} textAnchor="middle" fontSize="10" fill="currentColor" opacity="0.8">
+            {label}
+          </text>,
+        );
       }
     });
     const zero = vpos(0);
@@ -172,7 +194,13 @@ export function ChartSvg({ data, type, width, height, title, options = {}, palet
         });
         const line = ys.map((y, ci) => `${ci ? 'L' : 'M'}${cx(ci)},${y}`).join('');
         if (type !== 'line') {
-          const back = type === 'stackedArea' ? base.map((b, ci) => `L${cx(ci)},${pad.top + ph - vpos(b)}`).reverse().join('') : `L${cx(n - 1)},${pad.top + ph - zero}L${cx(0)},${pad.top + ph - zero}`;
+          const back =
+            type === 'stackedArea'
+              ? base
+                  .map((b, ci) => `L${cx(ci)},${pad.top + ph - vpos(b)}`)
+                  .reverse()
+                  .join('')
+              : `L${cx(n - 1)},${pad.top + ph - zero}L${cx(0)},${pad.top + ph - zero}`;
           els.push(<path key={`a${si}`} d={`${line}${back}Z`} fill={color(si)} opacity="0.35" />);
         }
         els.push(<path key={`l${si}`} d={line} fill="none" stroke={color(si)} strokeWidth="2" />);
@@ -221,7 +249,8 @@ export function ChartSvg({ data, type, width, height, title, options = {}, palet
           };
           const rect = toRect(v0, v1);
           if (horizontal) label(`lv${si}-${ci}`, rect.x + rect.width + 3, rect.y + rect.height / 2 + 3, normalized ? `${v.toFixed(0)}%` : fmt(raw), 'start');
-          else if (!stacked || rect.height > 12) label(`lv${si}-${ci}`, rect.x + rect.width / 2, stacked ? rect.y + rect.height / 2 + 3 : rect.y - 3, normalized ? `${v.toFixed(0)}%` : fmt(raw));
+          else if (!stacked || rect.height > 12)
+            label(`lv${si}-${ci}`, rect.x + rect.width / 2, stacked ? rect.y + rect.height / 2 + 3 : rect.y - 3, normalized ? `${v.toFixed(0)}%` : fmt(raw));
           if (cross) {
             const t = s.totals[ci];
             els.push(
@@ -238,8 +267,27 @@ export function ChartSvg({ data, type, width, height, title, options = {}, palet
         });
       });
     }
-    if (xTitle) els.push(<text key="xt" x={pad.left + pw / 2} y={pad.top + ph + 34} textAnchor="middle" fontSize="11" fill="currentColor" opacity="0.8">{xTitle}</text>);
-    if (yTitle) els.push(<text key="yt" x={14} y={pad.top + ph / 2} textAnchor="middle" fontSize="11" fill="currentColor" opacity="0.8" transform={`rotate(-90 14 ${pad.top + ph / 2})`}>{yTitle}</text>);
+    if (xTitle)
+      els.push(
+        <text key="xt" x={pad.left + pw / 2} y={pad.top + ph + 34} textAnchor="middle" fontSize="11" fill="currentColor" opacity="0.8">
+          {xTitle}
+        </text>,
+      );
+    if (yTitle)
+      els.push(
+        <text
+          key="yt"
+          x={14}
+          y={pad.top + ph / 2}
+          textAnchor="middle"
+          fontSize="11"
+          fill="currentColor"
+          opacity="0.8"
+          transform={`rotate(-90 14 ${pad.top + ph / 2})`}
+        >
+          {yTitle}
+        </text>,
+      );
     // 축선
     els.push(
       horizontal ? (
@@ -318,10 +366,17 @@ function ChartSettings({ core, model }) {
         ]
           .filter(([k]) => core.chartPanelTabs().includes(k))
           .map(([k, label]) => (
-          <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'r2-selected' : undefined} onClick={() => core.openChartToolPanel({ chartId: model.chartId, panel: k })}>
-            {label}
-          </button>
-        ))}
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={tab === k}
+              className={tab === k ? 'r2-selected' : undefined}
+              onClick={() => core.openChartToolPanel({ chartId: model.chartId, panel: k })}
+            >
+              {label}
+            </button>
+          ))}
         <span className="r2-chart-settings-close" role="button" title="닫기" onClick={() => core.closeChartToolPanel({ chartId: model.chartId })}>
           <Icon name="cross" />
         </span>
@@ -330,7 +385,12 @@ function ChartSettings({ core, model }) {
         {tab === 'chart' && (
           <div className="r2-chart-type-list">
             {types.map(([k, label]) => (
-              <button key={k} type="button" className={model.chartType === k ? 'r2-selected' : undefined} onClick={() => core.updateChart({ chartId: model.chartId, chartType: k })}>
+              <button
+                key={k}
+                type="button"
+                className={model.chartType === k ? 'r2-selected' : undefined}
+                onClick={() => core.updateChart({ chartId: model.chartId, chartType: k })}
+              >
                 {label}
               </button>
             ))}
@@ -473,10 +533,16 @@ function ChartPanel({ core, model, width, height, floating, onHeaderDown }) {
         )}
         {core.chartToolbarItems(model).includes('chartDownload') && (
           <span className="r2-panel-title-bar-button" role="button" title="PNG 다운로드" onPointerDown={e => e.stopPropagation()} onClick={download}>
-          <Icon name="save" />
-        </span>
+            <Icon name="save" />
+          </span>
         )}
-        <span className="r2-panel-title-bar-button" role="button" title="닫기" onPointerDown={e => e.stopPropagation()} onClick={() => core.destroyChart(model.chartId)}>
+        <span
+          className="r2-panel-title-bar-button"
+          role="button"
+          title="닫기"
+          onPointerDown={e => e.stopPropagation()}
+          onClick={() => core.destroyChart(model.chartId)}
+        >
           <Icon name="cross" />
         </span>
       </div>

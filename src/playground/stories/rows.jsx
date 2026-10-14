@@ -22,7 +22,15 @@ function Selection({ p, ctx }) {
       rowData={SAMPLE}
       columnDefs={[...BASE_COLUMNS, { field: 'useYn', headerName: '사용', width: 80 }]}
       rowSelection={rowSelection}
-      onSelectionChanged={e => ctx.log(`selectionChanged: ${e.api.getSelectedRows().length}행 [${e.api.getSelectedRows().slice(0, 5).map(r => r.id).join(',')}${e.api.getSelectedRows().length > 5 ? '…' : ''}]`)}
+      onSelectionChanged={e =>
+        ctx.log(
+          `selectionChanged: ${e.api.getSelectedRows().length}행 [${e.api
+            .getSelectedRows()
+            .slice(0, 5)
+            .map(r => r.id)
+            .join(',')}${e.api.getSelectedRows().length > 5 ? '…' : ''}]`,
+        )
+      }
     />
   );
 }
@@ -63,7 +71,9 @@ function PinnedRows({ p, ctx }) {
     const root = e.api.getRootNode();
     const sum = root.aggData?.rowCnt ?? 0;
     const label = `필터 후 ${root.allChildrenCount}건`;
-    setRootTotals(prev => (prev && prev[0].rowCnt === sum && prev[0].taskName === label ? prev : [{ id: '합계', taskName: label, dbms: '', owner: '', rowCnt: sum, status: '' }]));
+    setRootTotals(prev =>
+      prev && prev[0].rowCnt === sum && prev[0].taskName === label ? prev : [{ id: '합계', taskName: label, dbms: '', owner: '', rowCnt: sum, status: '' }],
+    );
   };
   return (
     <Grid
@@ -110,7 +120,8 @@ function RowHeight({ p }) {
     () =>
       SAMPLE.slice(0, 40).map((r, i) => ({
         ...r,
-        memo: i % 3 === 0 ? '여러 줄 메모 — wrapText + autoHeight 를 켜면 내용 길이에 맞춰 행 높이가 늘어납니다. 긴 문장이 줄바꿈되어 모두 보입니다.' : '짧은 메모',
+        memo:
+          i % 3 === 0 ? '여러 줄 메모 — wrapText + autoHeight 를 켜면 내용 길이에 맞춰 행 높이가 늘어납니다. 긴 문장이 줄바꿈되어 모두 보입니다.' : '짧은 메모',
       })),
     [],
   );
@@ -135,18 +146,34 @@ function RowHeight({ p }) {
 }
 
 function FullWidth({ p }) {
-  const rows = useMemo(() => SAMPLE.slice(0, 30).flatMap((r, i) => (i % 8 === 7 ? [r, { banner: `── ${Math.floor(i / 8) + 1}구간 소계: ${(i + 1) * 100}건 ──` }] : [r])), []);
+  const rows = useMemo(
+    () => SAMPLE.slice(0, 30).flatMap((r, i) => (i % 8 === 7 ? [r, { banner: `── ${Math.floor(i / 8) + 1}구간 소계: ${(i + 1) * 100}건 ──` }] : [r])),
+    [],
+  );
   // embedFullWidthRows 면 영역마다 불림 — pinned: 'left' | null(가운데) | 'right'
   const banner = x => (
-    <div style={{ padding: '0 14px', lineHeight: '42px', fontWeight: 600, whiteSpace: 'nowrap', background: 'color-mix(in srgb, transparent, var(--r2-accent-color) 10%)' }}>
+    <div
+      style={{
+        padding: '0 14px',
+        lineHeight: '42px',
+        fontWeight: 600,
+        whiteSpace: 'nowrap',
+        background: 'color-mix(in srgb, transparent, var(--r2-accent-color) 10%)',
+      }}
+    >
       {x.pinned === 'left' ? '📌 소계' : x.data.banner}
     </div>
   );
-  const cols = useMemo(() => [...BASE_COLUMNS.map(c => (c.field === 'id' ? { ...c, pinned: 'left' } : c)), { field: 'memo', headerName: '비고', width: 600 }], []);
+  const cols = useMemo(
+    () => [...BASE_COLUMNS.map(c => (c.field === 'id' ? { ...c, pinned: 'left' } : c)), { field: 'memo', headerName: '비고', width: 600 }],
+    [],
+  );
   return (
     <>
       <div className="pg-toolbar">
-        <span className="pg-note">가로로 스크롤해 보세요 — {p.embed ? '배너가 컬럼과 같이 움직이고 고정 영역에도 따로 그려짐' : '배너는 제자리 (화면 폭 고정)'}</span>
+        <span className="pg-note">
+          가로로 스크롤해 보세요 — {p.embed ? '배너가 컬럼과 같이 움직이고 고정 영역에도 따로 그려짐' : '배너는 제자리 (화면 폭 고정)'}
+        </span>
       </div>
       <Grid rowData={rows} columnDefs={cols} isFullWidthRow={x => !!x.rowNode.data?.banner} fullWidthCellRenderer={banner} embedFullWidthRows={p.embed} />
     </>
@@ -171,7 +198,10 @@ function RowSpan() {
     <Grid
       rowData={rows}
       suppressRowTransform
-      columnDefs={[{ field: 'region', headerName: '지역', width: 100, rowSpan: spanOf, cellClassRules: { 'pg-span-cell': x => spanOf(x) > 1 } }, ...BASE_COLUMNS.slice(1)]}
+      columnDefs={[
+        { field: 'region', headerName: '지역', width: 100, rowSpan: spanOf, cellClassRules: { 'pg-span-cell': x => spanOf(x) > 1 } },
+        ...BASE_COLUMNS.slice(1),
+      ]}
     />
   );
 }
@@ -193,7 +223,14 @@ function CellSpan({ p }) {
 }
 
 function MasterDetail({ p, ctx }) {
-  const rows = useMemo(() => SAMPLE.slice(0, 20).map(r => ({ ...r, steps: makeRows(4, r.id * 10).map((s, k) => ({ step: k + 1, name: `${r.taskName}-단계${k + 1}`, rowCnt: s.rowCnt, status: s.status })) })), []);
+  const rows = useMemo(
+    () =>
+      SAMPLE.slice(0, 20).map(r => ({
+        ...r,
+        steps: makeRows(4, r.id * 10).map((s, k) => ({ step: k + 1, name: `${r.taskName}-단계${k + 1}`, rowCnt: s.rowCnt, status: s.status })),
+      })),
+    [],
+  );
   return (
     <Grid
       rowData={rows}
@@ -224,7 +261,23 @@ export default [
     category: CAT,
     name: '행 선택',
     desc: 'rowSelection 객체 하나로 선택 방식을 정합니다. 선택 결과는 api.getSelectedRows() / getSelectedNodes(), 변경은 onSelectionChanged 로 받습니다. 체크박스 컬럼 모양(폭·고정)은 선택 › 체크박스 컬럼 참고.',
-    keywords: ['rowSelection', 'singleRow', 'multiRow', 'checkboxes', 'headerCheckbox', 'enableClickSelection', 'enableSelectionWithoutKeys', 'isRowSelectable', 'hideDisabledCheckboxes', 'getSelectedRows', 'getSelectedNodes', 'selectAll', 'deselectAll', 'onSelectionChanged', 'r2-Grid-SelectionColumn'],
+    keywords: [
+      'rowSelection',
+      'singleRow',
+      'multiRow',
+      'checkboxes',
+      'headerCheckbox',
+      'enableClickSelection',
+      'enableSelectionWithoutKeys',
+      'isRowSelectable',
+      'hideDisabledCheckboxes',
+      'getSelectedRows',
+      'getSelectedNodes',
+      'selectAll',
+      'deselectAll',
+      'onSelectionChanged',
+      'r2-Grid-SelectionColumn',
+    ],
     controls: [
       {
         key: 'mode',
@@ -319,7 +372,18 @@ export default [
     category: CAT,
     name: '행 드래그',
     desc: 'rowDragManaged 는 정렬/필터가 없을 때 그리드가 직접 순서를 바꿉니다. rowDragEntireRow 는 행 어디서나, colDef.rowDrag 는 핸들로 드래그합니다. onRowDragEnd 에서 forEachNode 로 새 순서를 읽습니다.',
-    keywords: ['rowDragManaged', 'rowDragEntireRow', 'rowDragMultiRow', 'rowDrag', 'rowDragText', 'onRowDragEnd', 'onRowDragMove', 'onRowDragEnter', 'forEachNode', 'suppressRowDrag'],
+    keywords: [
+      'rowDragManaged',
+      'rowDragEntireRow',
+      'rowDragMultiRow',
+      'rowDrag',
+      'rowDragText',
+      'onRowDragEnd',
+      'onRowDragMove',
+      'onRowDragEnter',
+      'forEachNode',
+      'suppressRowDrag',
+    ],
     controls: [
       {
         key: 'managed',
@@ -604,7 +668,21 @@ rowDragManaged`,
     category: CAT,
     name: '마스터 / 디테일',
     desc: 'masterDetail + detailCellRendererParams(detailGridOptions, getDetailRowData) 로 행을 펼치면 하위 그리드가 열립니다.',
-    keywords: ['masterDetail', 'detailCellRendererParams', 'detailGridOptions', 'getDetailRowData', 'detailRowHeight', 'detailRowAutoHeight', 'isRowMaster', 'r2GroupCellRenderer', 'detailCellRenderer', 'onRowGroupOpened', 'keepDetailRows', 'keepDetailRowsCount', 'refreshStrategy'],
+    keywords: [
+      'masterDetail',
+      'detailCellRendererParams',
+      'detailGridOptions',
+      'getDetailRowData',
+      'detailRowHeight',
+      'detailRowAutoHeight',
+      'isRowMaster',
+      'r2GroupCellRenderer',
+      'detailCellRenderer',
+      'onRowGroupOpened',
+      'keepDetailRows',
+      'keepDetailRowsCount',
+      'refreshStrategy',
+    ],
     controls: [
       {
         key: 'keep',

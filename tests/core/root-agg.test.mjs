@@ -2,8 +2,11 @@
 import { check } from '../check.mjs';
 const { GridCore } = await import('../../src/grid/core/GridCore.js');
 const rows = [
-  { r: 'KR', y: 2024, v: 1 }, { r: 'KR', y: 2024, v: 2 }, { r: 'KR', y: 2025, v: 4 },
-  { r: 'US', y: 2024, v: 10 }, { r: 'US', y: 2025, v: 20 },
+  { r: 'KR', y: 2024, v: 1 },
+  { r: 'KR', y: 2024, v: 2 },
+  { r: 'KR', y: 2025, v: 4 },
+  { r: 'US', y: 2024, v: 10 },
+  { r: 'US', y: 2025, v: 20 },
 ];
 const mk = o => {
   const c = new GridCore({ rowData: rows.map(x => ({ ...x })), ...o });
@@ -22,12 +25,28 @@ f0.api.setGridOption('alwaysAggregateAtRootLevel', true);
 check('옵션 켜기 → 즉시 집계', f0.api.getRootNode().aggData, { v: 37 });
 check('최상위 행 parent 는 그대로 null', f.api.getDisplayedRowAtIndex(0).parent, null);
 // 그룹
-const g = mk({ columnDefs: [{ field: 'r', rowGroup: true, hide: true }, { field: 'v', aggFunc: 'sum' }], alwaysAggregateAtRootLevel: true });
+const g = mk({
+  columnDefs: [
+    { field: 'r', rowGroup: true, hide: true },
+    { field: 'v', aggFunc: 'sum' },
+  ],
+  alwaysAggregateAtRootLevel: true,
+});
 check('그룹: 루트 합계', [g.api.getRootNode().aggData, g.api.getRootNode().childrenAfterFilter.map(n => n.key)], [{ v: 37 }, ['KR', 'US']]);
-const gt = mk({ columnDefs: [{ field: 'r', rowGroup: true, hide: true }, { field: 'v', aggFunc: 'sum' }], grandTotalRow: 'bottom' });
+const gt = mk({
+  columnDefs: [
+    { field: 'r', rowGroup: true, hide: true },
+    { field: 'v', aggFunc: 'sum' },
+  ],
+  grandTotalRow: 'bottom',
+});
 check('총합계 행 있으면 옵션 없이도 루트 집계', gt.api.getRootNode().aggData, { v: 37 });
 // 피벗 빠른 검색
-const pcols = [{ field: 'r', rowGroup: true }, { field: 'y', pivot: true }, { field: 'v', aggFunc: 'sum' }];
+const pcols = [
+  { field: 'r', rowGroup: true },
+  { field: 'y', pivot: true },
+  { field: 'v', aggFunc: 'sum' },
+];
 const keys = c => c.displayedNodes.map(n => n.key);
 const p = mk({ pivotMode: true, columnDefs: pcols });
 check('피벗 기본', keys(p), ['KR', 'US']);
@@ -38,11 +57,22 @@ check('피벗: 그룹 키로 검색', keys(p), ['KR']);
 p.api.setGridOption('quickFilterText', '3');
 check('피벗: KR 2024 합 3', keys(p), ['KR']);
 const pb = mk({ pivotMode: true, columnDefs: pcols, applyQuickFilterBeforePivotOrAgg: true, quickFilterText: '10' });
-check('원본 먼저: 원본 v=10 행만 남아 US 2024=10, 2025 비움', [keys(pb), pb.getCellValue(pb.displayedNodes[0], pb.getColumn('pivot_2024_v')), pb.getCellValue(pb.displayedNodes[0], pb.getColumn('pivot_2025_v'))], [['US'], 10, null]);
+check(
+  '원본 먼저: 원본 v=10 행만 남아 US 2024=10, 2025 비움',
+  [keys(pb), pb.getCellValue(pb.displayedNodes[0], pb.getColumn('pivot_2024_v')), pb.getCellValue(pb.displayedNodes[0], pb.getColumn('pivot_2025_v'))],
+  [['US'], 10, null],
+);
 pb.api.setGridOption('quickFilterText', '3');
 check('원본 먼저: 원본에 3 없음 → 0행', keys(pb), []);
 // 행 그룹 없는 피벗 (합계 1행)
-const pt = mk({ pivotMode: true, columnDefs: [{ field: 'y', pivot: true }, { field: 'v', aggFunc: 'sum' }], quickFilterText: '24' });
+const pt = mk({
+  pivotMode: true,
+  columnDefs: [
+    { field: 'y', pivot: true },
+    { field: 'v', aggFunc: 'sum' },
+  ],
+  quickFilterText: '24',
+});
 check('합계만 피벗: 2025 합 24 맞음', pt.displayedNodes.length, 1);
 pt.api.setGridOption('quickFilterText', '999');
 check('합계만 피벗: 안 맞으면 비움', pt.displayedNodes.length, 0);
@@ -50,7 +80,17 @@ check('합계만 피벗: 안 맞으면 비움', pt.displayedNodes.length, 0);
 const off = mk({ columnDefs: pcols.map(c => ({ ...c, rowGroup: false, pivot: false })), quickFilterText: 'us' });
 check('피벗 아님: 행 검색', off.api.getDisplayedRowCount(), 2);
 // 편집 후 다시 집계
-const e = mk({ columnDefs: [{ field: 'r', rowGroup: true, hide: true }, { field: 'y', rowGroup: true, hide: true }, { field: 'v', aggFunc: 'sum', editable: true }], groupDefaultExpanded: -1, groupTotalRow: 'bottom', grandTotalRow: 'bottom', alwaysAggregateAtRootLevel: true });
+const e = mk({
+  columnDefs: [
+    { field: 'r', rowGroup: true, hide: true },
+    { field: 'y', rowGroup: true, hide: true },
+    { field: 'v', aggFunc: 'sum', editable: true },
+  ],
+  groupDefaultExpanded: -1,
+  groupTotalRow: 'bottom',
+  grandTotalRow: 'bottom',
+  alwaysAggregateAtRootLevel: true,
+});
 const krLeaf = e.api.getRowNode(e.rootNodes[0].id);
 krLeaf.setDataValue('v', 101);
 const kr = e.groupTop.find(n => n.key === 'KR');

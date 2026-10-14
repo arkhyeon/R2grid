@@ -3,7 +3,15 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { BASE_COLUMNS, SALES, SAMPLE } from '../data.js';
 import { Grid } from './_shared.jsx';
 
-const btn = { padding: '5px 12px', marginRight: 6, borderRadius: 6, border: '1px solid var(--pg-field-border)', background: 'var(--pg-field-bg)', color: 'inherit', cursor: 'pointer' };
+const btn = {
+  padding: '5px 12px',
+  marginRight: 6,
+  borderRadius: 6,
+  border: '1px solid var(--pg-field-border)',
+  background: 'var(--pg-field-bg)',
+  color: 'inherit',
+  cursor: 'pointer',
+};
 
 // ── 그리드 상태 저장 · 복원 ──
 function GridStateDemo({ ctx }) {
@@ -49,7 +57,18 @@ function GridStateDemo({ ctx }) {
         initialState={useInitial ? saved : undefined}
         onStateUpdated={e => ctx.log(`stateUpdated: ${e.sources.join(', ')}`)}
       />
-      <pre style={{ maxHeight: 160, overflow: 'auto', fontSize: 11, margin: '8px 0 0', padding: 8, background: 'var(--pg-code-bg, #1e1e1e)', color: '#ddd', borderRadius: 6 }}>
+      <pre
+        style={{
+          maxHeight: 160,
+          overflow: 'auto',
+          fontSize: 11,
+          margin: '8px 0 0',
+          padding: 8,
+          background: 'var(--pg-code-bg, #1e1e1e)',
+          color: '#ddd',
+          borderRadius: 6,
+        }}
+      >
         {saved ? JSON.stringify(saved, null, 2) : '(정렬·필터·컬럼 이동/숨김·그룹·선택·페이지를 바꾼 뒤 getState() 저장)'}
       </pre>
     </div>
@@ -65,9 +84,22 @@ function BatchEditDemo({ ctx }) {
     () => [
       { field: 'id', width: 70 },
       { field: 'taskName', headerName: '작업명', editable: true, width: 160 },
-      { field: 'dbms', editable: true, cellEditor: 'r2SelectCellEditor', cellEditorParams: { values: ['Oracle', 'MySQL', 'PostgreSQL', 'Tibero', 'MSSQL'] }, width: 130 },
+      {
+        field: 'dbms',
+        editable: true,
+        cellEditor: 'r2SelectCellEditor',
+        cellEditorParams: { values: ['Oracle', 'MySQL', 'PostgreSQL', 'Tibero', 'MSSQL'] },
+        width: 130,
+      },
       { field: 'rowCnt', headerName: '행 수', editable: true, width: 120 },
-      { field: 'status', headerName: '상태', editable: true, cellEditor: 'r2RichSelectCellEditor', cellEditorParams: { values: ['대기', '진행', '완료', '오류'] }, width: 110 },
+      {
+        field: 'status',
+        headerName: '상태',
+        editable: true,
+        cellEditor: 'r2RichSelectCellEditor',
+        cellEditorParams: { values: ['대기', '진행', '완료', '오류'] },
+        width: 110,
+      },
     ],
     [],
   );
@@ -84,7 +116,9 @@ function BatchEditDemo({ ctx }) {
         <button type="button" style={btn} disabled={!on} onClick={() => api().cancelBatchEdit()}>
           cancelBatchEdit (취소)
         </button>
-        <span style={{ fontSize: 12, opacity: 0.75 }}>{on ? '일괄 편집 중 — 바뀐 셀은 강조, 데이터엔 아직 반영 안 됨' : '시작 후 셀을 여러 개 고쳐 보세요'}</span>
+        <span style={{ fontSize: 12, opacity: 0.75 }}>
+          {on ? '일괄 편집 중 — 바뀐 셀은 강조, 데이터엔 아직 반영 안 됨' : '시작 후 셀을 여러 개 고쳐 보세요'}
+        </span>
       </div>
       <Grid
         gridRef={ref}
@@ -125,10 +159,37 @@ function ColumnsToolPanelDemo({ p, ctx }) {
       rowGroupPanelShow={p.groupPanel}
       pivotPanelShow={p.pivotPanel}
       autoGroupColumnDef={{ minWidth: 180 }}
-      onColumnRowGroupChanged={e => ctx.log(`행 그룹: ${e.api.getRowGroupColumns().map(c => c.getColId()).join(' > ') || '(없음)'}`)}
-      onColumnValueChanged={e => ctx.log(`값: ${e.api.getValueColumns().map(c => `${c.getColDef().aggFunc}(${c.getColId()})`).join(', ') || '(없음)'}`)}
+      onColumnRowGroupChanged={e =>
+        ctx.log(
+          `행 그룹: ${
+            e.api
+              .getRowGroupColumns()
+              .map(c => c.getColId())
+              .join(' > ') || '(없음)'
+          }`,
+        )
+      }
+      onColumnValueChanged={e =>
+        ctx.log(
+          `값: ${
+            e.api
+              .getValueColumns()
+              .map(c => `${c.getColDef().aggFunc}(${c.getColId()})`)
+              .join(', ') || '(없음)'
+          }`,
+        )
+      }
       onColumnPivotModeChanged={e => ctx.log(`피벗 모드: ${e.api.isPivotMode()}`)}
-      onColumnPivotChanged={e => ctx.log(`열 레이블: ${e.api.getPivotColumns().map(c => c.getColId()).join(', ') || '(없음)'}`)}
+      onColumnPivotChanged={e =>
+        ctx.log(
+          `열 레이블: ${
+            e.api
+              .getPivotColumns()
+              .map(c => c.getColId())
+              .join(', ') || '(없음)'
+          }`,
+        )
+      }
     />
   );
 }
@@ -139,7 +200,14 @@ function RowDropZoneDemo({ ctx }) {
   const right = useRef(null);
   const [l] = useState(() => SAMPLE.slice(0, 12).map(r => ({ ...r })));
   const [rEmpty] = useState(() => []);
-  const cols = useMemo(() => [{ field: 'id', width: 70, rowDrag: true }, { field: 'taskName', headerName: '작업명', flex: 1 }, { field: 'dbms', width: 110 }], []);
+  const cols = useMemo(
+    () => [
+      { field: 'id', width: 70, rowDrag: true },
+      { field: 'taskName', headerName: '작업명', flex: 1 },
+      { field: 'dbms', width: 110 },
+    ],
+    [],
+  );
   // 두 그리드가 다 마운트된 뒤 연결 (StrictMode 재마운트에도 안전하게 cleanup)
   useEffect(() => {
     const a = left.current?.api;
@@ -166,7 +234,16 @@ function RowDropZoneDemo({ ctx }) {
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
       <div>
         <div style={{ fontSize: 12, marginBottom: 4, opacity: 0.75 }}>원본 (ID 칸의 핸들을 끌어 오른쪽으로)</div>
-        <Grid gridRef={left} height={320} rowData={l} columnDefs={cols} getRowId={p => String(p.data.id)} rowDragManaged rowSelection={{ mode: 'multiRow', checkboxes: false, enableClickSelection: true }} rowDragMultiRow />
+        <Grid
+          gridRef={left}
+          height={320}
+          rowData={l}
+          columnDefs={cols}
+          getRowId={p => String(p.data.id)}
+          rowDragManaged
+          rowSelection={{ mode: 'multiRow', checkboxes: false, enableClickSelection: true }}
+          rowDragMultiRow
+        />
       </div>
       <div>
         <div style={{ fontSize: 12, marginBottom: 4, opacity: 0.75 }}>대상</div>
@@ -204,7 +281,17 @@ api.setState(state, ['filter']);
     category: '셀 · 편집',
     name: '일괄 편집 (Batch Edit)',
     desc: 'api.startBatchEdit() 후의 편집은 데이터에 바로 쓰지 않고 보류합니다(바뀐 셀 강조). commitBatchEdit() 때 한 번에 반영되며 cellValueChanged 가 그때 발생하고, cancelBatchEdit() 는 전부 버립니다. 저장 버튼이 있는 편집 화면에 맞습니다. (BatchEditModule)',
-    keywords: ['startBatchEdit', 'commitBatchEdit', 'cancelBatchEdit', 'isBatchEditing', 'getEditRowValues', 'batchEditingStarted', 'batchEditingStopped', '일괄', '저장'],
+    keywords: [
+      'startBatchEdit',
+      'commitBatchEdit',
+      'cancelBatchEdit',
+      'isBatchEditing',
+      'getEditRowValues',
+      'batchEditingStarted',
+      'batchEditingStopped',
+      '일괄',
+      '저장',
+    ],
     controls: [],
     render: (p, ctx) => <BatchEditDemo ctx={ctx} />,
     code: () => `api.startBatchEdit();          // 편집 보류 시작
@@ -222,8 +309,23 @@ api.cancelBatchEdit();         // 전부 취소
     id: 'columns-tool-panel',
     category: '그룹 · 집계 · 피벗',
     name: '컬럼 툴패널 · 드롭 영역',
-    desc: "컬럼 툴패널: 피벗 모드 토글, 컬럼 목록, 행 그룹 / 값 / 열 레이블 영역. enableRowGroup·enableValue·enablePivot 컬럼을 목록이나 헤더에서 끌어다 놓고, 칩을 끌어 순서를 바꾸거나 밖에 놓아 뺍니다. 값 칩의 함수 이름을 누르면 집계 함수(allowedAggFuncs)를 고릅니다.\ntoolPanelParams: suppressPivotMode / suppressRowGroups / suppressValues / suppressPivots / suppressColumnFilter.",
-    keywords: ['r2ColumnsToolPanel', 'sideBar', 'enableRowGroup', 'enableValue', 'enablePivot', 'allowedAggFuncs', 'defaultAggFunc', 'pivotPanelShow', 'rowGroupPanelShow', 'setColumnAggFunc', 'addValueColumns', 'moveRowGroupColumn', '피벗 모드', '드롭'],
+    desc: '컬럼 툴패널: 피벗 모드 토글, 컬럼 목록, 행 그룹 / 값 / 열 레이블 영역. enableRowGroup·enableValue·enablePivot 컬럼을 목록이나 헤더에서 끌어다 놓고, 칩을 끌어 순서를 바꾸거나 밖에 놓아 뺍니다. 값 칩의 함수 이름을 누르면 집계 함수(allowedAggFuncs)를 고릅니다.\ntoolPanelParams: suppressPivotMode / suppressRowGroups / suppressValues / suppressPivots / suppressColumnFilter.',
+    keywords: [
+      'r2ColumnsToolPanel',
+      'sideBar',
+      'enableRowGroup',
+      'enableValue',
+      'enablePivot',
+      'allowedAggFuncs',
+      'defaultAggFunc',
+      'pivotPanelShow',
+      'rowGroupPanelShow',
+      'setColumnAggFunc',
+      'addValueColumns',
+      'moveRowGroupColumn',
+      '피벗 모드',
+      '드롭',
+    ],
     controls: [
       {
         key: 'groupPanel',
@@ -272,7 +374,17 @@ api.moveRowGroupColumn(0, 1);`,
     category: '행',
     name: '그리드 간 행 드래그',
     desc: '대상 그리드의 api.getRowDropZoneParams({ onDragStop … }) 를 원본 그리드의 api.addRowDropZone() 에 넘기면, 원본에서 끈 행을 대상에 놓을 때 콜백이 대상 그리드 기준 overIndex/overNode 와 함께 호출됩니다. 임의 DOM 요소도 { getContainer } 로 드롭 영역이 됩니다.',
-    keywords: ['addRowDropZone', 'removeRowDropZone', 'getRowDropZoneParams', 'RowDropZoneParams', 'onDragStop', 'rowDrag', 'rowDragMultiRow', '드래그', '그리드 간'],
+    keywords: [
+      'addRowDropZone',
+      'removeRowDropZone',
+      'getRowDropZoneParams',
+      'RowDropZoneParams',
+      'onDragStop',
+      'rowDrag',
+      'rowDragMultiRow',
+      '드래그',
+      '그리드 간',
+    ],
     controls: [],
     wide: true,
     render: (p, ctx) => <RowDropZoneDemo ctx={ctx} />,
@@ -296,7 +408,8 @@ sourceApi.addRowDropZone({
     name: '컬럼 호버 강조',
     desc: 'columnHoverHighlight: 마우스가 올라간 컬럼 전체(셀 + 헤더)를 강조합니다. api.isColumnHovered(col) 로 확인. 색은 --r2-column-hover-color.',
     keywords: ['columnHoverHighlight', 'isColumnHovered', 'r2-column-hover', '호버'],
-    controls: [{
+    controls: [
+      {
         key: 'on',
         type: 'boolean',
         default: true,
@@ -304,7 +417,8 @@ sourceApi.addRowDropZone({
         desc: '마우스가 올라간 컬럼 전체(셀 + 헤더)에 r2-column-hover 클래스를 붙여 강조합니다. 색은 --r2-column-hover-color (기본 = 행 호버색).',
         on: '세로 줄 강조',
         off: '행 호버 강조만',
-      }],
+      },
+    ],
     render: p => <Grid key={String(p.on)} rowData={SAMPLE} columnDefs={BASE_COLUMNS} columnHoverHighlight={p.on} />,
     code: p => `<R2Grid columnHoverHighlight={${p.on}} ... />`,
   },

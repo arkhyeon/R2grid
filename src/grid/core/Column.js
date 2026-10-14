@@ -59,7 +59,7 @@ export class Column {
     if ((colDef.aggFunc ?? null) !== (this.aggFunc ?? null)) this.colDef = { ...colDef, aggFunc: this.aggFunc ?? undefined };
     if (changed('width')) {
       const w = pick('width', 'initialWidth');
-      this.width = w != null ? w : this.width ?? DEFAULT_COL_WIDTH;
+      this.width = w != null ? w : (this.width ?? DEFAULT_COL_WIDTH);
     }
     this.minWidth = colDef.minWidth ?? DEFAULT_MIN_WIDTH;
     this.maxWidth = colDef.maxWidth ?? null;

@@ -61,7 +61,9 @@ export const stateMethods = {
       columnSizingModel: cols.map(c => (c.flex ? { colId: c.colId, width: c.actualWidth, flex: c.flex } : { colId: c.colId, width: c.actualWidth })),
     };
     s.columnOrder = { orderedColIds: cols.map(c => c.colId) };
-    const openGroups = this.getColumnGroupState().filter(g => g.open).map(g => g.groupId);
+    const openGroups = this.getColumnGroupState()
+      .filter(g => g.open)
+      .map(g => g.groupId);
     if (openGroups.length) s.columnGroup = { openColumnGroupIds: openGroups };
     const expanded = this.collectExpandedIds();
     if (expanded.length) s.rowGroupExpansion = { expandedRowGroupIds: expanded };
@@ -71,7 +73,9 @@ export const stateMethods = {
       const ss = this.getServerSideSelectionState();
       if (ss && (ss.selectAll || ss.selectAllChildren || ss.toggledNodes.length)) s.rowSelection = ss;
     } else {
-      const selected = this.getSelectedNodes().map(n => n.id).filter(id => id != null);
+      const selected = this.getSelectedNodes()
+        .map(n => n.id)
+        .filter(id => id != null);
       if (selected.length) s.rowSelection = selected;
     }
     if (this.gos.pagination) s.pagination = { page: this.currentPage, pageSize: this.getPageSize() };
@@ -359,7 +363,10 @@ export const stateMethods = {
   },
 
   removeValueColumns(keys, source = 'api') {
-    this.setColumnsAggFunc(this.getColumnsFromKeys(keys).map(c => [c, null]), source);
+    this.setColumnsAggFunc(
+      this.getColumnsFromKeys(keys).map(c => [c, null]),
+      source,
+    );
   },
 
   moveRowGroupColumn(fromIndex, toIndex) {
@@ -425,7 +432,9 @@ export const stateMethods = {
     if (this.gos.editType === 'fullRow') rows.forEach(n => this.dispatch('rowValueChanged', this.rowEventParams(n)));
     this.refreshModel({ keepRenderedRows: true });
     this.notify();
-    this.dispatch('batchEditingStopped', { changes: [...b.values()].map(e => ({ rowNode: e.node, column: e.column, oldValue: e.original, newValue: e.value })) });
+    this.dispatch('batchEditingStopped', {
+      changes: [...b.values()].map(e => ({ rowNode: e.node, column: e.column, oldValue: e.original, newValue: e.value })),
+    });
   },
 
   cancelBatchEdit() {

@@ -2,13 +2,7 @@
 import { localeText } from './locale.js';
 import { copySelectionToClipboard, cutSelectionToClipboard, buildClipboardText } from './clipboard.js';
 import { exportDataAsCsv, getDataAsCsv } from './exporter.js';
-import {
-  exportDataAsExcel,
-  exportMultipleSheetsAsExcel,
-  getDataAsExcel,
-  getMultipleSheetsAsExcel,
-  getSheetDataForExcel,
-} from './excel.js';
+import { exportDataAsExcel, exportMultipleSheetsAsExcel, getDataAsExcel, getMultipleSheetsAsExcel, getSheetDataForExcel } from './excel.js';
 import { copyTextToClipboard } from './utils.js';
 
 export function createApi(core) {
@@ -159,9 +153,7 @@ export function createApi(core) {
       core.stopEditing(!!cancel);
     },
     getEditingCells: () =>
-      core.editing
-        ? [...core.editing.cells.values()].map(c => ({ rowIndex: c.node.rowIndex, column: c.column, rowPinned: c.node.rowPinned || null }))
-        : [],
+      core.editing ? [...core.editing.cells.values()].map(c => ({ rowIndex: c.node.rowIndex, column: c.column, rowPinned: c.node.rowPinned || null })) : [],
     getCellEditorInstances: () => (core.editing ? [...core.editing.cells.values()].map(c => c.ref.current).filter(Boolean) : []),
     isEditing: () => !!core.editing,
 
@@ -175,17 +167,21 @@ export function createApi(core) {
     copyToClipboard: (params = {}) => copySelectionToClipboard(core, params),
     copySelectedRangeToClipboard: (params = {}) => copySelectionToClipboard(core, params),
     copySelectedRowsToClipboard: (params = {}) => {
-      const nodes = core.getSelectedNodes().filter(n => n.displayed).sort((a, b) => a.rowIndex - b.rowIndex);
-      const columns = params.columnKeys
-        ? core.getColumnsFromKeys(params.columnKeys)
-        : core.displayedColumns.filter(c => c.autoType !== 'selection');
+      const nodes = core
+        .getSelectedNodes()
+        .filter(n => n.displayed)
+        .sort((a, b) => a.rowIndex - b.rowIndex);
+      const columns = params.columnKeys ? core.getColumnsFromKeys(params.columnKeys) : core.displayedColumns.filter(c => c.autoType !== 'selection');
       const text = buildClipboardText(core, [{ nodes, columns }], params.includeHeaders ?? !!core.gos.copyHeadersToClipboard);
       copyTextToClipboard(text, false, core.getDocument());
     },
     copySelectedRangeDown: () => {},
     cutToClipboard: () => cutSelectionToClipboard(core),
     pasteFromClipboard: () => {
-      navigator.clipboard?.readText?.().then(t => core.pasteText(t)).catch(() => {});
+      navigator.clipboard
+        ?.readText?.()
+        .then(t => core.pasteText(t))
+        .catch(() => {});
     },
 
     // ── 스크롤 ──
@@ -214,22 +210,25 @@ export function createApi(core) {
     getDisplayedRightColumns: () => [...core.displayedRight],
     getDisplayedColAfter: col => {
       const i = core.displayedIndex.get(core.getColumn(col)?.colId);
-      return i == null ? null : core.displayedColumns[i + 1] ?? null;
+      return i == null ? null : (core.displayedColumns[i + 1] ?? null);
     },
     getDisplayedColBefore: col => {
       const i = core.displayedIndex.get(core.getColumn(col)?.colId);
-      return i == null ? null : core.displayedColumns[i - 1] ?? null;
+      return i == null ? null : (core.displayedColumns[i - 1] ?? null);
     },
-    getColumnDefs: () => core.allColumns.filter(c => !c.isAuto).map(c => ({
-      ...c.colDef,
-      colId: c.colId,
-      hide: !c.visible,
-      pinned: c.pinned,
-      width: c.actualWidth,
-      sort: c.sort || null,
-      sortIndex: c.sortIndex,
-      flex: c.flex,
-    })),
+    getColumnDefs: () =>
+      core.allColumns
+        .filter(c => !c.isAuto)
+        .map(c => ({
+          ...c.colDef,
+          colId: c.colId,
+          hide: !c.visible,
+          pinned: c.pinned,
+          width: c.actualWidth,
+          sort: c.sort || null,
+          sortIndex: c.sortIndex,
+          flex: c.flex,
+        })),
     getColumnDef: key => core.getColumn(key)?.colDef ?? null,
     getDisplayNameForColumn: col => core.getDisplayName(core.getColumn(col)),
     getColumnState: () => core.getColumnState(),
@@ -239,8 +238,7 @@ export function createApi(core) {
     setColumnVisible: (key, visible) => core.setColumnsVisible([key], visible, 'api'),
     setColumnsPinned: (keys, pinned) => core.setColumnsPinned(keys, pinned, 'api'),
     setColumnPinned: (key, pinned) => core.setColumnsPinned([key], pinned, 'api'),
-    setColumnWidths: (widths, finished = true, source = 'api') =>
-      (widths || []).forEach(w => core.setColumnWidth(w.key, w.newWidth, finished, source)),
+    setColumnWidths: (widths, finished = true, source = 'api') => (widths || []).forEach(w => core.setColumnWidth(w.key, w.newWidth, finished, source)),
     setColumnWidth: (key, newWidth, finished = true, source = 'api') => core.setColumnWidth(key, newWidth, finished, source),
     moveColumns: (keys, toIndex) => core.moveColumns(keys, toIndex, 'api'),
     moveColumn: (key, toIndex) => core.moveColumns([key], toIndex, 'api'),
@@ -261,8 +259,7 @@ export function createApi(core) {
     getAllDisplayedColumnGroups: () => core.columnTree,
     getColumnGroupState: () => core.getColumnGroupState(),
     setColumnGroupState: state => core.setColumnGroupState(state),
-    resetColumnGroupState: () =>
-      core.setColumnGroupState([...core.groupById.values()].map(g => ({ groupId: g.groupId, open: !!g.colGroupDef.openByDefault }))),
+    resetColumnGroupState: () => core.setColumnGroupState([...core.groupById.values()].map(g => ({ groupId: g.groupId, open: !!g.colGroupDef.openByDefault }))),
     setColumnGroupOpened: (group, open) => core.setColumnGroupOpened(group, open),
     isPinning: () => core.displayedLeft.length > 0 || core.displayedRight.length > 0,
     isPinningLeft: () => core.displayedLeft.length > 0,

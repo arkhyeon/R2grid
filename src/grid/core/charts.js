@@ -123,12 +123,16 @@ export const chartMethods = {
     const cols = this.getColumnsFromKeys(params.cellRange?.columns || []);
     if (!cols.length) return undefined;
     const chartType = CROSS_FILTER_TYPES.includes(params.chartType) ? params.chartType : 'groupedColumn';
-    return this.newChartModel('crossFilter', { ...params, chartType }, {
-      catCol: cols[0],
-      valueCols: cols.slice(1),
-      aggFunc: params.aggFunc || 'sum',
-      cellRange: { columns: cols },
-    });
+    return this.newChartModel(
+      'crossFilter',
+      { ...params, chartType },
+      {
+        catCol: cols[0],
+        valueCols: cols.slice(1),
+        aggFunc: params.aggFunc || 'sum',
+        cellRange: { columns: cols },
+      },
+    );
   },
 
   // 크로스 필터: 카테고리 클릭 → 카테고리 컬럼에 Set 필터
@@ -204,7 +208,8 @@ export const chartMethods = {
     const g = this.gos;
     let items = all;
     if (Array.isArray(g.chartMenuItems)) items = g.chartMenuItems;
-    else if (typeof g.chartMenuItems === 'function') items = g.chartMenuItems({ defaultItems: all, chartId: m.chartId, api: this.api, context: g.context }) || all;
+    else if (typeof g.chartMenuItems === 'function')
+      items = g.chartMenuItems({ defaultItems: all, chartId: m.chartId, api: this.api, context: g.context }) || all;
     else if (typeof g.getChartToolbarItems === 'function') items = g.getChartToolbarItems({ defaultItems: all, api: this.api, context: g.context }) || all;
     return items;
   },
@@ -291,7 +296,11 @@ export const chartMethods = {
   //  withHidden: 숨긴 계열도 포함 (설정 패널용)
   getChartData(model, withHidden = false) {
     const data =
-      model.modelType === 'pivot' ? this.getPivotChartData() : model.modelType === 'crossFilter' ? this.getCrossFilterChartData(model) : this.getRangeChartData(model);
+      model.modelType === 'pivot'
+        ? this.getPivotChartData()
+        : model.modelType === 'crossFilter'
+          ? this.getCrossFilterChartData(model)
+          : this.getRangeChartData(model);
     if (!withHidden && model.hiddenSeries?.size) data.series = data.series.filter(s => !model.hiddenSeries.has(s.colId));
     return data;
   },
@@ -304,7 +313,9 @@ export const chartMethods = {
     for (const c of columns) {
       const cdt = c.colDef.chartDataType;
       if (cdt === 'excluded') continue;
-      const numeric = cdt === 'series' || (cdt !== 'category' && cdt !== 'time' && (sample.some(n => typeof this.getCellValue(n, c) === 'number') || c.dataType === 'number'));
+      const numeric =
+        cdt === 'series' ||
+        (cdt !== 'category' && cdt !== 'time' && (sample.some(n => typeof this.getCellValue(n, c) === 'number') || c.dataType === 'number'));
       if (numeric && c.autoType !== 'group') numCols.push(c);
       else textCols.push(c);
     }
@@ -348,7 +359,14 @@ export const chartMethods = {
         return typeof v === 'number' && Number.isFinite(v) ? v : 0;
       }),
     }));
-    return { categories: nodes.map(label), series, categoryName: this.rowGroupColumns().map(c => this.getDisplayName(c)).join(' - ') || '피벗' };
+    return {
+      categories: nodes.map(label),
+      series,
+      categoryName:
+        this.rowGroupColumns()
+          .map(c => this.getDisplayName(c))
+          .join(' - ') || '피벗',
+    };
   },
 
   getCrossFilterChartData(model) {

@@ -83,7 +83,7 @@ export const customFilterMethods = {
     for (const col of cols) {
       if (!this.isHandlerFilter(col)) continue;
       const e = this.customFilters?.get(col.colId);
-      if (action === 'apply') this.setHandlerFilterModel(col, e && e.pending !== undefined ? e.pending.model : this.filterModels.get(col.colId) ?? null);
+      if (action === 'apply') this.setHandlerFilterModel(col, e && e.pending !== undefined ? e.pending.model : (this.filterModels.get(col.colId) ?? null));
       else if (action === 'clear') this.setHandlerFilterState(col, { model: null });
       else if (action === 'reset') this.setHandlerFilterModel(col, null);
       else if (action === 'cancel' && e) {

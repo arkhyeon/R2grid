@@ -71,7 +71,14 @@ function StatusBarStory({ p }) {
       <div className="pg-toolbar">
         <span className="pg-note">숫자 셀을 여러 칸 드래그하면 합계/평균이 표시됩니다 · 행을 선택하면 선택 수 표시</span>
       </div>
-      <Grid key={String(p.agg)} rowData={SAMPLE} columnDefs={BASE_COLUMNS} cellSelection rowSelection={{ mode: 'multiRow' }} statusBar={{ statusPanels: panels }} />
+      <Grid
+        key={String(p.agg)}
+        rowData={SAMPLE}
+        columnDefs={BASE_COLUMNS}
+        cellSelection
+        rowSelection={{ mode: 'multiRow' }}
+        statusBar={{ statusPanels: panels }}
+      />
     </>
   );
 }
@@ -81,7 +88,14 @@ function ContextMenu({ ctx }) {
     ...(params.node
       ? [
           { name: `"${params.node.data.taskName}" 로그 확인`, action: () => ctx.log(`로그 확인: ${params.node.data.taskName}`), icon: 'search' },
-          { name: '상태 변경', subMenu: ['대기', '진행', '완료'].map(s => ({ name: s, checked: params.node.data.status === s, action: () => params.node.setDataValue('status', s) })) },
+          {
+            name: '상태 변경',
+            subMenu: ['대기', '진행', '완료'].map(s => ({
+              name: s,
+              checked: params.node.data.status === s,
+              action: () => params.node.setDataValue('status', s),
+            })),
+          },
           'separator',
         ]
       : []),
@@ -154,7 +168,9 @@ function PopupParent({ p }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
       <div className="pg-toolbar">
-        <span className="pg-note">아주 낮은 그리드(130px)에서 헤더 메뉴/필터를 열어 보세요. 기본은 그리드 안에 갇히고, popupParent=document.body 면 밖으로 나옵니다.</span>
+        <span className="pg-note">
+          아주 낮은 그리드(130px)에서 헤더 메뉴/필터를 열어 보세요. 기본은 그리드 안에 갇히고, popupParent=document.body 면 밖으로 나옵니다.
+        </span>
       </div>
       <Grid
         key={String(p.body)}
@@ -174,7 +190,23 @@ export default [
     category: CAT,
     name: '사이드바 · 툴패널',
     desc: '내장 컬럼/필터 툴패널과 커스텀 툴패널(컴포넌트). openToolPanel / closeToolPanel / getSideBar 로 제어합니다.',
-    keywords: ['sideBar', 'toolPanels', 'r2ColumnsToolPanel', 'r2FiltersToolPanel', 'toolPanel', 'defaultToolPanel', 'openToolPanel', 'closeToolPanel', 'getSideBar', 'isToolPanelShowing', 'onToolPanelVisibleChanged', 'suppressColumnsToolPanel', 'suppressFiltersToolPanel', 'allowDragFromColumnsToolPanel', 'onToolPanelSizeChanged'],
+    keywords: [
+      'sideBar',
+      'toolPanels',
+      'r2ColumnsToolPanel',
+      'r2FiltersToolPanel',
+      'toolPanel',
+      'defaultToolPanel',
+      'openToolPanel',
+      'closeToolPanel',
+      'getSideBar',
+      'isToolPanelShowing',
+      'onToolPanelVisibleChanged',
+      'suppressColumnsToolPanel',
+      'suppressFiltersToolPanel',
+      'allowDragFromColumnsToolPanel',
+      'onToolPanelSizeChanged',
+    ],
     controls: [
       {
         key: 'position',
@@ -231,8 +263,18 @@ components={{ rowAddOn: props => RowAddOn(props, deleteDbms, null) }}`,
     category: CAT,
     name: '상태 표시줄',
     desc: '하단 상태 표시줄: 전체/필터/선택 행 수, 범위 선택 집계(개수·합계·평균·최소·최대), 커스텀 패널.',
-    keywords: ['statusBar', 'statusPanels', 'r2TotalAndFilteredRowCountComponent', 'r2TotalRowCountComponent', 'r2FilteredRowCountComponent', 'r2SelectedRowCountComponent', 'r2AggregationComponent', 'getStatusPanel'],
-    controls: [{
+    keywords: [
+      'statusBar',
+      'statusPanels',
+      'r2TotalAndFilteredRowCountComponent',
+      'r2TotalRowCountComponent',
+      'r2FilteredRowCountComponent',
+      'r2SelectedRowCountComponent',
+      'r2AggregationComponent',
+      'getStatusPanel',
+    ],
+    controls: [
+      {
         key: 'agg',
         type: 'boolean',
         default: true,
@@ -240,7 +282,8 @@ components={{ rowAddOn: props => RowAddOn(props, deleteDbms, null) }}`,
         desc: '상태바 패널. 셀 범위를 2칸 이상 드래그하면 그 범위 숫자들의 개수·합계·평균·최소·최대를 보여줍니다 (statusPanelParams.aggFuncs 로 항목 선택).',
         on: '범위 선택 시 오른쪽에 집계 표시',
         off: '행 수/선택 수 패널만',
-      }],
+      },
+    ],
     render: p => <StatusBarStory p={p} />,
     code: p => `<R2Grid
   cellSelection
@@ -258,7 +301,19 @@ components={{ rowAddOn: props => RowAddOn(props, deleteDbms, null) }}`,
     category: CAT,
     name: '컨텍스트 메뉴',
     desc: 'getContextMenuItems 로 우클릭 메뉴를 구성합니다. 내장 항목(copy, paste, export, chartRange…)과 커스텀 항목(name/action/icon/subMenu/checked)을 섞을 수 있습니다.',
-    keywords: ['getContextMenuItems', 'suppressContextMenu', 'preventDefaultOnContextMenu', 'copy', 'copyWithHeaders', 'paste', 'export', 'chartRange', 'subMenu', 'separator', 'onContextMenuVisibleChanged'],
+    keywords: [
+      'getContextMenuItems',
+      'suppressContextMenu',
+      'preventDefaultOnContextMenu',
+      'copy',
+      'copyWithHeaders',
+      'paste',
+      'export',
+      'chartRange',
+      'subMenu',
+      'separator',
+      'onContextMenuVisibleChanged',
+    ],
     controls: [],
     render: (p, ctx) => <ContextMenu ctx={ctx} />,
     code: () => `const getContextMenuItems = params => [
@@ -293,8 +348,23 @@ components={{ rowAddOn: props => RowAddOn(props, deleteDbms, null) }}`,
     category: CAT,
     name: '컬럼 메뉴',
     desc: "columnMenu: 'new'(목록형) 또는 'legacy'(탭: 일반/필터/컬럼). menuTabs, mainMenuItems / getMainMenuItems 로 항목을 바꿉니다.",
-    keywords: ['columnMenu', 'legacy', 'menuTabs', 'generalMenuTab', 'filterMenuTab', 'columnsMenuTab', 'mainMenuItems', 'getMainMenuItems', 'suppressHeaderMenuButton', 'showColumnMenu', 'pinSubMenu', 'autoSizeThis', 'columnChooser'],
-    controls: [{
+    keywords: [
+      'columnMenu',
+      'legacy',
+      'menuTabs',
+      'generalMenuTab',
+      'filterMenuTab',
+      'columnsMenuTab',
+      'mainMenuItems',
+      'getMainMenuItems',
+      'suppressHeaderMenuButton',
+      'showColumnMenu',
+      'pinSubMenu',
+      'autoSizeThis',
+      'columnChooser',
+    ],
+    controls: [
+      {
         key: 'style',
         type: 'select',
         default: 'legacy',
@@ -304,7 +374,8 @@ components={{ rowAddOn: props => RowAddOn(props, deleteDbms, null) }}`,
           { value: 'new', desc: '목록형 메뉴 하나 — 정렬·필터·고정·크기·열 선택 (필터는 헤더의 필터 아이콘으로 따로)' },
           { value: 'legacy', desc: '탭형 메뉴 — 일반/필터/열 선택 탭 (menuTabs 로 탭 구성). CLM 이 쓰는 방식' },
         ],
-      }],
+      },
+    ],
     render: p => <ColumnMenu p={p} />,
     code: p => `<R2Grid
   columnMenu="${p.style}"${p.style === 'legacy' ? "\n  defaultColDef={{ menuTabs: ['generalMenuTab', 'filterMenuTab', 'columnsMenuTab'] }}" : ''}
@@ -316,7 +387,17 @@ components={{ rowAddOn: props => RowAddOn(props, deleteDbms, null) }}`,
     category: CAT,
     name: '오버레이 (로딩 / 빈 데이터)',
     desc: "loading prop(또는 setGridOption('loading', true))으로 로딩 오버레이, rowData 가 비면 noRows 오버레이. 컴포넌트/템플릿으로 바꿀 수 있습니다.",
-    keywords: ['loading', 'loadingOverlayComponent', 'noRowsOverlayComponent', 'overlayLoadingTemplate', 'overlayNoRowsTemplate', 'showLoadingOverlay', 'showNoRowsOverlay', 'hideOverlay', 'suppressNoRowsOverlay'],
+    keywords: [
+      'loading',
+      'loadingOverlayComponent',
+      'noRowsOverlayComponent',
+      'overlayLoadingTemplate',
+      'overlayNoRowsTemplate',
+      'showLoadingOverlay',
+      'showNoRowsOverlay',
+      'hideOverlay',
+      'suppressNoRowsOverlay',
+    ],
     controls: [
       {
         key: 'state',
@@ -358,7 +439,8 @@ overlayNoRowsTemplate={NO_ROWS_TEMPLATE}`,
     name: '오른쪽 → 왼쪽 (RTL)',
     desc: 'enableRtl 이면 컬럼이 오른쪽부터 배치되고 좌우 고정·스크롤·리사이즈·방향키가 반전됩니다.',
     keywords: ['enableRtl', 'r2-rtl', 'direction'],
-    controls: [{
+    controls: [
+      {
         key: 'rtl',
         type: 'boolean',
         default: true,
@@ -366,7 +448,8 @@ overlayNoRowsTemplate={NO_ROWS_TEMPLATE}`,
         desc: '오른쪽→왼쪽 레이아웃. 컬럼 순서·고정 위치·스크롤·키보드 좌우 이동이 모두 뒤집힙니다 (아랍어·히브리어 화면용).',
         on: '첫 컬럼이 오른쪽 끝',
         off: '일반 왼쪽→오른쪽',
-      }],
+      },
+    ],
     render: p => <Rtl p={p} />,
     code: p => `<R2Grid enableRtl={${p.rtl}} columnDefs={columnDefs} rowData={rowData} />`,
   },
@@ -375,8 +458,18 @@ overlayNoRowsTemplate={NO_ROWS_TEMPLATE}`,
     category: CAT,
     name: '팝업 위치 (popupParent)',
     desc: '메뉴·필터·팝업 에디터는 기본적으로 그리드 안에 붙어 페이지/그리드 스크롤을 따라가고 그리드 밖으로 나가지 않습니다. 작은 모달 안 그리드처럼 잘리는 경우 popupParent 로 붙일 요소를 바꿉니다.',
-    keywords: ['popupParent', 'document.body', 'cellEditorPopup', 'clip', 'getDocument', 'iframe', 'suppressMiddleClickScrolls', 'suppressPreventDefaultOnMouseWheel'],
-    controls: [{
+    keywords: [
+      'popupParent',
+      'document.body',
+      'cellEditorPopup',
+      'clip',
+      'getDocument',
+      'iframe',
+      'suppressMiddleClickScrolls',
+      'suppressPreventDefaultOnMouseWheel',
+    ],
+    controls: [
+      {
         key: 'body',
         type: 'boolean',
         default: false,
@@ -384,7 +477,8 @@ overlayNoRowsTemplate={NO_ROWS_TEMPLATE}`,
         desc: '컬럼 메뉴·필터·컨텍스트 메뉴 같은 팝업을 붙일 요소. 기본은 그리드 자신이라 그리드가 작으면 팝업이 그리드 안에서 잘립니다. (셀 편집 팝업·선택 목록은 셀 안에 그려져 항상 그리드 안)',
         on: 'document.body — 팝업이 그리드 밖으로 나갈 수 있음 (모달 안 작은 그리드에 유용)',
         off: '그리드 영역 안에만 표시',
-      }],
+      },
+    ],
     render: p => <PopupParent p={p} />,
     code: p => `<R2Grid${p.body ? '\n  popupParent={document.body}' : ''} />`,
     usage: {

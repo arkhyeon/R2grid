@@ -28,9 +28,7 @@ function toCssValue(key, v) {
     return v ? '1' : '0';
   }
   if (Array.isArray(v)) {
-    return v
-      .map(f => (typeof f === 'object' && f.googleFont ? `"${f.googleFont}"` : /\s/.test(f) && !/^["']/.test(f) ? `"${f}"` : f))
-      .join(', ');
+    return v.map(f => (typeof f === 'object' && f.googleFont ? `"${f.googleFont}"` : /\s/.test(f) && !/^["']/.test(f) ? `"${f}"` : f)).join(', ');
   }
   if (typeof v === 'object') {
     if (v.ref) {

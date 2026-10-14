@@ -23,7 +23,8 @@ export const findMethods = {
       if (!node || node.detail || node.stub) continue;
       for (const column of cols) {
         const gft = column.colDef.getFindText;
-        let text = typeof gft === 'function' ? gft({ ...this.makeValueParams(node, column), value: this.getCellValue(node, column) }) : this.getCellText(node, column);
+        let text =
+          typeof gft === 'function' ? gft({ ...this.makeValueParams(node, column), value: this.getCellValue(node, column) }) : this.getCellText(node, column);
         text = text == null ? '' : String(text);
         if (!text) continue;
         if (!cs) text = text.toLowerCase();
@@ -39,7 +40,10 @@ export const findMethods = {
     this.__findNodes = this.displayedNodes;
     this.__findMatches = out;
     // 활성 매치가 사라졌으면 해제
-    if (this.findActive && !out.some(m => m.node === this.findActive.node && m.column === this.findActive.column && m.numInMatch === this.findActive.numInMatch)) {
+    if (
+      this.findActive &&
+      !out.some(m => m.node === this.findActive.node && m.column === this.findActive.column && m.numInMatch === this.findActive.numInMatch)
+    ) {
       this.findActive = null;
     }
     return out;

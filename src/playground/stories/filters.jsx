@@ -17,7 +17,15 @@ const FILTER_COLS = [
 function Sorting({ p, ctx }) {
   const defs = useMemo(
     () => [
-      ...BASE_COLUMNS.map(c => (c.field === 'status' ? { ...c, comparator: (a, b) => ['오류', '진행', '대기', '완료'].indexOf(a) - ['오류', '진행', '대기', '완료'].indexOf(b), headerName: '상태(커스텀 순서)' } : c)),
+      ...BASE_COLUMNS.map(c =>
+        c.field === 'status'
+          ? {
+              ...c,
+              comparator: (a, b) => ['오류', '진행', '대기', '완료'].indexOf(a) - ['오류', '진행', '대기', '완료'].indexOf(b),
+              headerName: '상태(커스텀 순서)',
+            }
+          : c,
+      ),
     ],
     [],
   );
@@ -30,7 +38,18 @@ function Sorting({ p, ctx }) {
       sortingOrder={p.order === 'desc-first' ? ['desc', 'asc', null] : undefined}
       accentedSort={p.accented}
       animateRows={p.animate}
-      onSortChanged={e => ctx.log(`sortChanged: ${e.api.getColumnState().filter(s => s.sort).sort((a, b) => a.sortIndex - b.sortIndex).map(s => `${s.colId} ${s.sort}`).join(', ') || '(없음)'}`)}
+      onSortChanged={e =>
+        ctx.log(
+          `sortChanged: ${
+            e.api
+              .getColumnState()
+              .filter(s => s.sort)
+              .sort((a, b) => a.sortIndex - b.sortIndex)
+              .map(s => `${s.colId} ${s.sort}`)
+              .join(', ') || '(없음)'
+          }`,
+        )
+      }
     />
   );
 }
@@ -70,7 +89,22 @@ function ColumnFilters({ p, ctx }) {
       <div className="pg-toolbar">
         <button onClick={() => set({ dbms: { filterType: 'set', values: ['Oracle', 'Tibero'] } })}>DBMS = Oracle, Tibero</button>
         <button onClick={() => set({ rowCnt: { filterType: 'number', type: 'inRange', filter: 1_000_000, filterTo: 3_000_000 } })}>행 수 100만~300만</button>
-        <button onClick={() => set({ taskName: { filterType: 'text', operator: 'OR', conditions: [{ type: 'endsWith', filter: '1' }, { type: 'endsWith', filter: '2' }] } })}>작업명 끝 1 또는 2</button>
+        <button
+          onClick={() =>
+            set({
+              taskName: {
+                filterType: 'text',
+                operator: 'OR',
+                conditions: [
+                  { type: 'endsWith', filter: '1' },
+                  { type: 'endsWith', filter: '2' },
+                ],
+              },
+            })
+          }
+        >
+          작업명 끝 1 또는 2
+        </button>
         <button onClick={() => set({ updatedAt: { filterType: 'date', type: 'greaterThan', dateFrom: '2026-06-01 00:00:00' } })}>수정일 6월 이후</button>
         <button onClick={() => set(null)}>필터 해제</button>
       </div>
@@ -100,7 +134,13 @@ function QuickFilter() {
 }
 
 function Floating({ p }) {
-  return <Grid key={String(p.button)} rowData={SAMPLE} columnDefs={FILTER_COLS.map(c => ({ ...c, floatingFilter: true, suppressFloatingFilterButton: !p.button }))} />;
+  return (
+    <Grid
+      key={String(p.button)}
+      rowData={SAMPLE}
+      columnDefs={FILTER_COLS.map(c => ({ ...c, floatingFilter: true, suppressFloatingFilterButton: !p.button }))}
+    />
+  );
 }
 
 // reactive 커스텀 필터: model / onModelChange + useGridFilter
@@ -125,10 +165,24 @@ function RangeFilterView({ state, onModelChange, onAction }) {
   return (
     <div style={{ display: 'grid', gap: 6, padding: 8, width: 200 }}>
       <label>
-        이상 <input type="number" value={m.from ?? ''} onChange={e => set('from', e.target.value)} onKeyDown={e => e.key === 'Enter' && onAction('apply')} style={{ width: 120 }} />
+        이상{' '}
+        <input
+          type="number"
+          value={m.from ?? ''}
+          onChange={e => set('from', e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && onAction('apply')}
+          style={{ width: 120 }}
+        />
       </label>
       <label>
-        이하 <input type="number" value={m.to ?? ''} onChange={e => set('to', e.target.value)} onKeyDown={e => e.key === 'Enter' && onAction('apply')} style={{ width: 120 }} />
+        이하{' '}
+        <input
+          type="number"
+          value={m.to ?? ''}
+          onChange={e => set('to', e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && onAction('apply')}
+          style={{ width: 120 }}
+        />
       </label>
     </div>
   );
@@ -155,7 +209,9 @@ function CustomFilter({ p, ctx }) {
           enableFilterHandlers
           filterHandlers={{ range: RANGE_HANDLER }}
           defaultColDef={{ floatingFilter: true }}
-          columnDefs={BASE_COLUMNS.map(c => (c.field === 'rowCnt' ? { ...c, filter: { component: RangeFilterView, handler: 'range' }, filterParams: { buttons: ['reset', 'apply'] } } : c))}
+          columnDefs={BASE_COLUMNS.map(c =>
+            c.field === 'rowCnt' ? { ...c, filter: { component: RangeFilterView, handler: 'range' }, filterParams: { buttons: ['reset', 'apply'] } } : c,
+          )}
           onFilterChanged={e => ctx.log(`filterChanged → ${e.api.getDisplayedRowCount()}행 · model=${JSON.stringify(e.api.getFilterModel())}`)}
         />
       </>
@@ -196,7 +252,14 @@ function Advanced({ p, ctx }) {
               type: 'AND',
               conditions: [
                 { filterType: 'text', colId: 'dbms', type: 'equals', filter: 'Oracle' },
-                { filterType: 'join', type: 'OR', conditions: [{ filterType: 'number', colId: 'rowCnt', type: 'greaterThan', filter: 4_000_000 }, { filterType: 'text', colId: 'status', type: 'equals', filter: '오류' }] },
+                {
+                  filterType: 'join',
+                  type: 'OR',
+                  conditions: [
+                    { filterType: 'number', colId: 'rowCnt', type: 'greaterThan', filter: 4_000_000 },
+                    { filterType: 'text', colId: 'status', type: 'equals', filter: '오류' },
+                  ],
+                },
               ],
             })
           }
@@ -244,7 +307,22 @@ export default [
     category: CAT,
     name: '정렬',
     desc: '헤더 클릭 정렬, Shift(또는 Ctrl)+클릭 다중 정렬, comparator 로 커스텀 순서, sortingOrder 로 순환 순서 지정.',
-    keywords: ['sort', 'sortable', 'sortIndex', 'multiSortKey', 'sortingOrder', 'comparator', 'accentedSort', 'postSortRows', 'onSortChanged', 'applyColumnState', 'suppressMultiSort', 'animateRows', 'suppressColumnMoveAnimation', 'ensureDomOrder'],
+    keywords: [
+      'sort',
+      'sortable',
+      'sortIndex',
+      'multiSortKey',
+      'sortingOrder',
+      'comparator',
+      'accentedSort',
+      'postSortRows',
+      'onSortChanged',
+      'applyColumnState',
+      'suppressMultiSort',
+      'animateRows',
+      'suppressColumnMoveAnimation',
+      'ensureDomOrder',
+    ],
     controls: [
       {
         key: 'multiKey',
@@ -288,7 +366,7 @@ export default [
       },
     ],
     render: (p, ctx) => <Sorting p={p} ctx={ctx} />,
-    code: p => `<R2Grid${p.multiKey === 'ctrl' ? "\n  multiSortKey=\"ctrl\"" : ''}${p.order === 'desc-first' ? "\n  sortingOrder={['desc', 'asc', null]}" : ''}${p.accented ? '\n  accentedSort' : ''}
+    code: p => `<R2Grid${p.multiKey === 'ctrl' ? '\n  multiSortKey="ctrl"' : ''}${p.order === 'desc-first' ? "\n  sortingOrder={['desc', 'asc', null]}" : ''}${p.accented ? '\n  accentedSort' : ''}
   columnDefs={[
     { field: 'status', comparator: (a, b) => ORDER.indexOf(a) - ORDER.indexOf(b) },
   ]}
@@ -302,14 +380,37 @@ api.applyColumnState({ state: [{ colId: 'rowCnt', sort: 'desc' }], defaultState:
     category: CAT,
     name: '컬럼 필터 (텍스트/숫자/날짜/Set)',
     desc: '헤더의 필터 아이콘. r2TextColumnFilter / r2NumberColumnFilter / r2DateColumnFilter / r2SetColumnFilter(filter: true 기본). 조건 2개(AND/OR), setFilterModel 로 코드 제어.',
-    keywords: ['filter', 'r2TextColumnFilter', 'r2NumberColumnFilter', 'r2DateColumnFilter', 'r2SetColumnFilter', 'filterParams', 'setFilterModel', 'getFilterModel', 'setColumnFilterModel', 'getColumnFilterInstance', 'onFilterChanged', 'maxNumConditions', 'buttons', 'debounceMs', 'filterValueGetter', 'inRange', 'dateComponent', 'dateComponentParams', 'minValidYear', 'maxValidYear', 'minValidDate', 'maxValidDate'],
+    keywords: [
+      'filter',
+      'r2TextColumnFilter',
+      'r2NumberColumnFilter',
+      'r2DateColumnFilter',
+      'r2SetColumnFilter',
+      'filterParams',
+      'setFilterModel',
+      'getFilterModel',
+      'setColumnFilterModel',
+      'getColumnFilterInstance',
+      'onFilterChanged',
+      'maxNumConditions',
+      'buttons',
+      'debounceMs',
+      'filterValueGetter',
+      'inRange',
+      'dateComponent',
+      'dateComponentParams',
+      'minValidYear',
+      'maxValidYear',
+      'minValidDate',
+      'maxValidDate',
+    ],
     controls: [
       {
         key: 'dateComponent',
         type: 'boolean',
         default: false,
         label: 'dateComponent',
-        desc: "날짜 필터의 입력 칸을 직접 만든 컴포넌트로 바꿉니다. props 로 date(Date|null)·onDateChanged(Date|null)·placeholder 를 받습니다. 그리드 전체(gridOptions), 컬럼(colDef), 필터(filterParams) 어디에 둬도 되고 좁은 쪽이 우선. 추가 값은 dateComponentParams.",
+        desc: '날짜 필터의 입력 칸을 직접 만든 컴포넌트로 바꿉니다. props 로 date(Date|null)·onDateChanged(Date|null)·placeholder 를 받습니다. 그리드 전체(gridOptions), 컬럼(colDef), 필터(filterParams) 어디에 둬도 되고 좁은 쪽이 우선. 추가 값은 dateComponentParams.',
         on: "'YYYY.MM.DD' 직접 입력 + 오늘 버튼 (수정일 컬럼 필터에서 확인)",
         off: '브라우저 기본 날짜 입력',
       },
@@ -357,7 +458,8 @@ api.setFilterModel({
     name: '플로팅 필터',
     desc: 'floatingFilter: true 면 헤더 아래에 필터 입력 줄이 생깁니다. 텍스트/숫자/날짜는 바로 입력, Set·복합 조건은 요약 표시.',
     keywords: ['floatingFilter', 'floatingFilterComponent', 'floatingFilterComponentParams', 'suppressFloatingFilterButton', 'floatingFiltersHeight'],
-    controls: [{
+    controls: [
+      {
         key: 'button',
         type: 'boolean',
         default: true,
@@ -365,7 +467,8 @@ api.setFilterModel({
         desc: '플로팅 필터 칸 오른쪽의 필터 버튼 표시 여부. 버튼은 전체 필터 팝업(조건 선택·AND/OR)을 엽니다. 칸에 직접 입력하면 기본 조건(포함/같음)으로 바로 걸립니다.',
         on: '칸 + 버튼 — 세부 조건은 버튼으로',
         off: '입력 칸만 (suppressFloatingFilterButton: true)',
-      }],
+      },
+    ],
     render: p => <Floating p={p} />,
     code: p => `<R2Grid
   defaultColDef={{ floatingFilter: true${p.button ? '' : ', suppressFloatingFilterButton: true'} }}
@@ -377,7 +480,28 @@ api.setFilterModel({
     category: CAT,
     name: '커스텀 필터 컴포넌트',
     desc: 'colDef.filter 에 컴포넌트를 넘깁니다. reactive 방식: props.model / onModelChange + useGridFilter({ doesFilterPass }). reactiveCustomComponents: false 면 ref 로 isFilterActive / doesFilterPass / getModel / setModel 을 노출하는 구형 방식.',
-    keywords: ['filter', 'useGridFilter', 'doesFilterPass', 'onModelChange', 'model', 'getValue', 'afterGuiAttached', 'isFilterActive', 'getModel', 'setModel', 'filterChangedCallback', 'reactiveCustomComponents', 'getColumnFilterInstance', 'enableFilterHandlers', 'filterHandlers', 'handler', 'getColumnFilterHandler', 'doFilterAction', 'onAction', 'onStateChange'],
+    keywords: [
+      'filter',
+      'useGridFilter',
+      'doesFilterPass',
+      'onModelChange',
+      'model',
+      'getValue',
+      'afterGuiAttached',
+      'isFilterActive',
+      'getModel',
+      'setModel',
+      'filterChangedCallback',
+      'reactiveCustomComponents',
+      'getColumnFilterInstance',
+      'enableFilterHandlers',
+      'filterHandlers',
+      'handler',
+      'getColumnFilterHandler',
+      'doFilterAction',
+      'onAction',
+      'onStateChange',
+    ],
     controls: [
       {
         key: 'handler',
@@ -411,7 +535,22 @@ function MinCountFilter({ model, onModelChange, getValue }) {
     category: CAT,
     name: '고급 필터 (식 / 빌더)',
     desc: '헤더 위 입력줄에 [컬럼] 연산자 값 식을 AND/OR/괄호로 조합합니다. 빌더 팝업으로 조건을 편집할 수도 있습니다. 켜면 컬럼별 필터는 비활성화됩니다.',
-    keywords: ['enableAdvancedFilter', 'setAdvancedFilterModel', 'getAdvancedFilterModel', 'showAdvancedFilterBuilder', 'hideAdvancedFilterBuilder', 'includeHiddenColumnsInAdvancedFilter', 'join', 'AND', 'OR', 'advancedFilterParent', 'advancedFilterParams', 'advancedFilterBuilderParams', 'showMoveButtons', 'suppressBuilderButton'],
+    keywords: [
+      'enableAdvancedFilter',
+      'setAdvancedFilterModel',
+      'getAdvancedFilterModel',
+      'showAdvancedFilterBuilder',
+      'hideAdvancedFilterBuilder',
+      'includeHiddenColumnsInAdvancedFilter',
+      'join',
+      'AND',
+      'OR',
+      'advancedFilterParent',
+      'advancedFilterParams',
+      'advancedFilterBuilderParams',
+      'showMoveButtons',
+      'suppressBuilderButton',
+    ],
     controls: [
       {
         key: 'outside',
@@ -461,7 +600,8 @@ api.setAdvancedFilterModel({
     name: '외부 필터',
     desc: '그리드 밖 UI 상태로 행을 거릅니다. isExternalFilterPresent + doesExternalFilterPass, 상태가 바뀌면 api.onFilterChanged().',
     keywords: ['isExternalFilterPresent', 'doesExternalFilterPass', 'onFilterChanged'],
-    controls: [{
+    controls: [
+      {
         key: 'status',
         type: 'select',
         default: '진행',
@@ -474,7 +614,8 @@ api.setAdvancedFilterModel({
           { value: '완료', desc: "상태가 '완료' 인 행만" },
           { value: '오류', desc: "상태가 '오류' 인 행만" },
         ],
-      }],
+      },
+    ],
     render: p => <External p={p} />,
     code: p => `const statusRef = useRef('${p.status}');
 

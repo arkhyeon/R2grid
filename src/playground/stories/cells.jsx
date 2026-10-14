@@ -49,7 +49,13 @@ function CellRendering({ p }) {
 function Tooltips({ p }) {
   const defs = [
     { field: 'taskName', headerName: '작업명', width: 150, tooltipField: 'owner', headerTooltip: '소유자를 툴팁으로 (tooltipField)' },
-    { field: 'rowCnt', headerName: '행 수', width: 130, tooltipValueGetter: x => `정확한 값: ${x.value.toLocaleString()} 행`, headerTooltip: 'tooltipValueGetter' },
+    {
+      field: 'rowCnt',
+      headerName: '행 수',
+      width: 130,
+      tooltipValueGetter: x => `정확한 값: ${x.value.toLocaleString()} 행`,
+      headerTooltip: 'tooltipValueGetter',
+    },
     ...BASE_COLUMNS.slice(2, 5),
   ];
   return <Grid key={String(p.browser)} rowData={SAMPLE} columnDefs={defs} enableBrowserTooltips={p.browser} tooltipShowDelay={p.delay} />;
@@ -61,9 +67,29 @@ function Editing({ p, ctx }) {
     () => [
       { field: 'taskName', headerName: '텍스트 (r2TextCellEditor)', width: 170 },
       { field: 'rowCnt', headerName: '숫자 (r2NumberCellEditor)', width: 160, cellEditor: 'r2NumberCellEditor', cellEditorParams: { min: 0, precision: 0 } },
-      { field: 'dbms', headerName: '선택 (r2SelectCellEditor)', width: 160, cellEditor: 'r2SelectCellEditor', cellEditorParams: { values: ['Oracle', 'MySQL', 'PostgreSQL', 'Tibero', 'MSSQL'] } },
-      { field: 'status', headerName: '리치 선택 (팝업)', width: 140, cellEditor: 'r2RichSelectCellEditor', cellEditorPopup: true, cellEditorParams: { values: ['대기', '진행', '완료', '오류'] } },
-      { field: 'memo', headerName: '긴 텍스트 (팝업)', width: 160, cellEditor: 'r2LargeTextCellEditor', cellEditorPopup: true, cellEditorParams: { maxLength: 200, rows: 5 } },
+      {
+        field: 'dbms',
+        headerName: '선택 (r2SelectCellEditor)',
+        width: 160,
+        cellEditor: 'r2SelectCellEditor',
+        cellEditorParams: { values: ['Oracle', 'MySQL', 'PostgreSQL', 'Tibero', 'MSSQL'] },
+      },
+      {
+        field: 'status',
+        headerName: '리치 선택 (팝업)',
+        width: 140,
+        cellEditor: 'r2RichSelectCellEditor',
+        cellEditorPopup: true,
+        cellEditorParams: { values: ['대기', '진행', '완료', '오류'] },
+      },
+      {
+        field: 'memo',
+        headerName: '긴 텍스트 (팝업)',
+        width: 160,
+        cellEditor: 'r2LargeTextCellEditor',
+        cellEditorPopup: true,
+        cellEditorParams: { maxLength: 200, rows: 5 },
+      },
       { field: 'useYn', headerName: '체크', width: 80 },
       { field: 'due', headerName: '날짜 (r2DateStringCellEditor)', width: 180, cellEditor: 'r2DateStringCellEditor' },
     ],
@@ -113,10 +139,20 @@ function FullRowEdit({ ctx }) {
 
 function EditValidation({ p, ctx }) {
   const ref = useRef(null);
-  const [rows] = useState(() => makeRows(20).map(r => ({ ...r, code: `T${String(r.id).padStart(3, '0')}`, qty: (r.id % 50) * 10, errCnt: r.id % 7, due: r.updatedAt })));
+  const [rows] = useState(() =>
+    makeRows(20).map(r => ({ ...r, code: `T${String(r.id).padStart(3, '0')}`, qty: (r.id % 50) * 10, errCnt: r.id % 7, due: r.updatedAt })),
+  );
   const defs = useMemo(
     () => [
-      { field: 'code', headerName: '코드 (3~4자)', width: 130, cellEditorParams: { maxLength: 4, getValidationErrors: ({ value, internalErrors }) => internalErrors || (String(value ?? '').length < 3 ? ['3자 이상 입력하세요'] : null) } },
+      {
+        field: 'code',
+        headerName: '코드 (3~4자)',
+        width: 130,
+        cellEditorParams: {
+          maxLength: 4,
+          getValidationErrors: ({ value, internalErrors }) => internalErrors || (String(value ?? '').length < 3 ? ['3자 이상 입력하세요'] : null),
+        },
+      },
       { field: 'qty', headerName: '수량 (0~1,000, 10 단위)', width: 190, cellEditor: 'r2NumberCellEditor', cellEditorParams: { min: 0, max: 1000, step: 10 } },
       { field: 'errCnt', headerName: '불량 수', width: 110, cellEditor: 'r2NumberCellEditor', cellEditorParams: { min: 0 } },
       { field: 'due', headerName: '마감일 (2025 이후)', width: 170, cellEditor: 'r2DateStringCellEditor', cellEditorParams: { min: '2025-01-01' } },
@@ -176,7 +212,15 @@ function RangeClipboard({ p, ctx }) {
         copyHeadersToClipboard={p.headers}
         suppressLastEmptyLineOnPaste={p.lastEmpty}
         rowNumbers
-        onCellSelectionChanged={e => e.finished && ctx.log(`cellSelectionChanged: ${e.api.getCellRanges().map(r => `${r.startRow.rowIndex}~${r.endRow.rowIndex} × ${r.columns.length}열`).join(' | ')}`)}
+        onCellSelectionChanged={e =>
+          e.finished &&
+          ctx.log(
+            `cellSelectionChanged: ${e.api
+              .getCellRanges()
+              .map(r => `${r.startRow.rowIndex}~${r.endRow.rowIndex} × ${r.columns.length}열`)
+              .join(' | ')}`,
+          )
+        }
         onPasteEnd={() => ctx.log('pasteEnd')}
       />
     </>
@@ -188,7 +232,9 @@ function FillHandle({ p, ctx }) {
   return (
     <>
       <div className="pg-toolbar">
-        <span className="pg-note">범위 선택 후 오른쪽 아래 작은 사각형을 끌어 채우기 · 숫자 2개 이상은 등차 연장, Alt 누르면 복사/증가 전환 · 안쪽으로 끌면 비우기</span>
+        <span className="pg-note">
+          범위 선택 후 오른쪽 아래 작은 사각형을 끌어 채우기 · 숫자 2개 이상은 등차 연장, Alt 누르면 복사/증가 전환 · 안쪽으로 끌면 비우기
+        </span>
       </div>
       <Grid
         key={`${p.mode}${p.direction}`}
@@ -197,7 +243,11 @@ function FillHandle({ p, ctx }) {
         defaultColDef={{ editable: true }}
         cellSelection={{ handle: { mode: p.mode, direction: p.direction } }}
         undoRedoCellEditing
-        onFillEnd={e => ctx.log(`fillEnd: ${e.initialRange.startRow.rowIndex}~${e.initialRange.endRow.rowIndex} → ${e.finalRange.startRow.rowIndex}~${e.finalRange.endRow.rowIndex}`)}
+        onFillEnd={e =>
+          ctx.log(
+            `fillEnd: ${e.initialRange.startRow.rowIndex}~${e.initialRange.endRow.rowIndex} → ${e.finalRange.startRow.rowIndex}~${e.finalRange.endRow.rowIndex}`,
+          )
+        }
       />
     </>
   );
@@ -234,8 +284,21 @@ function Sparklines({ p }) {
   const defs = useMemo(
     () => [
       { field: 'taskName', headerName: '작업명', width: 140 },
-      { field: 'history', headerName: `월별 추이 (${p.type})`, width: 220, cellRenderer: 'r2SparklineCellRenderer', cellRendererParams: { sparklineOptions: { type: p.type, direction: p.direction, marker: { enabled: p.marker, size: 4 } } } },
-      { field: 'history', colId: 'bar', headerName: '막대', width: 160, cellRenderer: 'r2SparklineCellRenderer', cellRendererParams: { sparklineOptions: { type: 'bar', direction: 'vertical', fill: '#ffa03a' } } },
+      {
+        field: 'history',
+        headerName: `월별 추이 (${p.type})`,
+        width: 220,
+        cellRenderer: 'r2SparklineCellRenderer',
+        cellRendererParams: { sparklineOptions: { type: p.type, direction: p.direction, marker: { enabled: p.marker, size: 4 } } },
+      },
+      {
+        field: 'history',
+        colId: 'bar',
+        headerName: '막대',
+        width: 160,
+        cellRenderer: 'r2SparklineCellRenderer',
+        cellRendererParams: { sparklineOptions: { type: 'bar', direction: 'vertical', fill: '#ffa03a' } },
+      },
       ...BASE_COLUMNS.slice(2, 5),
     ],
     [p.type, p.direction, p.marker],
@@ -249,7 +312,22 @@ export default [
     category: CAT,
     name: '셀 렌더링 · 스타일',
     desc: 'valueGetter / valueFormatter / cellRenderer(함수·컴포넌트·components 등록명) / cellClassRules / cellStyle.',
-    keywords: ['cellRenderer', 'cellRendererParams', 'cellRendererSelector', 'components', 'valueGetter', 'valueFormatter', 'cellClass', 'cellClassRules', 'cellStyle', 'refreshCells', 'redrawRows', 'valueCache', 'valueCacheNeverExpires', 'expireValueCache'],
+    keywords: [
+      'cellRenderer',
+      'cellRendererParams',
+      'cellRendererSelector',
+      'components',
+      'valueGetter',
+      'valueFormatter',
+      'cellClass',
+      'cellClassRules',
+      'cellStyle',
+      'refreshCells',
+      'redrawRows',
+      'valueCache',
+      'valueCacheNeverExpires',
+      'expireValueCache',
+    ],
     controls: [
       {
         key: 'renderers',
@@ -309,7 +387,13 @@ export default [
         on: '브라우저 기본 툴팁 (tooltipShowDelay 무시)',
         off: '그리드 툴팁 — 테마 색, 지연 시간 조절 가능',
       },
-      { key: 'delay', type: 'number', default: 400, label: 'tooltipShowDelay', desc: '마우스를 올린 뒤 툴팁이 뜨기까지 시간(ms). 그리드 툴팁에만 적용. tooltipHideDelay 로 자동 숨김 시간도 지정 가능.' },
+      {
+        key: 'delay',
+        type: 'number',
+        default: 400,
+        label: 'tooltipShowDelay',
+        desc: '마우스를 올린 뒤 툴팁이 뜨기까지 시간(ms). 그리드 툴팁에만 적용. tooltipHideDelay 로 자동 숨김 시간도 지정 가능.',
+      },
     ],
     render: p => <Tooltips p={p} />,
     code: p => `<R2Grid
@@ -326,7 +410,29 @@ export default [
     category: CAT,
     name: '셀 편집 · 내장 에디터',
     desc: '더블클릭/Enter/F2/타이핑으로 편집, Esc 취소. 내장 에디터: text, number, select, richSelect(팝업), largeText(팝업), checkbox, date/dateString.',
-    keywords: ['editable', 'cellEditor', 'cellEditorParams', 'cellEditorPopup', 'r2TextCellEditor', 'r2NumberCellEditor', 'r2SelectCellEditor', 'r2RichSelectCellEditor', 'r2LargeTextCellEditor', 'r2CheckboxCellEditor', 'r2DateCellEditor', 'r2DateStringCellEditor', 'singleClickEdit', 'stopEditingWhenCellsLoseFocus', 'enterNavigatesVertically', 'onCellValueChanged', 'valueSetter', 'valueParser', 'startEditingCell', 'stopEditing', 'readOnlyEdit'],
+    keywords: [
+      'editable',
+      'cellEditor',
+      'cellEditorParams',
+      'cellEditorPopup',
+      'r2TextCellEditor',
+      'r2NumberCellEditor',
+      'r2SelectCellEditor',
+      'r2RichSelectCellEditor',
+      'r2LargeTextCellEditor',
+      'r2CheckboxCellEditor',
+      'r2DateCellEditor',
+      'r2DateStringCellEditor',
+      'singleClickEdit',
+      'stopEditingWhenCellsLoseFocus',
+      'enterNavigatesVertically',
+      'onCellValueChanged',
+      'valueSetter',
+      'valueParser',
+      'startEditingCell',
+      'stopEditing',
+      'readOnlyEdit',
+    ],
     controls: [
       {
         key: 'singleClickEdit',
@@ -374,7 +480,19 @@ export default [
     category: CAT,
     name: '행 전체 편집 · Undo/Redo',
     desc: 'editType="fullRow" 는 행의 편집 가능한 셀을 한꺼번에 편집하고 확정 시 rowValueChanged 를 보냅니다. undoRedoCellEditing 으로 Ctrl+Z / Ctrl+Y 되돌리기 (행 편집·붙여넣기·채우기는 한 단위).',
-    keywords: ['editType', 'fullRow', 'onRowValueChanged', 'onRowEditingStarted', 'onRowEditingStopped', 'undoRedoCellEditing', 'undoRedoCellEditingLimit', 'undoCellEditing', 'redoCellEditing', 'onUndoStarted', 'onRedoStarted'],
+    keywords: [
+      'editType',
+      'fullRow',
+      'onRowValueChanged',
+      'onRowEditingStarted',
+      'onRowEditingStopped',
+      'undoRedoCellEditing',
+      'undoRedoCellEditingLimit',
+      'undoCellEditing',
+      'redoCellEditing',
+      'onUndoStarted',
+      'onRedoStarted',
+    ],
     controls: [],
     render: (p, ctx) => <FullRowEdit ctx={ctx} />,
     code: () => `<R2Grid
@@ -406,7 +524,19 @@ api.redoCellEditing();`,
     category: CAT,
     name: '값 검사',
     desc: '편집한 값을 확정하기 전에 검사합니다. 내장 에디터는 cellEditorParams 의 min·max·step(숫자), min·max(날짜), maxLength(글자) 를 그대로 검사 규칙으로 쓰고, getValidationErrors 로 직접 규칙을 더합니다. 틀린 값은 칸이 빨갛게 표시되고 아래에 이유가 나옵니다.',
-    keywords: ['getValidationErrors', 'invalidEditValueMode', 'getFullRowEditValidationErrors', 'validateEdit', 'cellEditorParams', 'min', 'max', 'step', 'maxLength', 'validationMin', 'validationMax'],
+    keywords: [
+      'getValidationErrors',
+      'invalidEditValueMode',
+      'getFullRowEditValidationErrors',
+      'validateEdit',
+      'cellEditorParams',
+      'min',
+      'max',
+      'step',
+      'maxLength',
+      'validationMin',
+      'validationMax',
+    ],
     controls: [
       {
         key: 'mode',
@@ -431,12 +561,16 @@ api.redoCellEditing();`,
     ],
     render: (p, ctx) => <EditValidation p={p} ctx={ctx} />,
     code: p => `<R2Grid
-  invalidEditValueMode="${p.mode}"${p.fullRow ? `
+  invalidEditValueMode="${p.mode}"${
+    p.fullRow
+      ? `
   editType="fullRow"
   getFullRowEditValidationErrors={({ editorsState }) => {
     const v = id => editorsState.find(e => e.colId === id)?.newValue;
     return v('errCnt') > v('qty') ? ['불량 수는 수량보다 클 수 없습니다'] : null;
-  }}` : ''}
+  }}`
+      : ''
+  }
   columnDefs={[
     { field: 'code', cellEditorParams: {
         maxLength: 4,
@@ -455,7 +589,23 @@ api.validateEdit(); // 편집 중인 칸의 오류 [{ rowIndex, column, messages
     category: CAT,
     name: '범위 선택 · 클립보드',
     desc: '셀 범위 드래그 선택(가장자리 자동 스크롤), 다중 범위, Ctrl+C/X/V (엑셀과 TSV 호환), 헤더 포함 복사, Delete 로 지우기.',
-    keywords: ['cellSelection', 'enableRangeSelection', 'suppressMultiRanges', 'copyHeadersToClipboard', 'copyToClipboard', 'cutToClipboard', 'pasteFromClipboard', 'getCellRanges', 'addCellRange', 'clearCellSelection', 'processCellForClipboard', 'processDataFromClipboard', 'sendToClipboard', 'onCellSelectionChanged', 'onPasteEnd'],
+    keywords: [
+      'cellSelection',
+      'enableRangeSelection',
+      'suppressMultiRanges',
+      'copyHeadersToClipboard',
+      'copyToClipboard',
+      'cutToClipboard',
+      'pasteFromClipboard',
+      'getCellRanges',
+      'addCellRange',
+      'clearCellSelection',
+      'processCellForClipboard',
+      'processDataFromClipboard',
+      'sendToClipboard',
+      'onCellSelectionChanged',
+      'onPasteEnd',
+    ],
     controls: [
       {
         key: 'multi',
@@ -514,7 +664,19 @@ const mergedGridOptions = useMemo(
     category: CAT,
     name: '채우기 핸들 (드래그 채우기)',
     desc: '엑셀처럼 범위 오른쪽 아래 핸들을 끌어 값을 채웁니다. 숫자 2개 이상은 등차 연장, 1개/문자는 복사, Alt 로 전환, 축소하면 비움. setFillValue 로 채울 값을 직접 정할 수 있습니다.',
-    keywords: ['cellSelection.handle', 'fill', 'enableFillHandle', 'enableRangeHandle', 'fillHandleDirection', 'setFillValue', 'fillOperation', 'suppressClearOnFillReduction', 'onFillStart', 'onFillEnd', '드래그 복사'],
+    keywords: [
+      'cellSelection.handle',
+      'fill',
+      'enableFillHandle',
+      'enableRangeHandle',
+      'fillHandleDirection',
+      'setFillValue',
+      'fillOperation',
+      'suppressClearOnFillReduction',
+      'onFillStart',
+      'onFillEnd',
+      '드래그 복사',
+    ],
     controls: [
       {
         key: 'mode',
@@ -557,9 +719,27 @@ const mergedGridOptions = useMemo(
     category: CAT,
     name: '찾기 (Find)',
     desc: 'findSearchValue 로 표시 텍스트를 검색해 강조하고, findNext / findPrevious 로 일치 항목 사이를 이동합니다.',
-    keywords: ['findSearchValue', 'findOptions', 'caseSensitive', 'findNext', 'findPrevious', 'findGoTo', 'findClearActive', 'findGetTotalMatches', 'findGetActiveMatch', 'onFindChanged', 'r2-find-match'],
+    keywords: [
+      'findSearchValue',
+      'findOptions',
+      'caseSensitive',
+      'findNext',
+      'findPrevious',
+      'findGoTo',
+      'findClearActive',
+      'findGetTotalMatches',
+      'findGetActiveMatch',
+      'onFindChanged',
+      'r2-find-match',
+    ],
     controls: [
-      { key: 'search', type: 'text', default: 'USER_1', label: 'findSearchValue', desc: '찾을 텍스트. 화면에 보이는 값(포맷 적용 후) 기준으로 모든 셀에서 찾아 강조합니다. 비우면 찾기 해제. 이전/다음 버튼 = api.findPrevious/findNext.' },
+      {
+        key: 'search',
+        type: 'text',
+        default: 'USER_1',
+        label: 'findSearchValue',
+        desc: '찾을 텍스트. 화면에 보이는 값(포맷 적용 후) 기준으로 모든 셀에서 찾아 강조합니다. 비우면 찾기 해제. 이전/다음 버튼 = api.findPrevious/findNext.',
+      },
       {
         key: 'caseSensitive',
         type: 'boolean',
@@ -591,8 +771,8 @@ api.findPrevious();`,
         key: 'type',
         type: 'select',
         default: 'area',
-        label: "sparklineOptions.type",
-        desc: "r2SparklineCellRenderer 의 차트 종류. 셀 값은 숫자 배열이어야 합니다.",
+        label: 'sparklineOptions.type',
+        desc: 'r2SparklineCellRenderer 의 차트 종류. 셀 값은 숫자 배열이어야 합니다.',
         options: [
           { value: 'line', desc: '꺾은선 — 추세' },
           { value: 'area', desc: '면 — 추세 + 크기감' },
@@ -604,7 +784,7 @@ api.findPrevious();`,
         type: 'select',
         default: 'vertical',
         label: 'sparklineOptions.direction',
-        desc: "막대(bar)의 방향. line/area 에는 영향 없음.",
+        desc: '막대(bar)의 방향. line/area 에는 영향 없음.',
         options: [
           { value: 'vertical', desc: '세로 막대 (값이 위로)' },
           { value: 'horizontal', desc: '가로 막대 (값이 오른쪽으로)' },

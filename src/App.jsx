@@ -96,9 +96,7 @@ function SimpleTextEditor({ value, onValueChange, eventKey, column }) {
 
 function StatusBadge({ value }) {
   const color = { 완료: '#2e7d32', 진행: '#1565c0', 대기: '#757575', 오류: '#c62828', 검토: '#e65100' }[value] || '#555';
-  return (
-    <span style={{ background: color, color: '#fff', padding: '1px 8px', borderRadius: 10, fontSize: 11 }}>{value}</span>
-  );
+  return <span style={{ background: color, color: '#fff', padding: '1px 8px', borderRadius: 10, fontSize: 11 }}>{value}</span>;
 }
 
 function ProgressBar({ value }) {
@@ -260,11 +258,7 @@ export default function App() {
           </button>
           <button onClick={() => api().applyTransaction({ add: makeRows(1, Date.now() % 1e6), addIndex: 0 })}>행 추가</button>
           <button onClick={() => api().applyTransaction({ remove: api().getSelectedRows() })}>선택 삭제</button>
-          <button
-            onClick={() => api().setFilterModel({ taskName: { filterType: 'text', type: 'contains', filter: '0001' } })}
-          >
-            setFilterModel
-          </button>
+          <button onClick={() => api().setFilterModel({ taskName: { filterType: 'text', type: 'contains', filter: '0001' } })}>setFilterModel</button>
           <button onClick={() => api().setFilterModel(null)}>필터 해제</button>
           <button onClick={() => api().exportDataAsCsv({ fileName: 'clm-grid.csv' })}>CSV</button>
           <button onClick={() => excelChartDownload(gridRef)}>엑셀(+차트)</button>

@@ -110,7 +110,9 @@ export const rowDragMethods = {
   rowDragStart(node, event, column) {
     const multi = this.gos.rowDragMultiRow && node.selected && this.selected.size > 1;
     const nodes = multi
-      ? this.getSelectedNodes().filter(n => n.displayed).sort((a, b) => a.rowIndex - b.rowIndex)
+      ? this.getSelectedNodes()
+          .filter(n => n.displayed)
+          .sort((a, b) => a.rowIndex - b.rowIndex)
       : [node];
     this.rowDragState = { node, nodes, lastY: event.clientY, overIndex: node.rowIndex, column };
     nodes.forEach(n => {
@@ -132,7 +134,9 @@ export const rowDragMethods = {
     if (overNode && !overNode.detail && !overNode.footer && this.isManagedMoveAllowed() && this.isTreeDragManaged()) {
       const pi = overIndex - this.pageFirstRow;
       const position = this.treeDropPosition(overNode, y, pi);
-      const bad = d.nodes.some(n => this.isTreeAncestor(n, overNode)) || !this.rowDropAllowed(d.nodes, overNode, position, position === 'inside' ? overNode : overNode.parent?.data ? overNode.parent : null);
+      const bad =
+        d.nodes.some(n => this.isTreeAncestor(n, overNode)) ||
+        !this.rowDropAllowed(d.nodes, overNode, position, position === 'inside' ? overNode : overNode.parent?.data ? overNode.parent : null);
       if (bad) {
         d.pending = null;
         this.setRowDropPositionIndicator(null);
@@ -176,12 +180,25 @@ export const rowDragMethods = {
   rowDropAllowed(nodes, target, position, newParent) {
     const fn = this.gos.isRowValidDropPosition;
     if (typeof fn !== 'function') return true;
-    return fn({ source: nodes[0], rows: nodes, target, position, newParent: newParent !== undefined ? newParent : target?.parent ?? null, api: this.api, context: this.gos.context }) !== false;
+    return (
+      fn({
+        source: nodes[0],
+        rows: nodes,
+        target,
+        position,
+        newParent: newParent !== undefined ? newParent : (target?.parent ?? null),
+        api: this.api,
+        context: this.gos.context,
+      }) !== false
+    );
   },
 
   // 드롭 위치 표시줄 (setRowDropPositionIndicator / getRowDropPositionIndicator)
   setRowDropPositionIndicator(params) {
-    const next = params?.row && params.dropIndicatorPosition && params.dropIndicatorPosition !== 'none' ? { row: params.row, dropIndicatorPosition: params.dropIndicatorPosition } : null;
+    const next =
+      params?.row && params.dropIndicatorPosition && params.dropIndicatorPosition !== 'none'
+        ? { row: params.row, dropIndicatorPosition: params.dropIndicatorPosition }
+        : null;
     const prev = this.rowDropIndicator;
     if (prev?.row === next?.row && prev?.dropIndicatorPosition === next?.dropIndicatorPosition) return;
     this.rowDropIndicator = next;
@@ -277,7 +294,18 @@ export const rowDragMethods = {
       if (!el) continue;
       const r = el.getBoundingClientRect();
       const inside = event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom;
-      const base = { type: '', event, node: d.node, nodes: d.nodes, overIndex: -1, overNode: undefined, y: 0, vDirection: null, api: this.api, context: this.gos.context };
+      const base = {
+        type: '',
+        event,
+        node: d.node,
+        nodes: d.nodes,
+        overIndex: -1,
+        overNode: undefined,
+        y: 0,
+        vDirection: null,
+        api: this.api,
+        context: this.gos.context,
+      };
       if (phase === 'move') {
         if (inside && !z.inside) z.params.onDragEnter?.({ ...base, type: 'rowDragEnter' });
         if (!inside && z.inside) z.params.onDragLeave?.({ ...base, type: 'rowDragLeave' });

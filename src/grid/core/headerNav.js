@@ -65,7 +65,17 @@ export const headerNavMethods = {
       this.clearHeaderFocus();
       return false;
     }
-    if (column.colDef.suppressHeaderKeyboardEvent?.({ event: e, column, colDef: column.colDef, headerRowIndex: hf.rowIndex, api: this.api, context: this.gos.context })) return false;
+    if (
+      column.colDef.suppressHeaderKeyboardEvent?.({
+        event: e,
+        column,
+        colDef: column.colDef,
+        headerRowIndex: hf.rowIndex,
+        api: this.api,
+        context: this.gos.context,
+      })
+    )
+      return false;
     const rtl = this.isRtl?.();
     const key = rtl && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') ? (e.key === 'ArrowLeft' ? 'ArrowRight' : 'ArrowLeft') : e.key;
     const depth = this.headerGroupDepth || 0;
@@ -138,7 +148,9 @@ export const headerNavMethods = {
           return true;
         }
         const row = hf.rowIndex + 1;
-        return navigate('navigateToNextHeader', row < count ? posOf(row, column) : null, () => (row < count ? this.setHeaderFocus(row, column.colId, 'ui') : goBody() || true));
+        return navigate('navigateToNextHeader', row < count ? posOf(row, column) : null, () =>
+          row < count ? this.setHeaderFocus(row, column.colId, 'ui') : goBody() || true,
+        );
       }
       case 'Tab': {
         const c = e.shiftKey ? (ci > 0 ? cols[ci - 1] : null) : ci < cols.length - 1 ? cols[ci + 1] : null;

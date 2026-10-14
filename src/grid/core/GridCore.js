@@ -6,16 +6,7 @@ import { Column, ColumnGroup, ROW_NUMBERS_COL_ID, SELECTION_COL_ID, normalizePin
 import { getGlobalGridOptions } from './globals.js';
 import { resolveTheme } from './theme.js';
 import { setFilterKey } from './filterService.js';
-import {
-  clamp,
-  defaultComparator,
-  evaluateExpression,
-  eventPropName,
-  getFieldValue,
-  isPrintableKey,
-  setFieldValue,
-  toText,
-} from './utils.js';
+import { clamp, defaultComparator, evaluateExpression, eventPropName, getFieldValue, isPrintableKey, setFieldValue, toText } from './utils.js';
 import { localeText } from './locale.js';
 import { createApi } from './api.js';
 import { pasteTextIntoGrid } from './clipboard.js';
@@ -75,9 +66,7 @@ const SILENT_OPTION_KEYS = new Set([
 export function camelToHuman(field) {
   if (!field) return '';
   const last = String(field).split('.').pop();
-  return last
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/^./, c => c.toUpperCase());
+  return last.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^./, c => c.toUpperCase());
 }
 
 function pad2(n) {
@@ -245,9 +234,7 @@ export class GridCore {
     const ag = this.gos.alignedGrids;
     const list = typeof ag === 'function' ? ag() : ag;
     if (!Array.isArray(list)) return [];
-    return list
-      .map(x => x?.api?.__r2core ?? x?.current?.api?.__r2core ?? x?.__r2core ?? null)
-      .filter(c => c && c !== this && !c.destroyed);
+    return list.map(x => x?.api?.__r2core ?? x?.current?.api?.__r2core ?? x?.__r2core ?? null).filter(c => c && c !== this && !c.destroyed);
   }
 
   syncAlignedGrids(type, params) {
@@ -256,9 +243,7 @@ export class GridCore {
     if (!scroll && !COLUMN_EVENTS.has(type)) return;
     const others = this.getAlignedCores();
     if (!others.length) return;
-    const state = scroll
-      ? null
-      : this.getColumnState().map(s => ({ colId: s.colId, width: s.width, hide: s.hide, pinned: s.pinned, flex: s.flex }));
+    const state = scroll ? null : this.getColumnState().map(s => ({ colId: s.colId, width: s.width, hide: s.hide, pinned: s.pinned, flex: s.flex }));
     const groups = scroll ? null : this.getColumnGroupState();
     for (const o of others) {
       o.__aligning = true;
@@ -367,12 +352,7 @@ export class GridCore {
       this.installTheme();
     }
     let rebuild = false;
-    if (
-      changed('rowSelection') ||
-      changed('suppressRowClickSelection') ||
-      changed('rowMultiSelectWithClick') ||
-      changed('isRowSelectable')
-    ) {
+    if (changed('rowSelection') || changed('suppressRowClickSelection') || changed('rowMultiSelectWithClick') || changed('isRowSelectable')) {
       this.rsOpts = this.normalizeRowSelection();
       if (changed('rowSelection')) rebuild = true;
       this.updateSelectableAll();
@@ -404,7 +384,19 @@ export class GridCore {
       this.dispatchFindChanged();
     }
     // 피벗 결과 컬럼 모양을 바꾸는 옵션
-    if (['pivotRowTotals', 'pivotColumnGroupTotals', 'removePivotHeaderRowWhenSingleValueColumn', 'suppressExpandablePivotGroups', 'pivotDefaultExpanded', 'pivotMaxGeneratedColumns', 'processPivotResultColDef', 'processPivotResultColGroupDef'].some(changed) && this.isPivotActive?.()) {
+    if (
+      [
+        'pivotRowTotals',
+        'pivotColumnGroupTotals',
+        'removePivotHeaderRowWhenSingleValueColumn',
+        'suppressExpandablePivotGroups',
+        'pivotDefaultExpanded',
+        'pivotMaxGeneratedColumns',
+        'processPivotResultColDef',
+        'processPivotResultColGroupDef',
+      ].some(changed) &&
+      this.isPivotActive?.()
+    ) {
       this.applyPivotResultColumns(true);
       this.columnsVersion++;
       this.layoutColumns();
@@ -448,8 +440,7 @@ export class GridCore {
     if (changed('rowData')) {
       const a = prev.rowData;
       const b = next.rowData;
-      const bothEmpty =
-        Array.isArray(a) && Array.isArray(b) && !a.length && !b.length && !this.rootNodes.length;
+      const bothEmpty = Array.isArray(a) && Array.isArray(b) && !a.length && !b.length && !this.rootNodes.length;
       if (!bothEmpty) this.setRowData(b, false);
     } else {
       let refresh = false;
@@ -515,7 +506,7 @@ export class GridCore {
       mode: multi ? 'multiRow' : 'singleRow',
       legacy: false,
       checkboxes: rs.checkboxes ?? true,
-      headerCheckbox: multi ? rs.headerCheckbox ?? true : false,
+      headerCheckbox: multi ? (rs.headerCheckbox ?? true) : false,
       enableClickSelection: rs.enableClickSelection ?? false,
       enableSelectionWithoutKeys: multi ? !!rs.enableSelectionWithoutKeys : false,
       isRowSelectable: rs.isRowSelectable ?? g.isRowSelectable,
@@ -674,9 +665,7 @@ export class GridCore {
     if (this.wantsAutoGroupColumn(leaves)) {
       const multiple = this.isMultipleGroupColumns() && !(g.treeData && typeof g.getDataPath === 'function');
       const rgCols = multiple
-        ? leaves
-            .filter(c => c.rowGroup)
-            .sort((a, b) => (a.rowGroupIndex ?? 1e9) - (b.rowGroupIndex ?? 1e9) || leaves.indexOf(a) - leaves.indexOf(b))
+        ? leaves.filter(c => c.rowGroup).sort((a, b) => (a.rowGroupIndex ?? 1e9) - (b.rowGroupIndex ?? 1e9) || leaves.indexOf(a) - leaves.indexOf(b))
         : [null];
       rgCols.forEach((rgc, i) => {
         // multipleColumns: 그룹 기준 컬럼마다 하나씩 (colId: r2-Grid-AutoColumn-<colId>)
@@ -685,7 +674,7 @@ export class GridCore {
           colId,
           {
             ...defaultColDef,
-            headerName: rgc ? rgc.colDef.headerName ?? camelToHuman(rgc.colDef.field ?? rgc.colId) : localeText(this, 'group'),
+            headerName: rgc ? (rgc.colDef.headerName ?? camelToHuman(rgc.colDef.field ?? rgc.colId)) : localeText(this, 'group'),
             minWidth: 200,
             cellRenderer: 'r2GroupCellRenderer',
             suppressColumnsToolPanel: true,
@@ -965,7 +954,7 @@ export class GridCore {
     if (typeof key === 'object') {
       return this.allColumns.find(c => c.userProvidedColDef === key || c.colDef === key) ?? null;
     }
-    // r2-Grid-* 별칭 colId 도 허용 
+    // r2-Grid-* 별칭 colId 도 허용
     return this.columnById.get(String(key)) ?? null;
   }
 
@@ -986,7 +975,14 @@ export class GridCore {
     else if (column.isAuto) return '';
     else name = camelToHuman(cd.field ?? column.colId);
     // 그룹 집계 컬럼: "sum(가격)" (suppressAggFuncInHeader 로 끔)
-    if (!plain && (this.groupMode || this.isPivotActive()) && cd.aggFunc && !this.gos.suppressAggFuncInHeader && column.autoType !== 'group' && !column.isPivotResult) {
+    if (
+      !plain &&
+      (this.groupMode || this.isPivotActive()) &&
+      cd.aggFunc &&
+      !this.gos.suppressAggFuncInHeader &&
+      column.autoType !== 'group' &&
+      !column.isPivotResult
+    ) {
       const fnName = typeof cd.aggFunc === 'string' ? cd.aggFunc : 'func';
       return `${fnName}(${name})`;
     }
@@ -1088,7 +1084,10 @@ export class GridCore {
     const pos = new Map(order.map((c, i) => [c, i]));
     for (const group of this.groupById?.values() || []) {
       if (!group.colGroupDef.marryChildren) continue;
-      const idx = group.getLeafColumns().map(c => pos.get(c)).sort((a, b) => a - b);
+      const idx = group
+        .getLeafColumns()
+        .map(c => pos.get(c))
+        .sort((a, b) => a - b);
       if (idx.length && idx[idx.length - 1] - idx[0] !== idx.length - 1) return false;
     }
     return true;
@@ -1144,7 +1143,7 @@ export class GridCore {
       pinned: c.pinned,
       sort: c.sort || null,
       sortIndex: c.sort ? c.sortIndex : null,
-      aggFunc: c.autoType || c.isPivotResult ? null : c.colDef.aggFunc ?? null,
+      aggFunc: c.autoType || c.isPivotResult ? null : (c.colDef.aggFunc ?? null),
       rowGroup: groupIdx.has(c),
       rowGroupIndex: groupIdx.get(c) ?? null,
       pivot: pivotIdx.has(c),
@@ -1174,7 +1173,7 @@ export class GridCore {
       if (col.autoType || col.isPivotResult) return;
       if (s.rowGroup !== undefined || s.rowGroupIndex !== undefined) {
         const rg = s.rowGroupIndex != null || !!s.rowGroup;
-        const rgi = rg ? s.rowGroupIndex ?? col.rowGroupIndex ?? 1e6 : null;
+        const rgi = rg ? (s.rowGroupIndex ?? col.rowGroupIndex ?? 1e6) : null;
         if (col.rowGroup !== rg || (rg && col.rowGroupIndex !== rgi)) {
           col.rowGroup = rg;
           col.rowGroupIndex = rgi;
@@ -1188,7 +1187,7 @@ export class GridCore {
       }
       if (s.pivot !== undefined || s.pivotIndex !== undefined) {
         const pv = s.pivotIndex != null || !!s.pivot;
-        const pvi = pv ? s.pivotIndex ?? col.pivotIndex ?? 1e6 : null;
+        const pvi = pv ? (s.pivotIndex ?? col.pivotIndex ?? 1e6) : null;
         if (col.pivot !== pv || (pv && col.pivotIndex !== pvi)) {
           col.pivot = pv;
           col.pivotIndex = pvi;
@@ -1230,8 +1229,7 @@ export class GridCore {
       if (this.isSsrm()) {
         if (modelChanged) this.ssrmReset('columns');
         else this.ssrmOnSortChanged();
-      }
-      else this.refreshModel({});
+      } else this.refreshModel({});
     }
     this.notify();
     if (groupChanged.length) this.dispatch('columnRowGroupChanged', { columns: this.rowGroupColumns(), column: null, source: 'api' });
@@ -1856,9 +1854,7 @@ export class GridCore {
     if (qt && String(qt).trim()) {
       const parser = this.gos.quickFilterParser;
       const matcher = this.gos.quickFilterMatcher;
-      const parts = parser
-        ? parser(String(qt))
-        : String(qt).trim().toLowerCase().split(/\s+/);
+      const parts = parser ? parser(String(qt)) : String(qt).trim().toLowerCase().split(/\s+/);
       // 피벗: 기본은 집계가 끝난 그룹 행(피벗 결과)에 적용. applyQuickFilterBeforePivotOrAgg 면 원본 행에 먼저
       if (this.isPivotActive() && !this.gos.applyQuickFilterBeforePivotOrAgg) this.postPivotQuick = { parts, matcher };
       else
@@ -1893,9 +1889,7 @@ export class GridCore {
 
   // 그룹 모드 형제 정렬용 비교자 (기본 비교자 + colDef.comparator)
   makeSortComparator() {
-    const sortCols = this.allColumns
-      .filter(c => c.sort)
-      .sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0));
+    const sortCols = this.allColumns.filter(c => c.sort).sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0));
     if (!sortCols.length) return null;
     const accented = !!this.gos.accentedSort;
     return (a, b) => {
@@ -1940,9 +1934,7 @@ export class GridCore {
   }
 
   applySort() {
-    const sortCols = this.allColumns
-      .filter(c => c.sort)
-      .sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0));
+    const sortCols = this.allColumns.filter(c => c.sort).sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0));
     if (!sortCols.length) {
       this.sortedNodes = this.filteredNodes;
       return;
@@ -2023,9 +2015,7 @@ export class GridCore {
           if (x == null || y == null) return (x == null ? -1 : 1) * s.dir;
           return (x < y ? -1 : 1) * s.dir;
         } else {
-          const r = s.cmp
-            ? s.cmp(s.vals[a], s.vals[b], nodes[a], nodes[b], s.desc)
-            : defaultComparator(s.vals[a], s.vals[b], accented);
+          const r = s.cmp ? s.cmp(s.vals[a], s.vals[b], nodes[a], nodes[b], s.desc) : defaultComparator(s.vals[a], s.vals[b], accented);
           if (r) return s.desc ? -r : r;
         }
       }
@@ -2373,9 +2363,7 @@ export class GridCore {
     const wasSorted = !!column.sort;
     column.sort = sort || null;
     if (column.sort && (!wasSorted || !multi)) column.sortIndex = multi ? 1e9 : 0;
-    const sorted = this.allColumns
-      .filter(c => c.sort)
-      .sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0));
+    const sorted = this.allColumns.filter(c => c.sort).sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0));
     sorted.forEach((c, i) => {
       c.sortIndex = i;
     });
@@ -2487,8 +2475,7 @@ export class GridCore {
       this.setServerSideSelectionState({ selectAll: true, toggledNodes: [] }, source);
       return;
     }
-    const nodes =
-      mode === 'filtered' ? this.filteredNodes : mode === 'currentPage' ? this.getPageMasters() : this.rootNodes;
+    const nodes = mode === 'filtered' ? this.filteredNodes : mode === 'currentPage' ? this.getPageMasters() : this.rootNodes;
     const changed = [];
     for (const n of nodes) {
       if (!n.selected && n.selectable) {
@@ -2505,12 +2492,7 @@ export class GridCore {
       this.setServerSideSelectionState({ selectAll: false, toggledNodes: [] }, source);
       return;
     }
-    const scope =
-      mode === 'filtered'
-        ? new Set(this.filteredNodes)
-        : mode === 'currentPage'
-          ? new Set(this.getPageMasters())
-          : null;
+    const scope = mode === 'filtered' ? new Set(this.filteredNodes) : mode === 'currentPage' ? new Set(this.getPageMasters()) : null;
     const changed = [];
     for (const [id, n] of [...this.selected]) {
       if (scope && !scope.has(n)) continue;
@@ -2978,7 +2960,17 @@ export class GridCore {
     if (typeof own === 'function') internal = own() ?? null;
     if (typeof p.getValidationErrors === 'function') {
       const { node, column } = ed;
-      const cellEditorParams = { ...p, value, node, column, colDef: column.colDef, data: node.data, rowIndex: node.rowIndex, api: this.api, context: this.gos.context };
+      const cellEditorParams = {
+        ...p,
+        value,
+        node,
+        column,
+        colDef: column.colDef,
+        data: node.data,
+        rowIndex: node.rowIndex,
+        api: this.api,
+        context: this.gos.context,
+      };
       internal = p.getValidationErrors({ value, internalErrors: internal, cellEditorParams }) ?? null;
     }
     return internal && internal.length ? internal : null;
@@ -3026,7 +3018,8 @@ export class GridCore {
     }
     const rowErrs = this.rowEditErrors(editing);
     editing.rowErrors = rowErrs;
-    if (rowErrs && !out.length) out.push({ rowIndex: editing.node.rowIndex, rowPinned: editing.node.rowPinned || null, column: editing.column, messages: rowErrs });
+    if (rowErrs && !out.length)
+      out.push({ rowIndex: editing.node.rowIndex, rowPinned: editing.node.rowPinned || null, column: editing.column, messages: rowErrs });
     return out.length ? out : null;
   }
 
@@ -3064,7 +3057,8 @@ export class GridCore {
           const newValue = this.parseBulkValue(node, column, raw, oldValue);
           if (newValue === oldValue) continue;
           if (this.batch) this.stageBatchValue(node, column, newValue, oldValue);
-          else if (this.gos.readOnlyEdit) this.dispatch('cellEditRequest', { ...this.cellEventParams(node, column), oldValue, newValue, value: newValue, source: 'bulk' });
+          else if (this.gos.readOnlyEdit)
+            this.dispatch('cellEditRequest', { ...this.cellEventParams(node, column), oldValue, newValue, value: newValue, source: 'bulk' });
           else if (!this.setCellValue(node, column, newValue, 'bulk', oldValue)) continue;
           changes.push({ rowIndex: node.rowIndex, rowPinned: node.rowPinned || null, columnId: column.colId, oldValue, newValue });
         }
@@ -3075,7 +3069,12 @@ export class GridCore {
     for (const c of ed.cells.values()) {
       const node = c.node;
       const now = this.getCellValue(node, c.column);
-      this.dispatch('cellEditingStopped', { ...this.cellEventParams(node, c.column), oldValue: c.startValue, newValue: now, valueChanged: now !== c.startValue });
+      this.dispatch('cellEditingStopped', {
+        ...this.cellEventParams(node, c.column),
+        oldValue: c.startValue,
+        newValue: now,
+        valueChanged: now !== c.startValue,
+      });
     }
     if (ed.fullRow) this.dispatch('rowEditingStopped', this.rowEventParams(ed.node));
     if (!this.batch) this.dispatch('bulkEditingStopped', { changes });
@@ -3383,7 +3382,8 @@ export class GridCore {
       const node = ed.node;
       const column = ed.column;
       this.dispatch('cellKeyDown', { ...this.cellEventParams(node, column, e), event: e });
-      if (column.colDef.suppressKeyboardEvent?.({ event: e, node, column, colDef: column.colDef, editing: true, api: this.api, context: this.gos.context })) return false;
+      if (column.colDef.suppressKeyboardEvent?.({ event: e, node, column, colDef: column.colDef, editing: true, api: this.api, context: this.gos.context }))
+        return false;
       if (key === 'Escape') {
         this.stopEditing(true);
         return true;
@@ -3410,7 +3410,8 @@ export class GridCore {
     const column = focus ? this.getColumn(focus.colId) : null;
     if (node && column) {
       this.dispatch('cellKeyDown', { ...this.cellEventParams(node, column, e), event: e });
-      if (column.colDef.suppressKeyboardEvent?.({ event: e, node, column, colDef: column.colDef, editing: false, api: this.api, context: this.gos.context })) return false;
+      if (column.colDef.suppressKeyboardEvent?.({ event: e, node, column, colDef: column.colDef, editing: false, api: this.api, context: this.gos.context }))
+        return false;
     }
     const ctrl = e.ctrlKey || e.metaKey;
     const lower = key.toLowerCase();
@@ -3442,11 +3443,19 @@ export class GridCore {
     if (!focus || !node || !column) return false;
 
     const cols = this.navigableColumns();
-    const ci = Math.max(0, cols.findIndex(c => c.colId === column.colId));
+    const ci = Math.max(
+      0,
+      cols.findIndex(c => c.colId === column.colId),
+    );
     const shift = e.shiftKey && !!this.cellSelectionOpts;
     const curEnd = shift && this.ranges.length ? this.ranges[this.ranges.length - 1] : null;
     const baseRow = curEnd ? curEnd.endRowIndex : focus.rowIndex;
-    const baseColIdx = curEnd ? Math.max(0, cols.findIndex(c => c.colId === curEnd.endColId)) : ci;
+    const baseColIdx = curEnd
+      ? Math.max(
+          0,
+          cols.findIndex(c => c.colId === curEnd.endColId),
+        )
+      : ci;
     const first = this.pageFirstRow;
     const last = this.pageLastRow - 1;
     const hasBody = this.getRowCountInPage() > 0;
@@ -3474,15 +3483,15 @@ export class GridCore {
         case 'ArrowUp':
           if (focus.rowIndex > 0) this.focusPinned(pos, focus.rowIndex - 1, column.colId);
           else if (pos === 'bottom' && hasBody) this.moveFocusTo(last, column.colId);
-          else if (pos === 'top' && !this.gos.suppressHeaderFocus && this.gos.headerHeight !== 0) this.setHeaderFocus(this.headerRowCount() - 1, column.colId, 'ui');
+          else if (pos === 'top' && !this.gos.suppressHeaderFocus && this.gos.headerHeight !== 0)
+            this.setHeaderFocus(this.headerRowCount() - 1, column.colId, 'ui');
           return true;
         default:
           break;
       }
     }
 
-    const pinnedNav =
-      focus.rowPinned && ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'PageDown', 'PageUp', 'Home', 'End', 'Tab'].includes(key);
+    const pinnedNav = focus.rowPinned && ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'PageDown', 'PageUp', 'Home', 'End', 'Tab'].includes(key);
     switch (pinnedNav ? '' : key) {
       case 'ArrowDown':
         if (!ctrl && !shift && baseRow >= last && this.pinnedBottom.length) {
@@ -3842,7 +3851,7 @@ export class GridCore {
   getFloatingFiltersHeight(headerHeight) {
     if (this.isAdvancedFilterEnabled()) return 0;
     const has = this.displayedColumns.some(c => !c.isAuto && c.colDef.floatingFilter && c.colDef.filter);
-    return has ? this.gos.floatingFiltersHeight ?? headerHeight : 0;
+    return has ? (this.gos.floatingFiltersHeight ?? headerHeight) : 0;
   }
 
   // ── 팝업(메뉴/필터) ────────────────────────────────────────
@@ -3857,7 +3866,8 @@ export class GridCore {
     const prev = this.popup;
     this.popup = popup;
     this.notify();
-    if (prev?.type === 'advancedFilterBuilder' && popup?.type !== 'advancedFilterBuilder') this.dispatch('advancedFilterBuilderVisibleChanged', { visible: false, source: 'api' });
+    if (prev?.type === 'advancedFilterBuilder' && popup?.type !== 'advancedFilterBuilder')
+      this.dispatch('advancedFilterBuilderVisibleChanged', { visible: false, source: 'api' });
     if (popup?.type === 'filter' || (popup?.type === 'columnMenu' && popup.tab === 'filterMenuTab')) {
       this.dispatch('filterOpened', { column: popup.column, source: popup.source || 'COLUMN_MENU', eGui: null });
     }
@@ -3887,11 +3897,19 @@ export class GridCore {
     // colDef.contextMenuItems 가 있으면 그 컬럼에선 그리드 설정보다 우선
     const colItems = column?.colDef?.contextMenuItems;
     const getItems = colItems !== undefined ? (Array.isArray(colItems) ? () => colItems : colItems) : this.gos.getContextMenuItems;
-    const items = typeof getItems === 'function'
-      ? getItems({ node: node ?? null, column: column ?? null, value, api: this.api, context: this.gos.context, defaultItems })
-      : defaultItems;
+    const items =
+      typeof getItems === 'function'
+        ? getItems({ node: node ?? null, column: column ?? null, value, api: this.api, context: this.gos.context, defaultItems })
+        : defaultItems;
     if (!items || !items.length) return true;
-    this.openPopup({ type: 'contextMenu', x, y, items, params: { node: node ?? null, column: column ?? null, value, api: this.api, context: this.gos.context }, event });
+    this.openPopup({
+      type: 'contextMenu',
+      x,
+      y,
+      items,
+      params: { node: node ?? null, column: column ?? null, value, api: this.api, context: this.gos.context },
+      event,
+    });
     this.dispatch('contextMenuVisibleChanged', { visible: true, source: 'ui' });
     return true;
   }
@@ -4200,4 +4218,21 @@ export class GridCore {
 }
 
 // 기능별 mixin 결합 (그룹핑 / SSRM / 행드래그 / undo / 고정행)
-Object.assign(GridCore.prototype, groupingMethods, ssrmMethods, viewportMethods, rowDragMethods, undoMethods, pinnedMethods, customFilterMethods, fillHandleMethods, statusBarMethods, findMethods, pivotMethods, advancedFilterMethods, chartMethods, stateMethods, headerNavMethods);
+Object.assign(
+  GridCore.prototype,
+  groupingMethods,
+  ssrmMethods,
+  viewportMethods,
+  rowDragMethods,
+  undoMethods,
+  pinnedMethods,
+  customFilterMethods,
+  fillHandleMethods,
+  statusBarMethods,
+  findMethods,
+  pivotMethods,
+  advancedFilterMethods,
+  chartMethods,
+  stateMethods,
+  headerNavMethods,
+);

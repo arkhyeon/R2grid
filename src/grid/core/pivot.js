@@ -12,9 +12,7 @@ export const pivotMethods = {
   },
 
   pivotColumns() {
-    return this.allColumns
-      .filter(c => c.pivot && !c.isPivotResult)
-      .sort((a, b) => (a.pivotIndex ?? 1e9) - (b.pivotIndex ?? 1e9));
+    return this.allColumns.filter(c => c.pivot && !c.isPivotResult).sort((a, b) => (a.pivotIndex ?? 1e9) - (b.pivotIndex ?? 1e9));
   },
 
   valueColumns() {
@@ -72,11 +70,19 @@ export const pivotMethods = {
     if (max > 0 && keys.length * Math.max(1, vcols.length) > max) {
       if (this.__pivotExceededSig !== keys.length) {
         this.__pivotExceededSig = keys.length;
-        this.dispatch('pivotMaxColumnsExceeded', { message: `피벗 결과 컬럼 ${keys.length * Math.max(1, vcols.length)}개가 pivotMaxGeneratedColumns(${max})를 넘습니다` });
+        this.dispatch('pivotMaxColumnsExceeded', {
+          message: `피벗 결과 컬럼 ${keys.length * Math.max(1, vcols.length)}개가 pivotMaxGeneratedColumns(${max})를 넘습니다`,
+        });
       }
       keys = [];
     } else this.__pivotExceededSig = null;
-    const opts = [g.pivotRowTotals, g.pivotColumnGroupTotals, g.removePivotHeaderRowWhenSingleValueColumn, g.suppressExpandablePivotGroups, g.pivotDefaultExpanded];
+    const opts = [
+      g.pivotRowTotals,
+      g.pivotColumnGroupTotals,
+      g.removePivotHeaderRowWhenSingleValueColumn,
+      g.suppressExpandablePivotGroups,
+      g.pivotDefaultExpanded,
+    ];
     const sig = active && pcols.length && keys.length ? JSON.stringify([pcols.map(c => c.colId), vcols.map(c => c.colId + c.colDef.aggFunc), keys, opts]) : '';
     if (!force && sig === this.__pivotSig) return false;
     this.__pivotSig = sig;
@@ -144,7 +150,12 @@ export const pivotMethods = {
     });
     const rowTotals = g.pivotRowTotals;
     if (rowTotals === 'before') {
-      for (const vc of vcols) makeCol(totalDef(`PivotRowTotal_${vc.colId}`, vc, `합계 ${valueName(vc)}`, []), [], rootList, { pivotKeyPrefix: [], pivotValueColumn: vc, pivotTotal: 'row' });
+      for (const vc of vcols)
+        makeCol(totalDef(`PivotRowTotal_${vc.colId}`, vc, `합계 ${valueName(vc)}`, []), [], rootList, {
+          pivotKeyPrefix: [],
+          pivotValueColumn: vc,
+          pivotTotal: 'row',
+        });
     }
     for (const key of keys) {
       const chain = [];
@@ -169,7 +180,7 @@ export const pivotMethods = {
       for (const vc of vcols) {
         const colId = `pivot_${key.join('_')}_${vc.colId}`;
         const af = vc.colDef.aggFunc;
-        const name = dropLastRow ? (key[key.length - 1] === '' ? '(빈 값)' : key[key.length - 1]) : vc.colDef.headerName ?? vc.colId;
+        const name = dropLastRow ? (key[key.length - 1] === '' ? '(빈 값)' : key[key.length - 1]) : (vc.colDef.headerName ?? vc.colId);
         const def = {
           colId,
           headerName: dropLastRow || suppressAgg || typeof af !== 'string' ? name : `${af}(${name})`,
@@ -203,14 +214,20 @@ export const pivotMethods = {
           if (!g.suppressExpandablePivotGroups) def.columnGroupShow = 'closed';
           totals.push(makeCol(def, chain, [], { pivotKeyPrefix: prefix, pivotValueColumn: vc, pivotTotal: 'group' }));
         }
-        if (!g.suppressExpandablePivotGroups) grp.children.forEach(c => (c.isColumn ? (c.colDef.columnGroupShow = 'open') : (c.colGroupDef.columnGroupShow = 'open')));
+        if (!g.suppressExpandablePivotGroups)
+          grp.children.forEach(c => (c.isColumn ? (c.colDef.columnGroupShow = 'open') : (c.colGroupDef.columnGroupShow = 'open')));
         if (groupTotals === 'before') grp.children.unshift(...totals);
         else grp.children.push(...totals);
         grp.computeExpandable();
       }
     }
     if (rowTotals === 'after') {
-      for (const vc of vcols) makeCol(totalDef(`PivotRowTotal_${vc.colId}`, vc, `합계 ${valueName(vc)}`, []), [], rootList, { pivotKeyPrefix: [], pivotValueColumn: vc, pivotTotal: 'row' });
+      for (const vc of vcols)
+        makeCol(totalDef(`PivotRowTotal_${vc.colId}`, vc, `합계 ${valueName(vc)}`, []), [], rootList, {
+          pivotKeyPrefix: [],
+          pivotValueColumn: vc,
+          pivotTotal: 'row',
+        });
     }
     // 화면 순서 = 트리 순서 (합계 컬럼 위치 반영)
     const ordered = [];
@@ -281,7 +298,11 @@ export const pivotMethods = {
     root.childrenAll = leaves;
     root.allChildrenCount = leaves.length;
     root.selectable = false;
-    this.aggregateNode(root, this.allColumns.filter(c => c.colDef.aggFunc), false);
+    this.aggregateNode(
+      root,
+      this.allColumns.filter(c => c.colDef.aggFunc),
+      false,
+    );
     this.flashAggChanges([root]);
     for (const n of this.rootNodes) {
       n.rowIndex = null;

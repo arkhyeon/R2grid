@@ -22,11 +22,7 @@ function CheckboxCellRenderer({ core, node, column, value }) {
   const editable = core.isCellEditable(column, node);
   return (
     <div className="r2-cell-wrapper r2-checkbox-cell" role="presentation">
-      <Checkbox
-        checked={value == null ? false : !!value}
-        disabled={!editable}
-        onToggle={() => core.writeCell(node, column, !value, 'edit')}
-      />
+      <Checkbox checked={value == null ? false : !!value} disabled={!editable} onToggle={() => core.writeCell(node, column, !value, 'edit')} />
     </div>
   );
 }
@@ -35,22 +31,23 @@ function CheckboxCellRenderer({ core, node, column, value }) {
 function GroupCellRenderer({ core, node, column, params, extra }) {
   const text = params.valueFormatted ?? params.value;
   const innerRenderer = extra?.innerRenderer;
-  const inner = innerRenderer
-    ? stableElement(core, `inner:${column.colId}`, innerRenderer, params)
-    : text == null
-      ? ''
-      : toText(text);
+  const inner = innerRenderer ? stableElement(core, `inner:${column.colId}`, innerRenderer, params) : text == null ? '' : toText(text);
   const grouping = (!!core.groupMode || core.isServerGrouping()) && column.autoType === 'group';
   // multipleColumns: 이 컬럼 레벨의 그룹(또는 groupHideOpenParents 로 숨은 부모)만 펼침 표시, 들여쓰기 없음
   const multi = grouping && column.groupIndex != null;
   let target = node;
   if (multi) {
-    target = node.group && node.level === column.groupIndex ? node : params.value != null && params.value !== '' ? core.ancestorAtLevel(node, column.groupIndex) : null;
+    target =
+      node.group && node.level === column.groupIndex
+        ? node
+        : params.value != null && params.value !== ''
+          ? core.ancestorAtLevel(node, column.groupIndex)
+          : null;
   }
   // 피벗 모드: 리프만 가진 최하위 그룹은 펼칠 것이 없음
   const hasKids = t => (t?.__ssrmGroup ? true : core.isPivotActive() ? !!t?.childrenAll?.some(c => c.group) : !!t?.childrenAll?.length);
   const expandable = multi ? hasKids(target) : node.master || (node.group && hasKids(node));
-  const level = grouping && !multi ? node.uiLevel ?? node.level ?? 0 : 0;
+  const level = grouping && !multi ? (node.uiLevel ?? node.level ?? 0) : 0;
   const leafIndent = grouping && !multi && !expandable ? GROUP_INDENT : 0;
   const toggle = e => {
     e.stopPropagation();
@@ -59,13 +56,19 @@ function GroupCellRenderer({ core, node, column, params, extra }) {
   const countNode = multi ? target : node;
   const count =
     grouping && countNode?.group && !countNode.footer && !extra?.suppressCount && (!multi || target === node)
-      ? countNode.allChildrenCount ?? countNode.childrenAfterFilter?.length
+      ? (countNode.allChildrenCount ?? countNode.childrenAfterFilter?.length)
       : null;
   const rs = core.rsOpts;
   // 레거시 cellRendererParams.checkbox 또는 v34 rowSelection.checkboxLocation: 'autoGroupColumn'
   const legacyCb =
     (extra?.checkbox && rs?.legacy) ||
-    (rs && !rs.legacy && rs.checkboxes !== false && rs.checkboxLocation === 'autoGroupColumn' && column.autoType === 'group' && !node.footer && !node.rowPinned);
+    (rs &&
+      !rs.legacy &&
+      rs.checkboxes !== false &&
+      rs.checkboxLocation === 'autoGroupColumn' &&
+      column.autoType === 'group' &&
+      !node.footer &&
+      !node.rowPinned);
   return (
     <span
       className={cx(
@@ -89,10 +92,7 @@ function GroupCellRenderer({ core, node, column, params, extra }) {
       )}
       {legacyCb && (
         <span className="r2-group-checkbox">
-          <Checkbox
-            checked={node.group ? core.getGroupSelectionState(node) : node.selected}
-            onToggle={e => core.handleCheckboxClick(node, e)}
-          />
+          <Checkbox checked={node.group ? core.getGroupSelectionState(node) : node.selected} onToggle={e => core.handleCheckboxClick(node, e)} />
         </span>
       )}
       <span className="r2-group-value">{inner}</span>
@@ -172,9 +172,7 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
     const groupDesc = node.group && core.isGroupSelectsDescendants();
     const show =
       !node.rowPinned &&
-      (typeof rs?.checkboxes === 'function'
-        ? !!rs.checkboxes({ ...base })
-        : !(rs?.hideDisabledCheckboxes && !node.selectable && !groupDesc));
+      (typeof rs?.checkboxes === 'function' ? !!rs.checkboxes({ ...base }) : !(rs?.hideDisabledCheckboxes && !node.selectable && !groupDesc));
     content = show ? (
       <div className="r2-cell-wrapper" role="presentation">
         <div className="r2-selection-checkbox" role="presentation">
@@ -225,7 +223,7 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
     } else if (bi === 'r2GroupCellRenderer' || bi === 'group') {
       content = <GroupCellRenderer core={core} node={node} column={col} params={{ ...base, ...(extra || {}) }} extra={extra} />;
     } else if (bi && bi !== 'r2AnimateShowChangeCellRenderer' && bi !== 'r2AnimateSlideCellRenderer') {
-      const impl = typeof comp === 'string' ? g.components?.[comp] ?? g.frameworkComponents?.[comp] : comp;
+      const impl = typeof comp === 'string' ? (g.components?.[comp] ?? g.frameworkComponents?.[comp]) : comp;
       if (impl) {
         const params = {
           ...base,
@@ -307,11 +305,7 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
     if (core.showRowDragHandle(node, col)) {
       content = (
         <div className="r2-cell-wrapper" role="presentation">
-          <div
-            className="r2-drag-handle r2-row-drag"
-            draggable={false}
-            onPointerDown={e => handlers.dragHandleDown(node, col, e)}
-          >
+          <div className="r2-drag-handle r2-row-drag" draggable={false} onPointerDown={e => handlers.dragHandleDown(node, col, e)}>
             <Icon name="grip" />
           </div>
           <span className="r2-cell-value">{content}</span>
@@ -357,11 +351,7 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
       ref={cellRef}
       className={cx(
         'r2-cell',
-        isEditing
-          ? ced.editor.popup
-            ? 'r2-cell-popup-editing r2-cell-not-inline-editing'
-            : 'r2-cell-inline-editing'
-          : 'r2-cell-not-inline-editing',
+        isEditing ? (ced.editor.popup ? 'r2-cell-popup-editing r2-cell-not-inline-editing' : 'r2-cell-inline-editing') : 'r2-cell-not-inline-editing',
         cd.autoHeight ? 'r2-cell-auto-height' : 'r2-cell-normal-height',
         'r2-cell-value',
         core.batch && core.hasBatchValue(node, col) && 'r2-cell-batch-edit',
@@ -413,18 +403,19 @@ function Cell({ core, node, col, handlers, isFirst, isLast, spanWidth, colSpan, 
     >
       {content}
       {editErrors && ced === core.editing?.primary && (
-        <div className={cx('r2-cell-editor-error', !node.rowPinned && node.rowIndex >= core.pageLastRow - 2 && node.rowIndex > core.pageFirstRow + 1 && 'r2-cell-editor-error-above')} role="alert">
+        <div
+          className={cx(
+            'r2-cell-editor-error',
+            !node.rowPinned && node.rowIndex >= core.pageLastRow - 2 && node.rowIndex > core.pageFirstRow + 1 && 'r2-cell-editor-error-above',
+          )}
+          role="alert"
+        >
           {editErrors.map((m, i) => (
             <div key={i}>{m}</div>
           ))}
         </div>
       )}
-      {showHandle && (
-        <div
-          className={fh.mode === 'fill' ? 'r2-fill-handle' : 'r2-range-handle'}
-          onPointerDown={e => handlers.fillHandleDown(e)}
-        />
-      )}
+      {showHandle && <div className={fh.mode === 'fill' ? 'r2-fill-handle' : 'r2-range-handle'} onPointerDown={e => handlers.fillHandleDown(e)} />}
     </div>
   );
 }
@@ -516,7 +507,16 @@ function Row({ core, node, cols, sectionCols, top, height, rp, handlers }) {
     const root = rowRef.current.closest('.r2-root');
     const key = rowKey(node);
     const sib = sel => root?.querySelector(`${sel} .r2-row[row-index="${key}"]`) || null;
-    fn({ eRow: rowRef.current, ePinnedLeftRow: sib('.r2-pinned-left-cols-container'), ePinnedRightRow: sib('.r2-pinned-right-cols-container'), node, rowIndex: node.rowIndex, addRenderedRowListener: () => {}, api: core.api, context: core.gos.context });
+    fn({
+      eRow: rowRef.current,
+      ePinnedLeftRow: sib('.r2-pinned-left-cols-container'),
+      ePinnedRightRow: sib('.r2-pinned-right-cols-container'),
+      node,
+      rowIndex: node.rowIndex,
+      addRenderedRowListener: () => {},
+      api: core.api,
+      context: core.gos.context,
+    });
   }, []);
   const businessKey = typeof core.gos.getBusinessKeyForNode === 'function' && !node.stub ? core.gos.getBusinessKeyForNode(node) : undefined;
   const cells = spanCells(core, node, cols, sectionCols)
@@ -567,7 +567,16 @@ function GroupFullRow({ core, node, top, height, rp, handlers, pinned = null, pr
   else if (typeof rgc?.colDef.valueFormatter === 'function') {
     value = rgc.colDef.valueFormatter({ ...core.makeValueParams(node, rgc), value: node.groupValue ?? node.key });
   }
-  const params = { value: node.key, valueFormatted: value, node, data: node.data, pinned, api: core.api, context: g.context, ...(g.groupRowRendererParams || {}) };
+  const params = {
+    value: node.key,
+    valueFormatted: value,
+    node,
+    data: node.data,
+    pinned,
+    api: core.api,
+    context: g.context,
+    ...(g.groupRowRendererParams || {}),
+  };
   const custom = typeof g.groupRowRenderer === 'string' ? g.components?.[g.groupRowRenderer] : g.groupRowRenderer;
   return (
     <div
@@ -1290,9 +1299,7 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     first = Math.max(0, core.indexAtPixel(virtTop) - buffer);
     last = Math.min(rowCount - 1, core.indexAtPixel(virtTop + (vh || 600)) + buffer);
   }
-  core.renderedRange = rowCount
-    ? { first: core.pageFirstRow + first, last: core.pageFirstRow + last }
-    : { first: -1, last: -1 };
+  core.renderedRange = rowCount ? { first: core.pageFirstRow + first, last: core.pageFirstRow + last } : { first: -1, last: -1 };
 
   const cw = size.cw || core.bodyWidth || 1200;
   const sl = Math.abs(scroll.left);
@@ -1337,7 +1344,14 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
     if (pi < 0 || pi >= rowCount) return null;
     const pos = ind.dropIndicatorPosition;
     // 안쪽(트리 자식으로): 행 전체 테두리
-    if (pos === 'inside') return <div className="r2-row-drop-indicator r2-row-drop-indicator-inside" style={{ top: core.rowTopAt(pi) - offset, height: core.rowHeightAt(pi), width }} aria-hidden="true" />;
+    if (pos === 'inside')
+      return (
+        <div
+          className="r2-row-drop-indicator r2-row-drop-indicator-inside"
+          style={{ top: core.rowTopAt(pi) - offset, height: core.rowHeightAt(pi), width }}
+          aria-hidden="true"
+        />
+      );
     const t = core.rowTopAt(pi) - offset + (pos === 'below' ? core.rowHeightAt(pi) : 0);
     return <div className={`r2-row-drop-indicator r2-row-drop-indicator-${pos}`} style={{ top: t - 1, width }} aria-hidden="true" />;
   };
@@ -1414,7 +1428,11 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
   stickyTotals.forEach((st, si) => {
     const node = st.node;
     const rp = rowProps(core, node, total);
-    const sp = { ...rp, className: cx(rp.className, 'r2-sticky-row r2-sticky-total-row', st.first && 'r2-sticky-total-row-first'), style: { ...rp.style, zIndex: 20 - si } };
+    const sp = {
+      ...rp,
+      className: cx(rp.className, 'r2-sticky-row r2-sticky-total-row', st.first && 'r2-sticky-total-row-first'),
+      style: { ...rp.style, zIndex: 20 - si },
+    };
     const common = { core, node, top: st.top - offset, height: st.height, rp: sp, handlers };
     const key = `stickyTotal:${node.id}`;
     if (core.displayedLeft.length) leftRows.push(<Row key={key} cols={core.displayedLeft} sectionCols={core.displayedLeft} {...common} />);
@@ -1529,7 +1547,11 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       <div className={cx('r2-body', autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal')} role="presentation">
         <div
           ref={bodyVpRef}
-          className={cx('r2-body-viewport', autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal', core.isRowAnimationOn() && !stretched ? 'r2-row-animation' : 'r2-row-no-animation')}
+          className={cx(
+            'r2-body-viewport',
+            autoLayout ? 'r2-layout-auto-height' : 'r2-layout-normal',
+            core.isRowAnimationOn() && !stretched ? 'r2-row-animation' : 'r2-row-no-animation',
+          )}
           style={g.alwaysShowVerticalScroll && !autoLayout ? { overflowY: 'scroll' } : undefined}
           role="presentation"
           onScroll={onBodyScroll}
@@ -1579,7 +1601,15 @@ export function GridBody({ core, headerVpRef, focusSinkRef, onScrollbarWidth }) 
       {dragGhost &&
         createPortal(
           <PopupLayer core={core}>
-            <DragImage core={core} x={dragGhost.x} y={dragGhost.y} label={dragGhost.text} icon="move" dragSource={{ type: 'row' }} defaultIcon={<Icon name="grip" />} />
+            <DragImage
+              core={core}
+              x={dragGhost.x}
+              y={dragGhost.y}
+              label={dragGhost.text}
+              icon="move"
+              dragSource={{ type: 'row' }}
+              defaultIcon={<Icon name="grip" />}
+            />
           </PopupLayer>,
           docOf(core).body,
         )}
