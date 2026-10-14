@@ -12,7 +12,12 @@ const STORY_DOCS = {
   },
   theme: {
     whenToUse: ['화면 전체의 강조색·글자 크기·행 높이를 바꿀 때', '다크 모드 전환'],
-    notes: ['테마는 provideGlobalGridOptions({ theme }) 로 한 번 지정하면 모든 그리드에 적용됩니다.', 'rowHeight·headerHeight prop 은 테마 계산값보다 우선합니다.'],
+    notes: [
+      '테마는 provideGlobalGridOptions({ theme }) 로 한 번 지정하면 모든 그리드에 적용됩니다.',
+      'rowHeight·headerHeight prop 은 테마 계산값보다 우선합니다.',
+      '테마 값은 <style> 로 head 에 들어갑니다. CSP 를 쓰면 styleNonce, 다른 곳(Shadow DOM 등)에 넣으려면 themeStyleContainer.',
+      'CSS @layer 로 묶으려면 앱 CSS 에서 r2grid.css 를 layer 로 import 하세요 (themeCssLayer 는 지원하지 않음).',
+    ],
   },
   locale: {
     whenToUse: ['특정 화면만 문구(빈 데이터 안내, 페이지 표시줄)를 바꿀 때'],

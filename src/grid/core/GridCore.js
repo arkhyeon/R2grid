@@ -225,6 +225,8 @@ export class GridCore {
   dispatch(type, params = {}) {
     if (this.destroyed || this.__muteEvents) return;
     const event = { type, api: this.api, context: this.gos.context, ...params };
+    // debug: 그리드 이벤트를 콘솔에 남김 (개발 중 확인용)
+    if (this.gos.debug && typeof console !== 'undefined') console.debug(`[R2grid ${this.gridId}] ${type}`, params);
     // 컬럼 단위 콜백 (colDef.onCellClicked 등 — 그리드 이벤트보다 먼저)
     if (COL_DEF_EVENTS.has(type)) {
       const h = params.column?.colDef?.[eventPropName(type)];
@@ -317,7 +319,7 @@ export class GridCore {
     this.gos = next;
     if (initial) {
       this.theme = resolveTheme(next.theme);
-      this.theme.install(this.getDocument());
+      this.installTheme();
       this.rsOpts = this.normalizeRowSelection();
       this.buildColumns(true);
       this.buildPinnedRows();
@@ -362,7 +364,7 @@ export class GridCore {
     if (!renderRelevant) return;
     if (changed('theme')) {
       this.theme = resolveTheme(next.theme);
-      this.theme.install(this.getDocument());
+      this.installTheme();
     }
     let rebuild = false;
     if (
@@ -3243,6 +3245,15 @@ export class GridCore {
     }, 0);
   }
 
+  // 테마 변수 스타일 넣기: themeStyleContainer(요소 또는 함수, 기본 head) · styleNonce(CSP).
+  //  themeCssLayer 는 지원 안 함: 테마 값만 layer 에 넣으면 layer 밖 기본 CSS 에 져서 적용되지 않음 (r2grid.css 를 앱에서 layer 로 import)
+  installTheme() {
+    const g = this.gos;
+    const sc = g.themeStyleContainer;
+    const container = typeof sc === 'function' ? sc() : sc;
+    this.theme?.install(this.getDocument(), { container: container || null, nonce: g.styleNonce });
+  }
+
   // getDocument: 그리드가 다른 문서(iframe·새 창)에 그려질 때 그 문서. 없으면 그리드 루트의 문서
   getDocument() {
     const fn = this.gos.getDocument;
@@ -4080,7 +4091,7 @@ export class GridCore {
   onMounted() {
     this.destroyed = false;
     // 그리드가 다른 문서(iframe·새 창)에 붙었으면 그 문서에도 테마 스타일
-    this.theme?.install(this.getDocument());
+    this.installTheme();
     // 언마운트 후 다시 붙은 경우(StrictMode 등) 끊었던 viewport 데이터 소스 다시 연결
     if (this.isViewportModel() && this.vp?.destroyed) this.vpInit();
     this.dispatch('gridReady', {});

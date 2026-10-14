@@ -85,11 +85,14 @@ class Theme {
   }
 
   // 테마 변수 스타일을 문서(head)에 한 번 넣음. iframe·새 창이면 그 문서에도
-  install(doc = typeof document !== 'undefined' ? document : null) {
+  //  opts: container(넣을 요소, 기본 head) · nonce(CSP)
+  install(doc = typeof document !== 'undefined' ? document : null, { container, nonce } = {}) {
     if (!doc) return;
+    const target = container || doc.head;
+    if (!target) return;
     this.__installedDocs ||= new WeakSet();
-    if (this.__installedDocs.has(doc)) return;
-    this.__installedDocs.add(doc);
+    if (this.__installedDocs.has(target)) return;
+    this.__installedDocs.add(target);
     const cls = this.className;
     const { all, light, dark } = this.params;
     const base = declarations({ ...all, ...light });
@@ -107,8 +110,9 @@ class Theme {
     if (!css) return;
     const style = doc.createElement('style');
     style.setAttribute('data-r2-theme', cls);
+    if (nonce) style.nonce = nonce;
     style.textContent = css;
-    doc.head.appendChild(style);
+    target.appendChild(style);
   }
 }
 
